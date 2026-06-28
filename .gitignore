@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.turbo/
+coverage/
+*.tsbuildinfo
+*.log
+.next/
+out/
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# Claude Code local (personal) settings
+.claude/settings.local.json

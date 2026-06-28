@@ -1,0 +1,21 @@
+{
+  "name": "eigenlex",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The directed graph a dictionary's definitions form — core function and the products built on it.",
+  "type": "module",
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "dev": "turbo run dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.9.2"
+  }
+}
