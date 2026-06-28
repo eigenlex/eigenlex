@@ -36,7 +36,9 @@ export function buildDefinitionGraph(
 
   // Pass 1: canonicalize headwords, build the matching trie and labels.
   const trie = new TokenTrie();
-  const labels: Record<Headword, Headword> = {};
+  // Null-proto: a headword like "constructor" or "__proto__" must be a plain
+  // data key, not a collision with Object.prototype.
+  const labels: Record<Headword, Headword> = Object.create(null);
   const nodes = new Set<string>();
   const canonicalOf = new Map<Headword, string>();
 
@@ -82,7 +84,7 @@ export function buildDefinitionGraph(
   }
 
   // Finalize: sorted edge lists, degree-based stats.
-  const edges: Record<Headword, Headword[]> = {};
+  const edges: Record<Headword, Headword[]> = Object.create(null);
   const inDegree = new Map<string, number>();
   for (const node of nodes) inDegree.set(node, 0);
 
