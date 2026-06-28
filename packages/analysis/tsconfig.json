@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    // This package is dense numeric/array index code over a compiled graph where
+    // indices are algorithmically in-bounds; the undefined-everywhere checks add
+    // noise without real safety here. Kept on everywhere else.
+    "noUncheckedIndexedAccess": false
+  },
+  "include": ["src"]
+}
