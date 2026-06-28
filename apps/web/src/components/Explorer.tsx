@@ -73,6 +73,8 @@ export default function Explorer({ initialWord }: { initialWord: string }) {
             <span className="dot focus" /> {word}
             <span className="dot defines" /> defined using
             <span className="dot usedBy" /> used to define
+            <span className="dot mutual" /> mutual (circular)
+            <span className="hint">hover to spotlight · click to walk</span>
           </p>
         </section>
 

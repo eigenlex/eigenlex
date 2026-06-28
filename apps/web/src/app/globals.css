@@ -7,6 +7,7 @@
   --focus: #f5c542;
   --defines: #4f9dff;
   --usedBy: #56c271;
+  --mutual: #c478ff;
 }
 
 * {
@@ -130,6 +131,13 @@ body {
 .dot.focus { background: var(--focus); }
 .dot.defines { background: var(--defines); }
 .dot.usedBy { background: var(--usedBy); }
+.dot.mutual { background: var(--mutual); }
+
+.legend .hint {
+  margin-left: auto;
+  font-style: italic;
+  opacity: 0.75;
+}
 
 .details {
   background: var(--panel);

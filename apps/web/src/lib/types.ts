@@ -15,7 +15,7 @@ export interface WordInfo {
   componentSize: number;
 }
 
-export type EgoKind = "focus" | "defines" | "usedBy";
+export type EgoKind = "focus" | "defines" | "usedBy" | "mutual";
 
 export interface EgoNode {
   id: string;

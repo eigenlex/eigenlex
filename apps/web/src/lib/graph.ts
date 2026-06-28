@@ -88,21 +88,27 @@ export function getWord(word: string): WordInfo | null {
 
 export function getEgo(word: string, max = 12): EgoGraph | null {
   if (!model.defines.has(word)) return null;
-  const defines = (model.defines.get(word) ?? []).slice().sort(byRank).slice(0, max);
-  const usedBy = (model.usedBy.get(word) ?? []).slice().sort(byRank).slice(0, max);
+  const outAll = model.defines.get(word) ?? [];
+  const inAll = model.usedBy.get(word) ?? [];
+  const outSet = new Set(outAll);
+  const inSet = new Set(inAll);
 
-  const nodes = new Map<string, EgoNode>();
-  nodes.set(word, { id: word, kind: "focus", score: model.pr[word] ?? 0 });
+  // Top-ranked neighbors on each side; their union is what we show. A neighbor
+  // in both sets is "mutual" — a circular definition with the focus word.
+  const top = (arr: string[]) => arr.slice().sort(byRank).slice(0, max);
+  const neighbors = new Set<string>([...top(outAll), ...top(inAll)]);
+
+  const nodes: EgoNode[] = [{ id: word, kind: "focus", score: model.pr[word] ?? 0 }];
   const edges: EgoGraph["edges"] = [];
-  for (const d of defines) {
-    if (!nodes.has(d)) nodes.set(d, { id: d, kind: "defines", score: model.pr[d] ?? 0 });
-    edges.push({ source: word, target: d });
+  for (const n of neighbors) {
+    const out = outSet.has(n);
+    const inc = inSet.has(n);
+    const kind: EgoNode["kind"] = out && inc ? "mutual" : out ? "defines" : "usedBy";
+    nodes.push({ id: n, kind, score: model.pr[n] ?? 0 });
+    if (out) edges.push({ source: word, target: n });
+    if (inc) edges.push({ source: n, target: word });
   }
-  for (const u of usedBy) {
-    if (!nodes.has(u)) nodes.set(u, { id: u, kind: "usedBy", score: model.pr[u] ?? 0 });
-    edges.push({ source: u, target: word });
-  }
-  return { focus: word, nodes: [...nodes.values()], edges };
+  return { focus: word, nodes, edges };
 }
 
 export function getPath(from: string, to: string): string[] | null {
