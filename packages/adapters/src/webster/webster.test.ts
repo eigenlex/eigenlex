@@ -39,6 +39,25 @@ describe("splitWebsterSenses", () => {
     ).toEqual(["A present; a gift."]);
   });
 
+  it("strips See cross-references", () => {
+    expect(splitWebsterSenses("A fox. See Reynard, n.")).toEqual(["A fox."]);
+  });
+
+  it("strips POS abbreviations, initials, and sub-sense markers", () => {
+    expect(
+      splitWebsterSenses("n. (a) A loud cry. v. t. (b) To cry out. T. Brown."),
+    ).toEqual(["A loud cry. To cry out. Brown."]);
+  });
+
+  it("can retain abbreviations and cross-refs on request", () => {
+    expect(
+      splitWebsterSenses("n. A cat. See Feline.", {
+        keepAbbreviations: true,
+        keepCrossRefs: true,
+      }),
+    ).toEqual(["n. A cat. See Feline."]);
+  });
+
   it("returns no senses for empty text", () => {
     expect(splitWebsterSenses("")).toEqual([]);
   });
