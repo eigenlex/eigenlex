@@ -1,4 +1,4 @@
-import Explorer from "@/components/Explorer";
+import Workspace from "@/components/Workspace";
 
 export default function Home() {
   return (
@@ -11,7 +11,7 @@ export default function Home() {
           built from it.
         </p>
       </header>
-      <Explorer initialWord="love" />
+      <Workspace initialWord="love" />
     </main>
   );
 }

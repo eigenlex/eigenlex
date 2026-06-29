@@ -11,7 +11,7 @@ import {
   stronglyConnectedComponents,
   type CompiledGraph,
 } from "@eigenlex/analysis";
-import type { EgoGraph, EgoNode, TopWord, WordInfo } from "@/lib/types";
+import type { EgoGraph, EgoNode, Layer, TopWord, WordInfo } from "@/lib/types";
 import sampleData from "../../data/webster-sample.json";
 
 interface Model {
@@ -26,6 +26,8 @@ interface Model {
   componentSize: Map<string, number>;
   depthOf: Map<string, number>;
   layerCount: number;
+  /** depth -> words at that depth, most central first. */
+  layerWords: string[][];
   ranked: TopWord[];
 }
 
@@ -76,6 +78,13 @@ function buildModel(): Model {
   });
   const layerCount = compiled.nodes.length > 0 ? maxDepth + 1 : 0;
 
+  // Each layer, words ordered by PageRank so the most central surface first.
+  const layerWords: string[][] = Array.from({ length: layerCount }, () => []);
+  for (const [word, d] of depthOf) layerWords[d]!.push(word);
+  const byRankIn = (a: string, b: string) =>
+    (rankOf.get(a) ?? Infinity) - (rankOf.get(b) ?? Infinity);
+  for (const words of layerWords) words.sort(byRankIn);
+
   const senses = new Map<string, string[]>(Object.entries(dict));
   return {
     graph,
@@ -89,6 +98,7 @@ function buildModel(): Model {
     componentSize,
     depthOf,
     layerCount,
+    layerWords,
     ranked,
   };
 }
@@ -149,4 +159,10 @@ export function getPath(from: string, to: string): string[] | null {
 
 export function getTop(k: number): TopWord[] {
   return model.ranked.slice(0, Math.max(0, k));
+}
+
+/** Every word sharing one advancement layer, most central first. */
+export function getLayer(depth: number): Layer | null {
+  if (!Number.isInteger(depth) || depth < 0 || depth >= model.layerCount) return null;
+  return { depth, layerCount: model.layerCount, words: model.layerWords[depth] ?? [] };
 }

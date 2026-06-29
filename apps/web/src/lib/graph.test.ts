@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getEgo, getTop, getWord } from "./graph";
+import { getEgo, getLayer, getTop, getWord } from "./graph";
 
 // Real headwords from the bundled sample, so we don't hard-code a vocabulary.
 const words = getTop(50).map((t) => t.word);
@@ -27,6 +27,25 @@ describe("layer wiring (web)", () => {
       const info = getWord(w)!;
       expect(info.depth === 0).toBe(info.inKernel);
     }
+  });
+
+  it("getLayer collects exactly the words at that depth", () => {
+    const count = getWord(sample)!.layerCount;
+    expect(getLayer(-1)).toBeNull();
+    expect(getLayer(count)).toBeNull();
+    for (let d = 0; d < count; d++) {
+      const layer = getLayer(d)!;
+      expect(layer).not.toBeNull();
+      expect(layer.depth).toBe(d);
+      expect(layer.layerCount).toBe(count);
+      expect(layer.words.length).toBeGreaterThan(0);
+      for (const w of layer.words) expect(getWord(w)!.depth).toBe(d);
+    }
+  });
+
+  it("a searched word sits in its own layer", () => {
+    const info = getWord(sample)!;
+    expect(getLayer(info.depth)!.words).toContain(sample);
   });
 
   it("getEgo stamps every node with a depth that matches getWord", () => {

@@ -195,3 +195,134 @@ body {
   border-color: var(--defines);
   color: var(--defines);
 }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  padding: 0.5rem 0.9rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-transform: lowercase;
+}
+
+.tab.active {
+  color: var(--text);
+  border-bottom-color: var(--defines);
+}
+
+/* Layers view */
+.ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.layer-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+}
+
+.layer-card header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.layer-card header h2 .of {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 1rem;
+}
+
+.layer-card .meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0.2rem 0 1rem;
+}
+
+.layer-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.layer-words.placeholder {
+  color: var(--muted);
+  min-height: 2rem;
+}
+
+.chip.anchor {
+  background: var(--focus);
+  border-color: var(--focus);
+  color: #0b1220;
+  font-weight: 600;
+}
+
+/* Nav rungs — the prefetched layers above and below */
+.nav-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.nav-step.empty {
+  min-height: 0;
+}
+
+.nav-go {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  background: #1f242e;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.nav-go:hover {
+  border-color: var(--defines);
+}
+
+.nav-label {
+  font-weight: 600;
+}
+
+.nav-count {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.nav-peek {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0 0.2rem;
+}
+
+.chip.ghost {
+  background: transparent;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.chip.ghost:hover {
+  color: var(--defines);
+}
