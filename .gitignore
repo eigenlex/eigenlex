@@ -5,6 +5,7 @@ coverage/
 *.tsbuildinfo
 *.log
 .next/
+.next-build/
 out/
 .DS_Store
 .env

@@ -38,6 +38,11 @@ pnpm typecheck   # type-check everything
 pnpm build       # build all packages
 ```
 
+> **Heads up:** `next dev` and `next build` share `apps/web/.next`, so running
+> `pnpm build` while the web dev server is live corrupts it (its API routes start
+> 500ing). To verify a production build without stopping `pnpm dev`, use
+> `pnpm --filter @eigenlex/web build:check` — it builds into `.next-build`.
+
 ## License
 
 MIT

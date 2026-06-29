@@ -1,22 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { EgoGraph, WordInfo } from "@/lib/types";
 
 const GraphView = dynamic(() => import("@/components/GraphView"), { ssr: false });
 
-export default function Explorer({ initialWord }: { initialWord: string }) {
+export default function Explorer({
+  initialWord,
+  onWordChange,
+}: {
+  initialWord: string;
+  onWordChange?: (word: string) => void;
+}) {
   const [query, setQuery] = useState(initialWord);
   const [word, setWord] = useState(initialWord);
   const [info, setInfo] = useState<WordInfo | null>(null);
   const [ego, setEgo] = useState<EgoGraph | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // The last word we loaded, so the sync effect can ignore an `initialWord` that
+  // is just our own onWordChange echoing back through the shared parent state.
+  const loadedRef = useRef<string | null>(null);
 
   const load = useCallback(async (raw: string) => {
     const term = raw.trim().toLowerCase();
     if (!term) return;
+    loadedRef.current = term;
     setLoading(true);
     try {
       const res = await fetch(`/api/word/${encodeURIComponent(term)}`);
@@ -28,15 +38,16 @@ export default function Explorer({ initialWord }: { initialWord: string }) {
       setInfo((await res.json()) as WordInfo);
       setWord(term);
       setQuery(term);
+      onWordChange?.(term);
       const egoRes = await fetch(`/api/ego/${encodeURIComponent(term)}`);
       setEgo(egoRes.ok ? ((await egoRes.json()) as EgoGraph) : null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onWordChange]);
 
   useEffect(() => {
-    void load(initialWord);
+    if (initialWord !== loadedRef.current) void load(initialWord);
   }, [initialWord, load]);
 
   const select = useCallback((w: string) => void load(w), [load]);
@@ -45,12 +56,17 @@ export default function Explorer({ initialWord }: { initialWord: string }) {
     <div className="explorer">
       <form
         className="search"
+        role="search"
         onSubmit={(e) => {
           e.preventDefault();
           void load(query);
         }}
       >
+        <label className="sr-only" htmlFor="explorer-search">
+          Look up a word
+        </label>
         <input
+          id="explorer-search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="look up a word…"
@@ -60,7 +76,11 @@ export default function Explorer({ initialWord }: { initialWord: string }) {
         <button type="submit">explore</button>
       </form>
 
-      {error && <p className="error">{error}</p>}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
 
       <div className="panes">
         <section className="graph-pane">

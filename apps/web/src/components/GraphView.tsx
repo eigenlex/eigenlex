@@ -138,5 +138,16 @@ export default function GraphView({
     return () => renderer.kill();
   }, [ego, onSelect]);
 
-  return <div ref={containerRef} className="graph" />;
+  // The canvas itself isn't reachable by keyboard/AT; describe it as an image.
+  // The same connections are operable via the word lists in the details panel.
+  const counts = { defines: 0, usedBy: 0, mutual: 0 } as Record<EgoKind, number>;
+  for (const n of ego.nodes) if (n.kind in counts) counts[n.kind]++;
+  const label =
+    `Relationship graph for "${ego.focus}": ` +
+    `${counts.defines} words it is defined from, ` +
+    `${counts.usedBy} words it helps define, ` +
+    `${counts.mutual} mutual. ` +
+    `These connections are also listed as buttons under the word's details.`;
+
+  return <div ref={containerRef} className="graph" role="img" aria-label={label} />;
 }

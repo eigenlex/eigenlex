@@ -14,6 +14,54 @@
   box-sizing: border-box;
 }
 
+/* A single, consistent keyboard focus indicator (WCAG 2.4.7). */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Visually hidden but available to assistive tech. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: -3rem;
+  z-index: 10;
+  padding: 0.6rem 0.9rem;
+  background: var(--focus);
+  color: #0b1220;
+  font-weight: 600;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 html,
 body {
   margin: 0;
@@ -27,6 +75,11 @@ body {
   max-width: 1100px;
   margin: 0 auto;
   padding: 2.5rem 1.5rem 4rem;
+}
+
+/* Programmatic focus from the skip link; no page-wide ring. */
+#main:focus {
+  outline: none;
 }
 
 .masthead h1 {
@@ -59,7 +112,6 @@ body {
 }
 
 .search input:focus {
-  outline: none;
   border-color: var(--defines);
 }
 
@@ -136,7 +188,6 @@ body {
 .legend .hint {
   margin-left: auto;
   font-style: italic;
-  opacity: 0.75;
 }
 
 .details {
@@ -182,7 +233,10 @@ body {
 }
 
 .chip {
-  padding: 0.3rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0.3rem 0.7rem;
   background: #232834;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -194,4 +248,165 @@ body {
 .chip:hover {
   border-color: var(--defines);
   color: var(--defines);
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  padding: 0.5rem 0.9rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-transform: lowercase;
+}
+
+.tab.active {
+  color: var(--text);
+  border-bottom-color: var(--defines);
+}
+
+/* Layers view */
+.layers-body {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 700px) {
+  .layers-body {
+    grid-template-columns: 1fr;
+  }
+  .rail {
+    width: 100%;
+  }
+}
+
+/* The stepper rail — every layer as a clickable, size-scaled rung */
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 13rem;
+  padding: 0.5rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.rail:focus-visible {
+  border-color: var(--defines);
+}
+
+/* While the listbox is focused, ring the active rung so its position reads. */
+.rail:focus-visible .rung.active {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.rung {
+  display: grid;
+  grid-template-columns: 1.4rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 28px;
+  padding: 0.3rem 0.4rem;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  text-align: left;
+}
+
+.rung:hover {
+  background: #232834;
+  color: var(--text);
+}
+
+.rung.active {
+  background: #232834;
+  color: var(--text);
+}
+
+.rung-num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.rung-bar {
+  height: 0.6rem;
+  background: #14171d;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.rung-fill {
+  display: block;
+  height: 100%;
+  background: var(--defines);
+  opacity: 0.45;
+}
+
+.rung.active .rung-fill {
+  background: var(--focus);
+  opacity: 1;
+}
+
+.rung-size {
+  font-variant-numeric: tabular-nums;
+}
+
+.layer-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+}
+
+.layer-card header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.layer-card header h2 .of {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 1rem;
+}
+
+.layer-card .meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0.2rem 0 1rem;
+}
+
+.layer-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.layer-words.placeholder {
+  color: var(--muted);
+  min-height: 2rem;
+}
+
+.chip.anchor {
+  background: var(--focus);
+  border-color: var(--focus);
+  color: #0b1220;
+  font-weight: 600;
 }

@@ -1,8 +1,8 @@
-import Explorer from "@/components/Explorer";
+import Workspace from "@/components/Workspace";
 
 export default function Home() {
   return (
-    <main className="page">
+    <main className="page" id="main" tabIndex={-1}>
       <header className="masthead">
         <h1>eigenlex</h1>
         <p>
@@ -11,7 +11,7 @@ export default function Home() {
           built from it.
         </p>
       </header>
-      <Explorer initialWord="love" />
+      <Workspace initialWord="love" />
     </main>
   );
 }

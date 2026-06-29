@@ -19,6 +19,21 @@ export interface WordInfo {
   layerCount: number;
 }
 
+export interface Layer {
+  /** Advancement layer index (0 = most basic, the kernel). */
+  depth: number;
+  /** Total number of layers in the dictionary. */
+  layerCount: number;
+  /** Every word at this depth, most central (PageRank) first. */
+  words: string[];
+}
+
+export interface LayerSummary {
+  layerCount: number;
+  /** Word count at each depth, indexed by depth (0 = most basic). */
+  sizes: number[];
+}
+
 export type EgoKind = "focus" | "defines" | "usedBy" | "mutual";
 
 export interface EgoNode {
