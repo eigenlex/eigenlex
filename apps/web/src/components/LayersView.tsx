@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Layer, WordInfo } from "@/lib/types";
+import type { Layer, LayerSummary, WordInfo } from "@/lib/types";
 
 /** depth 0 is the kernel; the top layer is the most derived vocabulary. */
 function layerNote(depth: number, count: number): string {
@@ -26,6 +26,8 @@ export default function LayersView({
   // depth -> layer. The current layer and its two neighbors are kept warm here
   // so up/down navigation renders without a round-trip.
   const [cache, setCache] = useState<Record<number, Layer>>({});
+  // The whole stratification profile (per-layer counts), driving the rail.
+  const [summary, setSummary] = useState<LayerSummary | null>(null);
 
   // Refs shadow the async state so fetchLayer can dedupe and bounds-check
   // against the latest values without waiting for a re-render.
@@ -93,9 +95,18 @@ export default function LayersView({
     if (initialWord !== wordRef.current) void search(initialWord);
   }, [initialWord, search]);
 
+  // The profile is global; fetch it once so the rail can render every layer.
+  useEffect(() => {
+    let live = true;
+    void fetch("/api/layers")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((s) => live && s && setSummary(s as LayerSummary));
+    return () => {
+      live = false;
+    };
+  }, []);
+
   const current = depth === null ? null : cache[depth] ?? null;
-  const below = depth === null ? null : cache[depth - 1] ?? null; // more basic
-  const above = depth === null ? null : cache[depth + 1] ?? null; // more advanced
 
   return (
     <div className="layers">
@@ -112,23 +123,18 @@ export default function LayersView({
           placeholder="a word — to see its layer…"
           spellCheck={false}
         />
-        <button type="submit">show layer</button>
+        <button type="submit" disabled={loading}>
+          {loading ? "…" : "show layer"}
+        </button>
       </form>
 
       {error && <p className="error">{error}</p>}
 
       {depth !== null && (
-        <div className="ladder">
-          <NavStep
-            direction="up"
-            label="more advanced"
-            target={depth + 1}
-            layer={above}
-            disabled={depth >= layerCount - 1}
-            onGo={(d) => void show(d, null)}
-            onWord={(d, w) => void show(d, w)}
-          />
-
+        <div className="layers-body">
+          {summary && summary.layerCount > 1 && (
+            <LayerRail sizes={summary.sizes} depth={depth} onJump={(d) => void show(d, null)} />
+          )}
           <section className="layer-card">
             <header>
               <h2>
@@ -152,19 +158,9 @@ export default function LayersView({
                 ))}
               </div>
             ) : (
-              <div className="layer-words placeholder">{loading ? "…" : ""}</div>
+              <div className="layer-words placeholder">…</div>
             )}
           </section>
-
-          <NavStep
-            direction="down"
-            label="more basic"
-            target={depth - 1}
-            layer={below}
-            disabled={depth <= 0}
-            onGo={(d) => void show(d, null)}
-            onWord={(d, w) => void show(d, w)}
-          />
         </div>
       )}
     </div>
@@ -172,47 +168,56 @@ export default function LayersView({
 }
 
 /**
- * One rung of the ladder: a button that walks to an adjacent layer, previewing
- * its size and most-central words from the already-prefetched data.
+ * The whole stratification as a clickable vertical scale: one rung per layer,
+ * most advanced on top down to the kernel, each rung's bar log-scaled to its
+ * word count so the small layers stay legible beside the giant core. Click —
+ * or arrow-key — to jump anywhere; the view warms the new neighbors on landing.
  */
-function NavStep({
-  direction,
-  label,
-  target,
-  layer,
-  disabled,
-  onGo,
-  onWord,
+function LayerRail({
+  sizes,
+  depth,
+  onJump,
 }: {
-  direction: "up" | "down";
-  label: string;
-  target: number;
-  layer: Layer | null;
-  disabled: boolean;
-  onGo: (depth: number) => void;
-  onWord: (depth: number, word: string) => void;
+  sizes: number[];
+  depth: number;
+  onJump: (depth: number) => void;
 }) {
-  if (disabled) return <div className="nav-step empty" />;
-  const arrow = direction === "up" ? "↑" : "↓";
+  const logMax = Math.log(Math.max(...sizes, 1) + 1);
+  const top = sizes.length - 1;
   return (
-    <div className={`nav-step ${direction}`}>
-      <button className="nav-go" onClick={() => onGo(target)}>
-        <span className="nav-label">
-          {arrow} {label}
-        </span>
-        <span className="nav-count">
-          {layer ? `layer ${target + 1} · ${layer.words.length.toLocaleString()} words` : "…"}
-        </span>
-      </button>
-      {layer && (
-        <div className="nav-peek">
-          {layer.words.slice(0, 6).map((w) => (
-            <button key={w} className="chip ghost" onClick={() => onWord(target, w)}>
-              {w}
-            </button>
-          ))}
-        </div>
-      )}
+    <div
+      className="rail"
+      role="listbox"
+      aria-label="layers, most basic to most advanced"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        const next = e.key === "ArrowUp" ? depth + 1 : e.key === "ArrowDown" ? depth - 1 : null;
+        if (next === null) return;
+        e.preventDefault();
+        if (next >= 0 && next <= top) onJump(next);
+      }}
+    >
+      {sizes.map((_, i) => top - i).map((n) => {
+        const active = n === depth;
+        const pct = Math.max((Math.log(sizes[n]! + 1) / logMax) * 100, 1.5);
+        return (
+          <button
+            key={n}
+            type="button"
+            role="option"
+            aria-selected={active}
+            className={active ? "rung active" : "rung"}
+            onClick={() => onJump(n)}
+            title={`layer ${n + 1} · ${sizes[n]!.toLocaleString()} words`}
+          >
+            <span className="rung-num">{n + 1}</span>
+            <span className="rung-bar">
+              <span className="rung-fill" style={{ width: `${pct}%` }} />
+            </span>
+            <span className="rung-size">{sizes[n]!.toLocaleString()}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

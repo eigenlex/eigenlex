@@ -221,10 +221,92 @@ body {
 }
 
 /* Layers view */
-.ladder {
+.layers-body {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 700px) {
+  .layers-body {
+    grid-template-columns: 1fr;
+  }
+  .rail {
+    width: 100%;
+  }
+}
+
+/* The stepper rail — every layer as a clickable, size-scaled rung */
+.rail {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 2px;
+  width: 13rem;
+  padding: 0.5rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.rail:focus {
+  outline: none;
+  border-color: var(--defines);
+}
+
+.rung {
+  display: grid;
+  grid-template-columns: 1.4rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.4rem;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  text-align: left;
+}
+
+.rung:hover {
+  background: #232834;
+  color: var(--text);
+}
+
+.rung.active {
+  background: #232834;
+  color: var(--text);
+}
+
+.rung-num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  opacity: 0.7;
+}
+
+.rung-bar {
+  height: 0.6rem;
+  background: #14171d;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.rung-fill {
+  display: block;
+  height: 100%;
+  background: var(--defines);
+  opacity: 0.45;
+}
+
+.rung.active .rung-fill {
+  background: var(--focus);
+  opacity: 1;
+}
+
+.rung-size {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
 }
 
 .layer-card {
@@ -269,60 +351,4 @@ body {
   border-color: var(--focus);
   color: #0b1220;
   font-weight: 600;
-}
-
-/* Nav rungs — the prefetched layers above and below */
-.nav-step {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.nav-step.empty {
-  min-height: 0;
-}
-
-.nav-go {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  width: 100%;
-  padding: 0.6rem 0.9rem;
-  background: #1f242e;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  color: var(--text);
-  cursor: pointer;
-  text-align: left;
-}
-
-.nav-go:hover {
-  border-color: var(--defines);
-}
-
-.nav-label {
-  font-weight: 600;
-}
-
-.nav-count {
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.nav-peek {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  padding: 0 0.2rem;
-}
-
-.chip.ghost {
-  background: transparent;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-
-.chip.ghost:hover {
-  color: var(--defines);
 }

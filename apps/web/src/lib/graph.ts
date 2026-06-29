@@ -11,7 +11,7 @@ import {
   stronglyConnectedComponents,
   type CompiledGraph,
 } from "@eigenlex/analysis";
-import type { EgoGraph, EgoNode, Layer, TopWord, WordInfo } from "@/lib/types";
+import type { EgoGraph, EgoNode, Layer, LayerSummary, TopWord, WordInfo } from "@/lib/types";
 import sampleData from "../../data/webster-sample.json";
 
 interface Model {
@@ -169,4 +169,9 @@ export function getTop(k: number): TopWord[] {
 export function getLayer(depth: number): Layer | null {
   if (!Number.isInteger(depth) || depth < 0 || depth >= model.layerCount) return null;
   return { depth, layerCount: model.layerCount, words: model.layerWords[depth] ?? [] };
+}
+
+/** Per-layer word counts — the whole stratification profile in a dozen ints. */
+export function getLayerSummary(): LayerSummary {
+  return { layerCount: model.layerCount, sizes: model.layerWords.map((w) => w.length) };
 }

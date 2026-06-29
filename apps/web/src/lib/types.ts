@@ -28,6 +28,12 @@ export interface Layer {
   words: string[];
 }
 
+export interface LayerSummary {
+  layerCount: number;
+  /** Word count at each depth, indexed by depth (0 = most basic). */
+  sizes: number[];
+}
+
 export type EgoKind = "focus" | "defines" | "usedBy" | "mutual";
 
 export interface EgoNode {
