@@ -2,7 +2,7 @@ import Workspace from "@/components/Workspace";
 
 export default function Home() {
   return (
-    <main className="page">
+    <main className="page" id="main" tabIndex={-1}>
       <header className="masthead">
         <h1>eigenlex</h1>
         <p>

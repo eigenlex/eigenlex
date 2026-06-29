@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { Layer, LayerSummary, WordInfo } from "@/lib/types";
 
 /** depth 0 is the kernel; the top layer is the most derived vocabulary. */
@@ -112,12 +112,17 @@ export default function LayersView({
     <div className="layers">
       <form
         className="search"
+        role="search"
         onSubmit={(e) => {
           e.preventDefault();
           void search(query);
         }}
       >
+        <label className="sr-only" htmlFor="layers-search">
+          Find a word to see its layer
+        </label>
         <input
+          id="layers-search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="a word — to see its layer…"
@@ -128,7 +133,11 @@ export default function LayersView({
         </button>
       </form>
 
-      {error && <p className="error">{error}</p>}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
 
       {depth !== null && (
         <div className="layers-body">
@@ -146,11 +155,12 @@ export default function LayersView({
               </p>
             </header>
             {current ? (
-              <div className="layer-words">
+              <div className="layer-words" role="group" aria-label={`Words in layer ${depth + 1}`}>
                 {current.words.map((w) => (
                   <button
                     key={w}
                     className={w === anchor ? "chip anchor" : "chip"}
+                    aria-current={w === anchor ? "true" : undefined}
                     onClick={() => void show(depth, w)}
                   >
                     {w}
@@ -168,10 +178,11 @@ export default function LayersView({
 }
 
 /**
- * The whole stratification as a clickable vertical scale: one rung per layer,
- * most advanced on top down to the kernel, each rung's bar log-scaled to its
- * word count so the small layers stay legible beside the giant core. Click —
- * or arrow-key — to jump anywhere; the view warms the new neighbors on landing.
+ * The whole stratification as a vertical scale: one rung per layer, most
+ * advanced on top down to the kernel, each rung's bar log-scaled to its word
+ * count so the small layers stay legible beside the giant core. A single-select
+ * listbox — one tab stop, arrows/Home/End to move, click to jump; selecting a
+ * layer navigates to it and the view warms the new neighbors on landing.
  */
 function LayerRail({
   sizes,
@@ -184,38 +195,49 @@ function LayerRail({
 }) {
   const logMax = Math.log(Math.max(...sizes, 1) + 1);
   const top = sizes.length - 1;
+  const move = (next: number) => {
+    if (next >= 0 && next <= top && next !== depth) onJump(next);
+  };
+  // DOM order is top..0 (most advanced first), so ArrowUp goes to a higher depth.
+  const onKeyDown = (e: KeyboardEvent) => {
+    const next =
+      e.key === "ArrowUp" ? depth + 1
+      : e.key === "ArrowDown" ? depth - 1
+      : e.key === "Home" ? top
+      : e.key === "End" ? 0
+      : null;
+    if (next === null) return;
+    e.preventDefault();
+    move(next);
+  };
   return (
     <div
       className="rail"
       role="listbox"
-      aria-label="layers, most basic to most advanced"
+      aria-label="Layers, most advanced to most basic"
       tabIndex={0}
-      onKeyDown={(e) => {
-        const next = e.key === "ArrowUp" ? depth + 1 : e.key === "ArrowDown" ? depth - 1 : null;
-        if (next === null) return;
-        e.preventDefault();
-        if (next >= 0 && next <= top) onJump(next);
-      }}
+      aria-activedescendant={`rung-${depth}`}
+      onKeyDown={onKeyDown}
     >
       {sizes.map((_, i) => top - i).map((n) => {
         const active = n === depth;
         const pct = Math.max((Math.log(sizes[n]! + 1) / logMax) * 100, 1.5);
         return (
-          <button
+          <div
             key={n}
-            type="button"
+            id={`rung-${n}`}
             role="option"
             aria-selected={active}
+            aria-label={`Layer ${n + 1}, ${sizes[n]!.toLocaleString()} words`}
             className={active ? "rung active" : "rung"}
-            onClick={() => onJump(n)}
-            title={`layer ${n + 1} · ${sizes[n]!.toLocaleString()} words`}
+            onClick={() => move(n)}
           >
-            <span className="rung-num">{n + 1}</span>
-            <span className="rung-bar">
+            <span className="rung-num" aria-hidden="true">{n + 1}</span>
+            <span className="rung-bar" aria-hidden="true">
               <span className="rung-fill" style={{ width: `${pct}%` }} />
             </span>
-            <span className="rung-size">{sizes[n]!.toLocaleString()}</span>
-          </button>
+            <span className="rung-size" aria-hidden="true">{sizes[n]!.toLocaleString()}</span>
+          </div>
         );
       })}
     </div>

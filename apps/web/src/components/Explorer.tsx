@@ -56,12 +56,17 @@ export default function Explorer({
     <div className="explorer">
       <form
         className="search"
+        role="search"
         onSubmit={(e) => {
           e.preventDefault();
           void load(query);
         }}
       >
+        <label className="sr-only" htmlFor="explorer-search">
+          Look up a word
+        </label>
         <input
+          id="explorer-search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="look up a word…"
@@ -71,7 +76,11 @@ export default function Explorer({
         <button type="submit">explore</button>
       </form>
 
-      {error && <p className="error">{error}</p>}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
 
       <div className="panes">
         <section className="graph-pane">
