@@ -74,7 +74,7 @@ export default function Explorer({ initialWord }: { initialWord: string }) {
             <span className="dot defines" /> defined using
             <span className="dot usedBy" /> used to define
             <span className="dot mutual" /> mutual (circular)
-            <span className="hint">hover to spotlight · click to walk</span>
+            <span className="hint">brighter = more advanced · hover to spotlight · click to walk</span>
           </p>
         </section>
 
@@ -82,7 +82,8 @@ export default function Explorer({ initialWord }: { initialWord: string }) {
           <aside className="details">
             <h2>{info.word}</h2>
             <p className="meta">
-              PageRank #{info.rank} · component {info.componentSize.toLocaleString()}
+              PageRank #{info.rank} · component {info.componentSize.toLocaleString()} · layer{" "}
+              {info.depth + 1}/{info.layerCount}
               {info.inKernel ? " · kernel" : ""}
             </p>
             {info.senses.length > 0 && (
