@@ -31,7 +31,11 @@ interface Model {
   ranked: TopWord[];
 }
 
-/** The bundled sample, or the full Webster file if EIGENLEX_WEBSTER points at one. */
+/**
+ * The bundled sample (the 10k most central Webster headwords; see
+ * scripts/build-sample.mjs), or the full Webster file if EIGENLEX_WEBSTER
+ * points at one.
+ */
 function loadSource(): WebsterSource {
   const path = process.env.EIGENLEX_WEBSTER;
   if (path) return JSON.parse(readFileSync(path, "utf8")) as WebsterSource;
