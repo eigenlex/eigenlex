@@ -12,6 +12,8 @@ export interface CompiledGraph {
   index: Map<string, number>;
   /** out[i] = indices of words that word i references in its definition */
   out: number[][];
+  /** in[i] = indices of words that reference word i in their definition */
+  in: number[][];
 }
 
 export function compile(graph: DefinitionGraph): CompiledGraph {
@@ -29,7 +31,16 @@ export function compile(graph: DefinitionGraph): CompiledGraph {
     }
     out[i] = row;
   }
-  return { nodes, index, out };
+
+  // Reverse adjacency: who references whom. Lets callers ask "what words are
+  // used to define this one?" as cheaply as the forward question.
+  const incoming: number[][] = new Array(nodes.length);
+  for (let i = 0; i < nodes.length; i++) incoming[i] = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (const j of out[i]) incoming[j].push(i);
+  }
+
+  return { nodes, index, out, in: incoming };
 }
 
 /** Accept either a graph or an already-compiled view. */

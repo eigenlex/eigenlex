@@ -7,6 +7,7 @@ import {
   kernel,
   pageRank,
   shortestPath,
+  stratify,
   stronglyConnectedComponents,
   type CompiledGraph,
 } from "@eigenlex/analysis";
@@ -23,6 +24,8 @@ interface Model {
   rankOf: Map<string, number>;
   kernelSet: Set<string>;
   componentSize: Map<string, number>;
+  depthOf: Map<string, number>;
+  layerCount: number;
   ranked: TopWord[];
 }
 
@@ -61,8 +64,33 @@ function buildModel(): Model {
     for (const word of component) componentSize.set(word, component.length);
   }
 
+  // Stratify into advancement layers: depth 0 = most basic (the kernel), higher
+  // depths are progressively more derived words.
+  const strat = stratify(compiled);
+  const depthOf = new Map<string, number>();
+  let maxDepth = 0;
+  compiled.nodes.forEach((word, i) => {
+    const d = strat.depth[strat.sccOf[i]!]!;
+    depthOf.set(word, d);
+    if (d > maxDepth) maxDepth = d;
+  });
+  const layerCount = compiled.nodes.length > 0 ? maxDepth + 1 : 0;
+
   const senses = new Map<string, string[]>(Object.entries(dict));
-  return { graph, compiled, senses, defines, usedBy, pr, rankOf, kernelSet, componentSize, ranked };
+  return {
+    graph,
+    compiled,
+    senses,
+    defines,
+    usedBy,
+    pr,
+    rankOf,
+    kernelSet,
+    componentSize,
+    depthOf,
+    layerCount,
+    ranked,
+  };
 }
 
 // Cache across dev hot-reloads (one build per server process).
@@ -83,6 +111,8 @@ export function getWord(word: string): WordInfo | null {
     rank: model.rankOf.get(word) ?? 0,
     inKernel: model.kernelSet.has(word),
     componentSize: model.componentSize.get(word) ?? 1,
+    depth: model.depthOf.get(word) ?? 0,
+    layerCount: model.layerCount,
   };
 }
 
@@ -98,13 +128,15 @@ export function getEgo(word: string, max = 12): EgoGraph | null {
   const top = (arr: string[]) => arr.slice().sort(byRank).slice(0, max);
   const neighbors = new Set<string>([...top(outAll), ...top(inAll)]);
 
-  const nodes: EgoNode[] = [{ id: word, kind: "focus", score: model.pr[word] ?? 0 }];
+  const nodes: EgoNode[] = [
+    { id: word, kind: "focus", score: model.pr[word] ?? 0, depth: model.depthOf.get(word) ?? 0 },
+  ];
   const edges: EgoGraph["edges"] = [];
   for (const n of neighbors) {
     const out = outSet.has(n);
     const inc = inSet.has(n);
     const kind: EgoNode["kind"] = out && inc ? "mutual" : out ? "defines" : "usedBy";
-    nodes.push({ id: n, kind, score: model.pr[n] ?? 0 });
+    nodes.push({ id: n, kind, score: model.pr[n] ?? 0, depth: model.depthOf.get(n) ?? 0 });
     if (out) edges.push({ source: word, target: n });
     if (inc) edges.push({ source: n, target: word });
   }

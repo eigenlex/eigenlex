@@ -20,6 +20,14 @@ const PLACEMENT: Record<Exclude<EgoKind, "focus">, { base: number; spread: numbe
   mutual: { base: -Math.PI / 2, spread: 1.4, radius: 2.2 }, // north: circular pairs
 };
 
+// Lighten a hex color toward white by t in [0,1] — raises more advanced
+// (deeper-layer) nodes a shade.
+function lighten(hex: string, t: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const mix = (c: number) => Math.round(c + (255 - c) * t);
+  return `rgb(${mix((n >> 16) & 255)}, ${mix((n >> 8) & 255)}, ${mix(n & 255)})`;
+}
+
 export default function GraphView({
   ego,
   onSelect,
@@ -42,6 +50,14 @@ export default function GraphView({
       return n.kind === "focus" ? Math.max(base, 16) : base;
     };
 
+    const depths = ego.nodes.map((n) => n.depth);
+    const dMin = Math.min(...depths);
+    const dMax = Math.max(...depths);
+    const colorOf = (n: EgoNode) => {
+      const t = dMax > dMin ? (n.depth - dMin) / (dMax - dMin) : 0;
+      return lighten(COLOR[n.kind], 0.5 * t); // deeper layer (more advanced) -> lighter
+    };
+
     const graph = new Graph();
     const focus = ego.nodes.find((n) => n.id === ego.focus);
     graph.addNode(ego.focus, {
@@ -49,11 +65,13 @@ export default function GraphView({
       y: 0,
       size: focus ? sizeOf(focus) : 16,
       label: ego.focus,
-      color: COLOR.focus,
+      color: focus ? colorOf(focus) : COLOR.focus,
     });
 
     (["defines", "usedBy", "mutual"] as const).forEach((kind) => {
-      const list = ego.nodes.filter((n) => n.kind === kind);
+      const list = ego.nodes
+        .filter((n) => n.kind === kind)
+        .sort((a, b) => a.depth - b.depth); // basic -> advanced along the arc
       const { base, spread, radius } = PLACEMENT[kind];
       list.forEach((node, i) => {
         const t = list.length <= 1 ? 0 : i / (list.length - 1) - 0.5;
@@ -64,7 +82,7 @@ export default function GraphView({
             y: radius * Math.sin(angle),
             size: sizeOf(node),
             label: node.id,
-            color: COLOR[kind],
+            color: colorOf(node),
           });
         }
       });

@@ -10,3 +10,5 @@ export type { Kernel } from "./kernel";
 export { pageRank, topByPageRank } from "./centrality";
 export type { PageRankOptions } from "./centrality";
 export { shortestPath } from "./paths";
+export { stratify, layers } from "./stratify";
+export type { Stratified } from "./stratify";
