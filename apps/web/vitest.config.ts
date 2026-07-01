@@ -10,4 +10,13 @@ export default defineConfig({
       "server-only": fileURLToPath(new URL("./test/server-only.stub.ts", import.meta.url)),
     },
   },
+  // tsconfig uses jsx:"preserve" (Next transforms it); vitest goes through
+  // esbuild, so enable the automatic React runtime for JSX in tests.
+  esbuild: { jsx: "automatic" },
+  test: {
+    // Default to node; component tests opt into jsdom via a per-file
+    // `// @vitest-environment jsdom` docblock.
+    environment: "node",
+    setupFiles: ["./test/setup.ts"],
+  },
 });

@@ -77,4 +77,33 @@ describe("buildDefinitionGraph", () => {
     // "cat" and "dog" are referenced by nobody -> sources.
     expect(stats.sources).toBeGreaterThanOrEqual(2);
   });
+
+  it("records a representative original surface form as the label", () => {
+    const { labels, edges } = buildDefinitionGraph({ Dog: ["A domesticated Animal"], Animal: ["a beast"] });
+    expect(labels["dog"]).toBe("Dog"); // canonical key, original label
+    expect(edges["dog"]).toEqual(["animal"]);
+  });
+
+  it("skips headwords that canonicalize to nothing", () => {
+    const { edges, stats } = buildDefinitionGraph({ "123": ["a number"], number: ["a count"] });
+    expect("123" in edges).toBe(false);
+    expect(stats.nodes).toBe(1);
+  });
+
+  it("handles an empty dictionary", () => {
+    const { edges, stats } = buildDefinitionGraph({});
+    expect(Object.keys(edges)).toEqual([]);
+    expect(stats).toEqual({ nodes: 0, edges: 0, sinks: 0, sources: 0 });
+  });
+
+  it("keeps prototype-polluting headwords as plain data keys", () => {
+    const { edges, labels } = buildDefinitionGraph({
+      constructor: ["the builder"],
+      builder: ["a constructor"],
+    });
+    expect(Object.getPrototypeOf(edges)).toBeNull();
+    expect(Object.getPrototypeOf(labels)).toBeNull();
+    expect(edges["builder"]).toEqual(["constructor"]);
+    expect(edges["constructor"]).toEqual(["builder"]);
+  });
 });
