@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
+import { coverageConfigDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
@@ -18,5 +18,16 @@ export default defineConfig({
     // `// @vitest-environment jsdom` docblock.
     environment: "node",
     setupFiles: ["./test/setup.ts"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html", "lcov"],
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        ...coverageConfigDefaults.exclude,
+        "src/lib/types.ts", // shared type declarations, no runtime
+        "src/app/layout.tsx", // Next app shell — integration surface, not a unit
+        "src/app/page.tsx",
+      ],
+    },
   },
 });
