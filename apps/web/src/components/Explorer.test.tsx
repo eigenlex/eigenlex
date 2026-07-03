@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Explorer from "./Explorer";
 import type { EgoGraph, WordInfo } from "@/lib/types";
@@ -32,24 +32,18 @@ const ego = (word: string): EgoGraph => ({
   edges: [{ source: word, target: "care" }],
 });
 
-function mockFetch() {
-  return vi.fn(async (url: string | URL) => {
-    const u = String(url);
-    if (u.includes("/api/word/")) {
-      const term = decodeURIComponent(u.split("/api/word/")[1]!);
-      if (term === "missing") return new Response("no", { status: 404 });
-      return new Response(JSON.stringify(wordInfo(term)), { status: 200 });
-    }
-    if (u.includes("/api/ego/")) {
-      const term = decodeURIComponent(u.split("/api/ego/")[1]!);
-      return new Response(JSON.stringify(ego(term)), { status: 200 });
-    }
-    return new Response("no", { status: 404 });
-  });
-}
-
 beforeEach(() => {
-  vi.stubGlobal("fetch", mockFetch());
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string | URL) => {
+      const u = String(url);
+      if (u.includes("/api/ego/")) {
+        const term = decodeURIComponent(u.split("/api/ego/")[1]!);
+        return new Response(JSON.stringify(ego(term)), { status: 200 });
+      }
+      return new Response("no", { status: 404 });
+    }),
+  );
 });
 afterEach(() => {
   cleanup();
@@ -57,47 +51,31 @@ afterEach(() => {
 });
 
 describe("Explorer", () => {
-  it("gives the search input an accessible name and a search landmark", async () => {
-    render(<Explorer initialWord="love" />);
-    expect(screen.getByRole("search")).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /look up a word/i })).toBeInTheDocument();
-    await screen.findByRole("heading", { name: "love" }); // initial load settled
-  });
-
-  it("loads the initial word and renders its details and neighbor chips", async () => {
-    render(<Explorer initialWord="love" />);
-    expect(await screen.findByRole("heading", { name: "love" })).toBeInTheDocument();
+  it("renders the word's details and neighbor chips", async () => {
+    render(<Explorer info={wordInfo("love")} onSelect={() => {}} />);
+    expect(screen.getByRole("heading", { name: "love" })).toBeInTheDocument();
     expect(screen.getByText("the sense of love")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "care" })).toBeInTheDocument(); // defined using
     expect(screen.getByRole("button", { name: "adore" })).toBeInTheDocument(); // used to define
+    await screen.findByTestId("graphview"); // the neighborhood fetch settles
   });
 
-  it("announces an unknown word through an alert", async () => {
-    render(<Explorer initialWord="missing" />);
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/not in this dictionary/i);
+  it("draws the ego graph once its neighborhood loads", async () => {
+    render(<Explorer info={wordInfo("love")} onSelect={() => {}} />);
+    expect(await screen.findByTestId("graphview")).toBeInTheDocument();
   });
 
-  it("navigates to a neighbor when its chip is activated", async () => {
+  it("selects a neighbor when its chip is activated", async () => {
     const user = userEvent.setup();
-    render(<Explorer initialWord="love" />);
-    await screen.findByRole("heading", { name: "love" });
-
+    const onSelect = vi.fn();
+    render(<Explorer info={wordInfo("love")} onSelect={onSelect} />);
+    await screen.findByTestId("graphview");
     await user.click(screen.getByRole("button", { name: "care" }));
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/care")),
-    );
-    expect(await screen.findByRole("heading", { name: "care" })).toBeInTheDocument();
+    expect(onSelect).toHaveBeenCalledWith("care");
   });
 
-  it("submitting the form looks up the typed word", async () => {
-    const user = userEvent.setup();
-    render(<Explorer initialWord="love" />);
-    await screen.findByRole("heading", { name: "love" });
-
-    const input = screen.getByRole("textbox", { name: /look up a word/i });
-    await user.clear(input);
-    await user.type(input, "care{Enter}");
-    expect(await screen.findByRole("heading", { name: "care" })).toBeInTheDocument();
+  it("shows nothing to explore before a word is chosen", () => {
+    render(<Explorer info={null} onSelect={() => {}} />);
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
 });

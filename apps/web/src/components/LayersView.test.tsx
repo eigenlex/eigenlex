@@ -3,29 +3,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import LayersView from "./LayersView";
+import type { WordInfo } from "@/lib/types";
 
-// A 3-layer world; the searched word "love" sits in layer depth 1.
+// "love" sits in layer depth 1 of a 3-layer world.
+const love: WordInfo = {
+  word: "love",
+  senses: [],
+  defines: [],
+  usedBy: [],
+  pageRank: 0,
+  rank: 1,
+  inKernel: false,
+  componentSize: 1,
+  depth: 1,
+  layerCount: 3,
+};
+
 function mockFetch() {
   return vi.fn(async (url: string | URL) => {
     const u = String(url);
-    if (u.includes("/api/word/")) {
-      const word = decodeURIComponent(u.split("/api/word/")[1]!);
-      return new Response(
-        JSON.stringify({
-          word,
-          senses: [],
-          defines: [],
-          usedBy: [],
-          pageRank: 0,
-          rank: 1,
-          inKernel: false,
-          componentSize: 1,
-          depth: 1,
-          layerCount: 3,
-        }),
-        { status: 200 },
-      );
-    }
     if (u.endsWith("/api/layers")) {
       return new Response(JSON.stringify({ layerCount: 3, sizes: [5, 3, 2] }), { status: 200 });
     }
@@ -49,27 +45,29 @@ afterEach(() => {
 });
 
 describe("LayersView", () => {
-  it("labels the search input", async () => {
-    render(<LayersView initialWord="love" />);
-    expect(screen.getByRole("textbox", { name: /find a word to see its layer/i })).toBeInTheDocument();
-    await screen.findByRole("listbox", { name: /layers/i });
-  });
-
   it("marks the searched word as the current chip in its layer", async () => {
-    render(<LayersView initialWord="love" />);
+    render(<LayersView info={love} onSelect={() => {}} />);
     const anchor = await screen.findByRole("button", { name: "love" });
     expect(anchor).toHaveAttribute("aria-current", "true");
     expect(screen.getByRole("button", { name: "other" })).not.toHaveAttribute("aria-current");
   });
 
+  it("looks up a word when its chip in the layer is picked", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    render(<LayersView info={love} onSelect={onSelect} />);
+    await user.click(await screen.findByRole("button", { name: "other" }));
+    expect(onSelect).toHaveBeenCalledWith("other");
+  });
+
   it("scrolls the searched word into view within its layer", async () => {
-    render(<LayersView initialWord="love" />);
+    render(<LayersView info={love} onSelect={() => {}} />);
     const anchor = await screen.findByRole("button", { name: "love" });
     await waitFor(() => expect(anchor.scrollIntoView).toHaveBeenCalled());
   });
 
   it("renders the rail as a listbox with the active layer selected", async () => {
-    render(<LayersView initialWord="love" />);
+    render(<LayersView info={love} onSelect={() => {}} />);
     const listbox = await screen.findByRole("listbox", { name: /layers/i });
     expect(screen.getAllByRole("option")).toHaveLength(3);
     // depth 1 is active -> aria-activedescendant and the selected option agree.
@@ -79,7 +77,7 @@ describe("LayersView", () => {
 
   it("walks layers with the arrow keys", async () => {
     const user = userEvent.setup();
-    render(<LayersView initialWord="love" />);
+    render(<LayersView info={love} onSelect={() => {}} />);
     const listbox = await screen.findByRole("listbox", { name: /layers/i });
 
     listbox.focus();
