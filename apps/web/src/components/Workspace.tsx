@@ -1,66 +1,32 @@
 "use client";
 
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useState } from "react";
+import { Tabs } from "@frontify/fondue/components";
 import Explorer from "@/components/Explorer";
 import LayersView from "@/components/LayersView";
 
-const VIEWS = ["layers", "graph"] as const;
-type View = (typeof VIEWS)[number];
+type View = "layers" | "graph";
 
 export default function Workspace({ initialWord }: { initialWord: string }) {
   const [view, setView] = useState<View>("layers");
-  // Shared so a word looked up in one view carries into the other.
+  // Shared so a word looked up in one view carries into the other. Tabs unmounts
+  // the inactive panel, so the newly shown view mounts fresh with this word.
   const [word, setWord] = useState(initialWord);
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
-
-  // Arrow keys move between tabs (roving tabindex), per the ARIA tabs pattern.
-  const onTabKeyDown = (e: KeyboardEvent, i: number) => {
-    const last = VIEWS.length - 1;
-    const to =
-      e.key === "ArrowRight" ? (i === last ? 0 : i + 1)
-      : e.key === "ArrowLeft" ? (i === 0 ? last : i - 1)
-      : e.key === "Home" ? 0
-      : e.key === "End" ? last
-      : null;
-    if (to === null) return;
-    e.preventDefault();
-    setView(VIEWS[to]!);
-    tabRefs.current[to]?.focus();
-  };
 
   return (
-    <div className="workspace">
-      <div className="tabs" role="tablist" aria-label="View">
-        {VIEWS.map((v, i) => {
-          const selected = view === v;
-          return (
-            <button
-              key={v}
-              ref={(el) => {
-                tabRefs.current[i] = el;
-              }}
-              id={`tab-${v}`}
-              role="tab"
-              aria-selected={selected}
-              aria-controls="view-panel"
-              tabIndex={selected ? 0 : -1}
-              className={selected ? "tab active" : "tab"}
-              onClick={() => setView(v)}
-              onKeyDown={(e) => onTabKeyDown(e, i)}
-            >
-              {v}
-            </button>
-          );
-        })}
-      </div>
-
-      <div id="view-panel" role="tabpanel" aria-labelledby={`tab-${view}`}>
-        {view === "graph" ? (
-          <Explorer key="graph" initialWord={word} onWordChange={setWord} />
-        ) : (
-          <LayersView key="layers" initialWord={word} onWordChange={setWord} />
-        )}
-      </div>
-    </div>
+    <Tabs.Root padding="none" activeTab={view} onActiveTabChange={(v) => setView(v as View)}>
+      <Tabs.Tab value="layers">
+        <Tabs.Trigger>layers</Tabs.Trigger>
+        <Tabs.Content>
+          <LayersView initialWord={word} onWordChange={setWord} />
+        </Tabs.Content>
+      </Tabs.Tab>
+      <Tabs.Tab value="graph">
+        <Tabs.Trigger>graph</Tabs.Trigger>
+        <Tabs.Content>
+          <Explorer initialWord={word} onWordChange={setWord} />
+        </Tabs.Content>
+      </Tabs.Tab>
+    </Tabs.Root>
   );
 }

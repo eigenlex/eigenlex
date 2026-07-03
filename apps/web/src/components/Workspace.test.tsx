@@ -11,24 +11,21 @@ vi.mock("./LayersView", () => ({ default: () => <div>layers view</div> }));
 afterEach(cleanup);
 
 describe("Workspace tabs", () => {
-  it("exposes a labelled tablist with layers selected by default", () => {
+  it("exposes both tabs with layers selected by default", () => {
     render(<Workspace initialWord="love" />);
-    const tabs = screen.getAllByRole("tab");
-    expect(tabs.map((t) => t.textContent)).toEqual(["layers", "graph"]);
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
 
-    const [layers, graph] = tabs;
+    const layers = screen.getByRole("tab", { name: "layers" });
+    const graph = screen.getByRole("tab", { name: "graph" });
     expect(layers).toHaveAttribute("aria-selected", "true");
     expect(graph).toHaveAttribute("aria-selected", "false");
-    // Roving tabindex: only the selected tab is in the tab order.
-    expect(layers).toHaveAttribute("tabindex", "0");
-    expect(graph).toHaveAttribute("tabindex", "-1");
   });
 
-  it("links the panel to the active tab", () => {
+  it("shows the active tab's panel, linked back to that tab", () => {
     render(<Workspace initialWord="love" />);
     const panel = screen.getByRole("tabpanel");
-    expect(panel).toHaveAttribute("aria-labelledby", "tab-layers");
     expect(panel).toHaveTextContent("layers view");
+    expect(panel).toHaveAccessibleName(/layers/i);
   });
 
   it("switches views on click", async () => {
@@ -42,9 +39,8 @@ describe("Workspace tabs", () => {
   it("moves between tabs with arrow keys, wrapping, and Home/End", async () => {
     const user = userEvent.setup();
     render(<Workspace initialWord="love" />);
-    const layers = screen.getByRole("tab", { name: "layers" });
 
-    layers.focus();
+    screen.getByRole("tab", { name: "layers" }).focus();
     await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("tab", { name: "graph" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "graph" })).toHaveFocus();

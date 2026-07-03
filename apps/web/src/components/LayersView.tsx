@@ -1,7 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Button, TextInput } from "@frontify/fondue/components";
 import type { Layer, LayerSummary, WordInfo } from "@/lib/types";
+
+// A word pill, painted with Fondue tokens; the anchor variant marks the searched word.
+const CHIP_BASE =
+  "tw-inline-flex tw-items-center tw-min-h-[24px] tw-rounded-full tw-border tw-px-3 tw-py-1 " +
+  "tw-body-small tw-transition-colors";
+const CHIP =
+  `${CHIP_BASE} tw-border-line-subtle tw-bg-surface-hover tw-text-secondary ` +
+  "hover:tw-bg-surface-active hover:tw-text-primary";
+const CHIP_ANCHOR =
+  `${CHIP_BASE} tw-border-[color:var(--accent-focus)] tw-bg-[color:var(--accent-focus)] ` +
+  "tw-font-medium tw-text-[#0b1220]";
 
 /** depth 0 is the kernel; the top layer is the most derived vocabulary. */
 function layerNote(depth: number, count: number): string {
@@ -109,57 +121,64 @@ export default function LayersView({
   const current = depth === null ? null : cache[depth] ?? null;
 
   return (
-    <div className="layers">
+    <div>
       <form
-        className="search"
+        className="tw-mb-4 tw-flex tw-gap-2"
         role="search"
         onSubmit={(e) => {
           e.preventDefault();
           void search(query);
         }}
       >
-        <label className="sr-only" htmlFor="layers-search">
-          Find a word to see its layer
-        </label>
-        <input
-          id="layers-search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="a word — to see its layer…"
-          spellCheck={false}
-        />
-        <button type="submit" disabled={loading}>
+        <div className="tw-flex-1">
+          <TextInput.Root
+            aria-label="Find a word to see its layer"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="a word — to see its layer…"
+            spellCheck={false}
+            className="tw-w-full"
+          />
+        </div>
+        <Button type="submit" disabled={loading}>
           {loading ? "…" : "show layer"}
-        </button>
+        </Button>
       </form>
 
       {error && (
-        <p className="error" role="alert">
+        <p className="tw-mb-4 tw-body-medium tw-text-error" role="alert">
           {error}
         </p>
       )}
 
       {depth !== null && (
-        <div className="layers-body">
+        <div className="tw-grid tw-grid-cols-1 tw-items-start tw-gap-4 min-[700px]:tw-grid-cols-[auto_1fr]">
           {summary && summary.layerCount > 1 && (
             <LayerRail sizes={summary.sizes} depth={depth} onJump={(d) => void show(d, null)} />
           )}
-          <section className="layer-card">
+          <section className="tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-5 tw-py-4">
             <header>
-              <h2>
-                layer {depth + 1} <span className="of">/ {layerCount}</span>
+              <h2 className="tw-heading-x-large-strong">
+                layer {depth + 1}{" "}
+                <span className="tw-body-large tw-font-regular tw-text-low-contrast">
+                  / {layerCount}
+                </span>
               </h2>
-              <p className="meta">
+              <p className="tw-mb-4 tw-mt-1 tw-body-small tw-text-low-contrast">
                 {current ? `${current.words.length.toLocaleString()} words` : "…"}
                 {layerNote(depth, layerCount) && ` · ${layerNote(depth, layerCount)}`}
               </p>
             </header>
             {current ? (
-              <div className="layer-words" role="group" aria-label={`Words in layer ${depth + 1}`}>
+              <div
+                className="tw-flex tw-max-h-[22rem] tw-flex-wrap tw-gap-1 tw-overflow-y-auto"
+                role="group"
+                aria-label={`Words in layer ${depth + 1}`}
+              >
                 {current.words.map((w) => (
                   <button
                     key={w}
-                    className={w === anchor ? "chip anchor" : "chip"}
+                    className={w === anchor ? CHIP_ANCHOR : CHIP}
                     aria-current={w === anchor ? "true" : undefined}
                     onClick={() => void show(depth, w)}
                   >
@@ -168,7 +187,7 @@ export default function LayersView({
                 ))}
               </div>
             ) : (
-              <div className="layer-words placeholder">…</div>
+              <div className="tw-min-h-[2rem] tw-text-low-contrast">…</div>
             )}
           </section>
         </div>
@@ -212,7 +231,7 @@ function LayerRail({
   };
   return (
     <div
-      className="rail"
+      className="tw-flex tw-w-full tw-flex-col tw-gap-[2px] tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-p-2 focus-visible:tw-border-line-strong min-[700px]:tw-w-52"
       role="listbox"
       aria-label="Layers, most advanced to most basic"
       tabIndex={0}
@@ -229,14 +248,33 @@ function LayerRail({
             role="option"
             aria-selected={active}
             aria-label={`Layer ${n + 1}, ${sizes[n]!.toLocaleString()} words`}
-            className={active ? "rung active" : "rung"}
+            className={
+              "tw-grid tw-min-h-[28px] tw-cursor-pointer tw-grid-cols-[1.4rem_1fr_auto] tw-items-center tw-gap-2 tw-rounded-[6px] tw-px-1 tw-py-1 tw-text-left tw-body-x-small tw-transition-colors " +
+              (active
+                ? "tw-bg-surface-hover tw-text-primary"
+                : "tw-text-low-contrast hover:tw-bg-surface-hover hover:tw-text-primary")
+            }
             onClick={() => move(n)}
           >
-            <span className="rung-num" aria-hidden="true">{n + 1}</span>
-            <span className="rung-bar" aria-hidden="true">
-              <span className="rung-fill" style={{ width: `${pct}%` }} />
+            <span className="tw-text-right tw-tabular-nums" aria-hidden="true">
+              {n + 1}
             </span>
-            <span className="rung-size" aria-hidden="true">{sizes[n]!.toLocaleString()}</span>
+            <span
+              className="tw-h-[0.6rem] tw-overflow-hidden tw-rounded-[3px] tw-bg-surface-dim"
+              aria-hidden="true"
+            >
+              <span
+                className="tw-block tw-h-full"
+                style={{
+                  width: `${pct}%`,
+                  backgroundColor: active ? "var(--accent-focus)" : "var(--accent-defines)",
+                  opacity: active ? 1 : 0.45,
+                }}
+              />
+            </span>
+            <span className="tw-tabular-nums" aria-hidden="true">
+              {sizes[n]!.toLocaleString()}
+            </span>
           </div>
         );
       })}
