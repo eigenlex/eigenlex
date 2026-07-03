@@ -66,6 +66,7 @@ export default function GraphView({
       size: focus ? sizeOf(focus) : 16,
       label: ego.focus,
       color: focus ? colorOf(focus) : COLOR.focus,
+      forceLabel: true, // small ego graph — show every word, not just the grid's per-cell winner
     });
 
     (["defines", "usedBy", "mutual"] as const).forEach((kind) => {
@@ -83,6 +84,7 @@ export default function GraphView({
             size: sizeOf(node),
             label: node.id,
             color: colorOf(node),
+            forceLabel: true,
           });
         }
       });
