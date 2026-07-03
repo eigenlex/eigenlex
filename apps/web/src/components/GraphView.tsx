@@ -149,5 +149,12 @@ export default function GraphView({
     `${counts.mutual} mutual. ` +
     `These connections are also listed as buttons under the word's details.`;
 
-  return <div ref={containerRef} className="graph" role="img" aria-label={label} />;
+  return (
+    <div
+      ref={containerRef}
+      className="tw-h-[460px] tw-w-full tw-rounded-large"
+      role="img"
+      aria-label={label}
+    />
+  );
 }
