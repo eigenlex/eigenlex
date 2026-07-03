@@ -238,6 +238,14 @@ function LayerRail({
       aria-activedescendant={`rung-${depth}`}
       onKeyDown={onKeyDown}
     >
+      {/* Column header: names the two numbers flanking each bar. */}
+      <div
+        className="tw-mb-1 tw-flex tw-items-center tw-justify-between tw-border-b tw-border-line-subtle tw-px-1 tw-pb-1 tw-body-x-small tw-text-low-contrast"
+        aria-hidden="true"
+      >
+        <span>layer</span>
+        <span>words</span>
+      </div>
       {sizes.map((_, i) => top - i).map((n) => {
         const active = n === depth;
         const pct = Math.max((Math.log(sizes[n]! + 1) / logMax) * 100, 1.5);
