@@ -38,7 +38,11 @@ function mockFetch() {
   });
 }
 
-beforeEach(() => vi.stubGlobal("fetch", mockFetch()));
+beforeEach(() => {
+  vi.stubGlobal("fetch", mockFetch());
+  // jsdom has no layout; the spotlight scroll needs a stub to be observable.
+  Element.prototype.scrollIntoView = vi.fn();
+});
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -56,6 +60,12 @@ describe("LayersView", () => {
     const anchor = await screen.findByRole("button", { name: "love" });
     expect(anchor).toHaveAttribute("aria-current", "true");
     expect(screen.getByRole("button", { name: "other" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("scrolls the searched word into view within its layer", async () => {
+    render(<LayersView initialWord="love" />);
+    const anchor = await screen.findByRole("button", { name: "love" });
+    await waitFor(() => expect(anchor.scrollIntoView).toHaveBeenCalled());
   });
 
   it("renders the rail as a listbox with the active layer selected", async () => {

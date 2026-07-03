@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Button, TextInput } from "@frontify/fondue/components";
+import WordChips from "@/components/WordChips";
 import type { Layer, LayerSummary, WordInfo } from "@/lib/types";
 
 // A word pill, painted with Fondue tokens; the anchor variant marks the searched word.
@@ -170,22 +171,14 @@ export default function LayersView({
               </p>
             </header>
             {current ? (
-              <div
-                className="tw-flex tw-max-h-[22rem] tw-flex-wrap tw-gap-1 tw-overflow-y-auto"
-                role="group"
-                aria-label={`Words in layer ${depth + 1}`}
-              >
-                {current.words.map((w) => (
-                  <button
-                    key={w}
-                    className={w === anchor ? CHIP_ANCHOR : CHIP}
-                    aria-current={w === anchor ? "true" : undefined}
-                    onClick={() => void show(depth, w)}
-                  >
-                    {w}
-                  </button>
-                ))}
-              </div>
+              <WordChips
+                words={current.words}
+                anchor={anchor}
+                chipClass={CHIP}
+                anchorClass={CHIP_ANCHOR}
+                onPick={(w) => void show(depth, w)}
+                label={`Words in layer ${depth + 1}`}
+              />
             ) : (
               <div className="tw-min-h-[2rem] tw-text-low-contrast">…</div>
             )}
