@@ -29,6 +29,40 @@ The seam that holds it together: `core` emits **plain, serializable adjacency
 data**, so the same artifact crosses every layer boundary and the network —
 compute it once, cache it, ship it to the browser.
 
+## Data model
+
+One direction of flow — a `Dictionary` in, plain adjacency out, analytical views
+on top. Every shape is plain and serializable.
+
+**Core** — `@eigenlex/core`
+
+| Type | Shape |
+| --- | --- |
+| `Dictionary` | *Input.* `Record<headword, string[]>` — headword → its sense texts. |
+| `LanguageProfile` | Injected `tokenize` / `normalize` / `lemmatize` / `stopwords`; keeps the builder language-agnostic. |
+| `BuildOptions` | Build flags: stopword edges, self-loops, phrase matching. |
+| `DefinitionGraph` | *Output.* `edges` (headword → referenced headwords), `labels` (canonical → surface form), `stats`. |
+
+**Analysis** — `@eigenlex/analysis`, all computed over a `DefinitionGraph`
+
+| Type | Shape |
+| --- | --- |
+| `CompiledGraph` | Index-based view — words as integers, adjacency as `out` / `in` arrays. Built once, reused by every algorithm. |
+| `Kernel` | The irreducible words: sink SCCs whose definitions never leave the group. |
+| `Stratified` | Acyclic SCC condensation with a `depth` per component (0 = most basic → most advanced). |
+| `layers()` → `string[][]` | Words bucketed by depth; `layers[0]` is the kernel. |
+| SCCs → `string[][]` | Strongly connected components; size > 1 = mutually-defining (circular) words. |
+| `pageRank()` → `Record<word, number>` | Centrality scores; mass flows toward the most fundamental words. |
+
+**Web API** — `apps/web/src/lib/types.ts`, JSON the browser consumes
+
+| Type | Shape |
+| --- | --- |
+| `WordInfo` | A word's dossier: senses, in/out edges, PageRank + rank, kernel flag, component size, depth. |
+| `Layer` / `LayerSummary` | The words at one depth / per-depth counts for the whole stack. |
+| `EgoGraph` | A word's neighborhood — `focus` plus typed `nodes` (`focus`/`defines`/`usedBy`/`mutual`) and `edges`. |
+| `TopWord` | `{ word, score }` — one leaderboard row. |
+
 ## Develop
 
 ```sh
