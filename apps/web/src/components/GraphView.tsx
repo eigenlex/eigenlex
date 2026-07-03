@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import Graph from "graphology";
 import Sigma from "sigma";
-import { EdgeArrowProgram } from "sigma/rendering";
+import { EdgeArrowProgram, drawDiscNodeLabel } from "sigma/rendering";
 import type { EgoGraph, EgoKind, EgoNode } from "@/lib/types";
 
 const COLOR: Record<EgoKind, string> = {
@@ -66,6 +66,7 @@ export default function GraphView({
       size: focus ? sizeOf(focus) : 16,
       label: ego.focus,
       color: focus ? colorOf(focus) : COLOR.focus,
+      forceLabel: true, // small ego graph — show every word, not just the grid's per-cell winner
     });
 
     (["defines", "usedBy", "mutual"] as const).forEach((kind) => {
@@ -83,6 +84,7 @@ export default function GraphView({
             size: sizeOf(node),
             label: node.id,
             color: colorOf(node),
+            forceLabel: true,
           });
         }
       });
@@ -106,6 +108,9 @@ export default function GraphView({
       labelRenderedSizeThreshold: 0,
       labelColor: { color: "#cdd3df" },
       labelFont: "ui-sans-serif, system-ui, sans-serif",
+      // Default hover draws the label on a white box; our light label vanishes on
+      // it. The spotlight already isolates the node, so just draw the plain label.
+      defaultDrawNodeHover: drawDiscNodeLabel,
     });
 
     // Hover spotlight: emphasize a node and its neighbors, fade the rest.
@@ -121,21 +126,65 @@ export default function GraphView({
         : { ...data, hidden: true };
     });
 
-    renderer.on("enterNode", ({ node }) => {
-      hovered = node;
-      el.style.cursor = "pointer";
-      renderer.refresh();
-    });
-    renderer.on("leaveNode", () => {
-      hovered = null;
-      el.style.cursor = "default";
-      renderer.refresh();
-    });
-    renderer.on("clickNode", ({ node }) => {
-      if (node !== ego.focus) onSelect(node);
-    });
+    // Sigma hit-tests only the WebGL-rendered disc, so hovering/clicking a word's
+    // letters misses. Re-implement detection to also cover each node's label box,
+    // matching drawDiscNodeLabel's geometry (text drawn to the right of the disc).
+    const measure = document.createElement("canvas").getContext("2d")!;
+    const nodeAt = (vx: number, vy: number): string | null => {
+      const labelSize = renderer.getSetting("labelSize");
+      measure.font = `${renderer.getSetting("labelWeight")} ${labelSize}px ${renderer.getSetting("labelFont")}`;
+      let hit: string | null = null;
+      graph.forEachNode((node) => {
+        if (hit) return;
+        const data = renderer.getNodeDisplayData(node);
+        if (!data || data.hidden) return;
+        const { x, y } = renderer.framedGraphToViewport(data);
+        const r = renderer.scaleSize(data.size);
+        if ((vx - x) ** 2 + (vy - y) ** 2 <= r * r) {
+          hit = node;
+          return;
+        }
+        if (!data.label) return;
+        const left = x + r + 3; // drawDiscNodeLabel's horizontal offset
+        const baseline = y + labelSize / 3;
+        if (
+          vx >= left - 2 &&
+          vx <= left + measure.measureText(data.label).width + 2 &&
+          vy >= baseline - labelSize - 2 &&
+          vy <= baseline + labelSize * 0.3 + 2
+        )
+          hit = node;
+      });
+      return hit;
+    };
 
-    return () => renderer.kill();
+    const coordsOf = (e: MouseEvent) => {
+      const rect = el.getBoundingClientRect();
+      return [e.clientX - rect.left, e.clientY - rect.top] as const;
+    };
+    const setHovered = (node: string | null) => {
+      if (node === hovered) return;
+      hovered = node;
+      el.style.cursor = node ? "pointer" : "default";
+      renderer.refresh();
+    };
+    const onMove = (e: MouseEvent) => setHovered(nodeAt(...coordsOf(e)));
+    const onLeave = () => setHovered(null);
+    const onClick = (e: MouseEvent) => {
+      const node = nodeAt(...coordsOf(e));
+      if (node && node !== ego.focus) onSelect(node);
+    };
+    // Capture phase: fire regardless of Sigma's own captor swallowing events.
+    el.addEventListener("mousemove", onMove, true);
+    el.addEventListener("mouseleave", onLeave, true);
+    el.addEventListener("click", onClick, true);
+
+    return () => {
+      el.removeEventListener("mousemove", onMove, true);
+      el.removeEventListener("mouseleave", onLeave, true);
+      el.removeEventListener("click", onClick, true);
+      renderer.kill();
+    };
   }, [ego, onSelect]);
 
   // The canvas itself isn't reachable by keyboard/AT; describe it as an image.
@@ -152,7 +201,7 @@ export default function GraphView({
   return (
     <div
       ref={containerRef}
-      className="tw-h-[460px] tw-w-full tw-rounded-large"
+      className="GraphView tw-h-[460px] tw-w-full tw-rounded-large"
       role="img"
       aria-label={label}
     />

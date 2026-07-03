@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getEgo, getLayer, getTop, getWord } from "./graph";
+import { getEgo, getLayer, getSuggestions, getTop, getWord } from "./graph";
 
 // Real headwords from the bundled sample, so we don't hard-code a vocabulary.
 const words = getTop(50).map((t) => t.word);
@@ -46,6 +46,27 @@ describe("layer wiring (web)", () => {
   it("a searched word sits in its own layer", () => {
     const info = getWord(sample)!;
     expect(getLayer(info.depth)!.words).toContain(sample);
+  });
+
+  it("getSuggestions returns prefix matches that always resolve, honoring the limit", () => {
+    expect(getSuggestions("")).toEqual([]);
+    expect(getSuggestions("   ")).toEqual([]);
+
+    const prefix = sample.slice(0, 2);
+    const hits = getSuggestions(prefix, 5);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.length).toBeLessThanOrEqual(5);
+    expect(new Set(hits).size).toBe(hits.length); // no duplicates
+    for (const w of hits) {
+      expect(w.startsWith(prefix)).toBe(true);
+      expect(getWord(w)).not.toBeNull(); // a pick is always loadable
+    }
+  });
+
+  it("getSuggestions orders matches by centrality (PageRank)", () => {
+    const prefix = sample.slice(0, 2);
+    const ranks = getSuggestions(prefix, 8).map((w) => getWord(w)!.rank);
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
   });
 
   it("getEgo stamps every node with a depth that matches getWord", () => {

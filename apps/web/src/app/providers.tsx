@@ -10,7 +10,7 @@ import { ThemeProvider } from "@frontify/fondue/components";
 // colour token) and fills the viewport.
 export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider theme="dark" className="tw-min-h-screen tw-bg-surface-dim tw-text-primary">
+    <ThemeProvider theme="dark" className="Providers tw-min-h-screen tw-bg-surface-dim tw-text-primary">
       {children}
     </ThemeProvider>
   );

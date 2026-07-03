@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Button, TextInput } from "@frontify/fondue/components";
+import WordChips from "@/components/WordChips";
 import type { Layer, LayerSummary, WordInfo } from "@/lib/types";
 
 // A word pill, painted with Fondue tokens; the anchor variant marks the searched word.
@@ -23,18 +23,15 @@ function layerNote(depth: number, count: number): string {
 }
 
 export default function LayersView({
-  initialWord,
-  onWordChange,
+  info,
+  onSelect,
 }: {
-  initialWord: string;
-  onWordChange?: (word: string) => void;
+  info: WordInfo | null;
+  onSelect: (word: string) => void;
 }) {
-  const [query, setQuery] = useState(initialWord);
   const [depth, setDepth] = useState<number | null>(null);
   const [layerCount, setLayerCount] = useState(0);
   const [anchor, setAnchor] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   // depth -> layer. The current layer and its two neighbors are kept warm here
   // so up/down navigation renders without a round-trip.
   const [cache, setCache] = useState<Record<number, Layer>>({});
@@ -45,9 +42,6 @@ export default function LayersView({
   // against the latest values without waiting for a re-render.
   const cacheRef = useRef<Record<number, Layer>>({});
   const countRef = useRef(0);
-  // The word we last anchored on, so the sync effect ignores an `initialWord`
-  // that is merely our own onWordChange echoing back through the parent.
-  const wordRef = useRef<string | null>(null);
 
   const fetchLayer = useCallback(async (n: number): Promise<Layer | null> => {
     if (n < 0 || n >= countRef.current) return null;
@@ -63,49 +57,26 @@ export default function LayersView({
 
   // Show layer `n`, optionally spotlighting `anchorWord` within it, and warm the
   // adjacent layers so the next up/down step is instant.
+  // Layer navigation is local; anchorWord just spotlights a word within a layer.
+  // Word selection itself is lifted to the parent via onSelect (the word chips).
   const show = useCallback(
     async (n: number, anchorWord: string | null) => {
       setDepth(n);
       setAnchor(anchorWord);
-      if (anchorWord) {
-        wordRef.current = anchorWord;
-        onWordChange?.(anchorWord);
-      }
       await fetchLayer(n);
       void fetchLayer(n - 1);
       void fetchLayer(n + 1);
     },
-    [fetchLayer, onWordChange],
+    [fetchLayer],
   );
 
-  const search = useCallback(
-    async (raw: string) => {
-      const term = raw.trim().toLowerCase();
-      if (!term) return;
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/word/${encodeURIComponent(term)}`);
-        if (!res.ok) {
-          setError(`"${term}" is not in this dictionary`);
-          return;
-        }
-        const info = (await res.json()) as WordInfo;
-        setError(null);
-        setQuery(term);
-        wordRef.current = term;
-        setLayerCount(info.layerCount);
-        countRef.current = info.layerCount;
-        await show(info.depth, term);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [show],
-  );
-
+  // The searched word is owned by the parent; jump to its layer when it changes.
   useEffect(() => {
-    if (initialWord !== wordRef.current) void search(initialWord);
-  }, [initialWord, search]);
+    if (!info) return;
+    setLayerCount(info.layerCount);
+    countRef.current = info.layerCount;
+    void show(info.depth, info.word);
+  }, [info?.word, info?.depth, info?.layerCount, show]);
 
   // The profile is global; fetch it once so the rail can render every layer.
   useEffect(() => {
@@ -121,36 +92,7 @@ export default function LayersView({
   const current = depth === null ? null : cache[depth] ?? null;
 
   return (
-    <div>
-      <form
-        className="tw-mb-4 tw-flex tw-gap-2"
-        role="search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void search(query);
-        }}
-      >
-        <div className="tw-flex-1">
-          <TextInput.Root
-            aria-label="Find a word to see its layer"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="a word — to see its layer…"
-            spellCheck={false}
-            className="tw-w-full"
-          />
-        </div>
-        <Button type="submit" disabled={loading}>
-          {loading ? "…" : "show layer"}
-        </Button>
-      </form>
-
-      {error && (
-        <p className="tw-mb-4 tw-body-medium tw-text-error" role="alert">
-          {error}
-        </p>
-      )}
-
+    <div className="LayersView">
       {depth !== null && (
         <div className="tw-grid tw-grid-cols-1 tw-items-start tw-gap-4 min-[700px]:tw-grid-cols-[auto_1fr]">
           {summary && summary.layerCount > 1 && (
@@ -170,22 +112,14 @@ export default function LayersView({
               </p>
             </header>
             {current ? (
-              <div
-                className="tw-flex tw-max-h-[22rem] tw-flex-wrap tw-gap-1 tw-overflow-y-auto"
-                role="group"
-                aria-label={`Words in layer ${depth + 1}`}
-              >
-                {current.words.map((w) => (
-                  <button
-                    key={w}
-                    className={w === anchor ? CHIP_ANCHOR : CHIP}
-                    aria-current={w === anchor ? "true" : undefined}
-                    onClick={() => void show(depth, w)}
-                  >
-                    {w}
-                  </button>
-                ))}
-              </div>
+              <WordChips
+                words={current.words}
+                anchor={anchor}
+                chipClass={CHIP}
+                anchorClass={CHIP_ANCHOR}
+                onPick={(w) => onSelect(w)}
+                label={`Words in layer ${depth + 1}`}
+              />
             ) : (
               <div className="tw-min-h-[2rem] tw-text-low-contrast">…</div>
             )}
@@ -231,13 +165,21 @@ function LayerRail({
   };
   return (
     <div
-      className="tw-flex tw-w-full tw-flex-col tw-gap-[2px] tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-p-2 focus-visible:tw-border-line-strong min-[700px]:tw-w-52"
+      className="LayerRail tw-flex tw-w-full tw-flex-col tw-gap-[2px] tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-p-2 focus-visible:tw-border-line-strong min-[700px]:tw-w-52"
       role="listbox"
       aria-label="Layers, most advanced to most basic"
       tabIndex={0}
       aria-activedescendant={`rung-${depth}`}
       onKeyDown={onKeyDown}
     >
+      {/* Column header: names the two numbers flanking each bar. */}
+      <div
+        className="tw-mb-1 tw-flex tw-items-center tw-justify-between tw-border-b tw-border-line-subtle tw-px-1 tw-pb-1 tw-body-x-small tw-text-low-contrast"
+        aria-hidden="true"
+      >
+        <span>layer</span>
+        <span>words</span>
+      </div>
       {sizes.map((_, i) => top - i).map((n) => {
         const active = n === depth;
         const pct = Math.max((Math.log(sizes[n]! + 1) / logMax) * 100, 1.5);

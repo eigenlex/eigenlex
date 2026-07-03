@@ -3,7 +3,7 @@ import Workspace from "@/components/WorkspaceLazy";
 export default function Home() {
   return (
     <main
-      className="tw-mx-auto tw-max-w-[1100px] tw-px-6 tw-pb-16 tw-pt-10"
+      className="Home tw-mx-auto tw-max-w-[1100px] tw-px-6 tw-pb-16 tw-pt-10"
       id="main"
       tabIndex={-1}
     >

@@ -165,6 +165,22 @@ export function getTop(k: number): TopWord[] {
   return model.ranked.slice(0, Math.max(0, k));
 }
 
+/** Headwords starting with `prefix`, most central (PageRank) first, for typeahead. */
+export function getSuggestions(prefix: string, limit = 8): string[] {
+  const p = prefix.trim().toLowerCase();
+  if (!p) return [];
+  const out: string[] = [];
+  // `ranked` is already PageRank-descending, so the first matches are the most
+  // central. Only surface real headwords so a pick always resolves in getWord.
+  for (const { word } of model.ranked) {
+    if (word.startsWith(p) && model.defines.has(word)) {
+      out.push(word);
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
+}
+
 /** Every word sharing one advancement layer, most central first. */
 export function getLayer(depth: number): Layer | null {
   if (!Number.isInteger(depth) || depth < 0 || depth >= model.layerCount) return null;
