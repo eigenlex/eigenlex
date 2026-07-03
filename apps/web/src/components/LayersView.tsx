@@ -121,7 +121,7 @@ export default function LayersView({
   const current = depth === null ? null : cache[depth] ?? null;
 
   return (
-    <div>
+    <div className="LayersView">
       <form
         className="tw-mb-4 tw-flex tw-gap-2"
         role="search"
@@ -231,7 +231,7 @@ function LayerRail({
   };
   return (
     <div
-      className="tw-flex tw-w-full tw-flex-col tw-gap-[2px] tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-p-2 focus-visible:tw-border-line-strong min-[700px]:tw-w-52"
+      className="LayerRail tw-flex tw-w-full tw-flex-col tw-gap-[2px] tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-p-2 focus-visible:tw-border-line-strong min-[700px]:tw-w-52"
       role="listbox"
       aria-label="Layers, most advanced to most basic"
       tabIndex={0}

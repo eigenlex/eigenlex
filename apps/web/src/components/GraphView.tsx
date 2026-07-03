@@ -152,7 +152,7 @@ export default function GraphView({
   return (
     <div
       ref={containerRef}
-      className="tw-h-[460px] tw-w-full tw-rounded-large"
+      className="GraphView tw-h-[460px] tw-w-full tw-rounded-large"
       role="img"
       aria-label={label}
     />

@@ -61,7 +61,7 @@ export default function Explorer({
   const select = useCallback((w: string) => void load(w), [load]);
 
   return (
-    <div>
+    <div className="Explorer">
       <form
         className="tw-mb-4 tw-flex tw-gap-2"
         role="search"
@@ -146,7 +146,7 @@ function Chips({
 }) {
   if (words.length === 0) return null;
   return (
-    <div className="tw-mt-4">
+    <div className="Chips tw-mt-4">
       <h3 className="tw-heading-category tw-mb-2 tw-text-low-contrast">{title}</h3>
       <div className="tw-flex tw-flex-wrap tw-gap-1">
         {words.map((w) => (

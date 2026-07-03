@@ -13,20 +13,23 @@ export default function Workspace({ initialWord }: { initialWord: string }) {
   // the inactive panel, so the newly shown view mounts fresh with this word.
   const [word, setWord] = useState(initialWord);
 
+  // Tabs.Root doesn't accept className, so a passthrough wrapper carries the name.
   return (
-    <Tabs.Root padding="none" activeTab={view} onActiveTabChange={(v) => setView(v as View)}>
-      <Tabs.Tab value="layers">
-        <Tabs.Trigger>layers</Tabs.Trigger>
-        <Tabs.Content>
-          <LayersView initialWord={word} onWordChange={setWord} />
-        </Tabs.Content>
-      </Tabs.Tab>
-      <Tabs.Tab value="graph">
-        <Tabs.Trigger>graph</Tabs.Trigger>
-        <Tabs.Content>
-          <Explorer initialWord={word} onWordChange={setWord} />
-        </Tabs.Content>
-      </Tabs.Tab>
-    </Tabs.Root>
+    <div className="Workspace">
+      <Tabs.Root padding="none" activeTab={view} onActiveTabChange={(v) => setView(v as View)}>
+        <Tabs.Tab value="layers">
+          <Tabs.Trigger>layers</Tabs.Trigger>
+          <Tabs.Content>
+            <LayersView initialWord={word} onWordChange={setWord} />
+          </Tabs.Content>
+        </Tabs.Tab>
+        <Tabs.Tab value="graph">
+          <Tabs.Trigger>graph</Tabs.Trigger>
+          <Tabs.Content>
+            <Explorer initialWord={word} onWordChange={setWord} />
+          </Tabs.Content>
+        </Tabs.Tab>
+      </Tabs.Root>
+    </div>
   );
 }
