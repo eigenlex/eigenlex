@@ -72,6 +72,27 @@ pnpm typecheck   # type-check everything
 pnpm build       # build all packages
 ```
 
+## Run the web app
+
+```sh
+pnpm dev   # http://localhost:3000 — bundled 10k-word sample
+```
+
+For all ~102k headwords, point `EIGENLEX_WEBSTER` at a full Webster 1913 JSON
+(`{ "headword": "definition", … }`). Get the GCIDE-derived source from
+[matthewreagan/WebstersEnglishDictionary](https://github.com/matthewreagan/WebstersEnglishDictionary),
+save it to `apps/web/data/webster-full.json` (gitignored), then:
+
+```sh
+EIGENLEX_WEBSTER="$PWD/apps/web/data/webster-full.json" \
+  pnpm --filter @eigenlex/web dev   # first request builds the graph (~a few s), then cached
+```
+
+To make it the default for a plain `pnpm dev`, put an absolute
+`EIGENLEX_WEBSTER=…` in `apps/web/.env.local` (Next loads it; already gitignored).
+Prepending the var to the root `pnpm dev` won't work — Turborepo's strict env
+mode filters it out.
+
 > **Heads up:** `next dev` and `next build` share `apps/web/.next`, so running
 > `pnpm build` while the web dev server is live corrupts it (its API routes start
 > 500ing). To verify a production build without stopping `pnpm dev`, use
