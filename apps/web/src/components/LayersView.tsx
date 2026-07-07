@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import Loading from "@/components/Loading";
 import WordChips from "@/components/WordChips";
 import type { Layer, LayerSummary, WordInfo } from "@/lib/types";
 
@@ -25,9 +26,12 @@ function layerNote(depth: number, count: number): string {
 export default function LayersView({
   info,
   onSelect,
+  loading = false,
 }: {
   info: WordInfo | null;
   onSelect: (word: string) => void;
+  /** The parent is looking up a word — show the spinner before its layer arrives. */
+  loading?: boolean;
 }) {
   const [depth, setDepth] = useState<number | null>(null);
   const [layerCount, setLayerCount] = useState(0);
@@ -91,6 +95,15 @@ export default function LayersView({
 
   const current = depth === null ? null : cache[depth] ?? null;
 
+  // Nothing to show yet — the first word lookup hasn't landed a layer.
+  if (depth === null) {
+    return (
+      <div className="LayersView">
+        {loading && <Loading className="tw-min-h-[200px]" label="Loading layers…" />}
+      </div>
+    );
+  }
+
   return (
     <div className="LayersView">
       {depth !== null && (
@@ -121,7 +134,11 @@ export default function LayersView({
                 label={`Words in layer ${depth + 1}`}
               />
             ) : (
-              <div className="tw-min-h-[2rem] tw-text-low-contrast">…</div>
+              <Loading
+                className="tw-min-h-[2rem] tw-justify-start"
+                size="small"
+                label={`Loading layer ${depth + 1}…`}
+              />
             )}
           </section>
         </div>

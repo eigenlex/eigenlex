@@ -75,6 +75,11 @@ describe("LayersView", () => {
     expect(screen.getByRole("option", { selected: true })).toHaveAttribute("id", "rung-1");
   });
 
+  it("shows a spinner while the first word is being looked up", () => {
+    render(<LayersView info={null} onSelect={() => {}} loading />);
+    expect(screen.getByText(/Loading layers/)).toBeInTheDocument();
+  });
+
   it("walks layers with the arrow keys", async () => {
     const user = userEvent.setup();
     render(<LayersView info={love} onSelect={() => {}} />);
