@@ -44,7 +44,10 @@ function loadSource(): WebsterSource {
 
 function buildModel(): Model {
   const dict = websterAdapter(loadSource());
-  const graph = buildDefinitionGraph(dict);
+  // Drop dead headwords (archaic spelling stubs like "alledge" that reference
+  // nothing and that nothing references) so they don't surface as unconnected
+  // depth-0 nodes.
+  const graph = buildDefinitionGraph(dict, { dropIsolated: true });
   const compiled = compile(graph);
   const pr = pageRank(compiled);
 
