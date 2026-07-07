@@ -35,6 +35,12 @@ export interface BuildOptions {
   includeSelfLoops?: boolean;
   /** Match multi-word headwords ("ice cream") by longest match. Default true. */
   matchPhrases?: boolean;
+  /**
+   * Drop "dead" headwords: isolated nodes with no definitional edge in or out —
+   * e.g. archaic spelling stubs like "alledge" whose definition ("See Allege.")
+   * cleans to nothing and that no other entry references. Default false.
+   */
+  dropIsolated?: boolean;
 }
 
 /**

@@ -78,6 +78,24 @@ describe("buildDefinitionGraph", () => {
     expect(stats.sources).toBeGreaterThanOrEqual(2);
   });
 
+  it("drops dead (fully isolated) headwords when dropIsolated is set", () => {
+    // "alledge"'s definition cleans to a non-headword and nothing references it:
+    // no edge in or out. "animal"/"small" are sinks but stay — they're referenced.
+    const withOrphan: Dictionary = { ...dict, alledge: ["[Obs.]"] };
+
+    const kept = buildDefinitionGraph(withOrphan);
+    expect(kept.edges["alledge"]).toEqual([]);
+    expect(kept.stats.nodes).toBe(7);
+
+    const pruned = buildDefinitionGraph(withOrphan, { dropIsolated: true });
+    expect("alledge" in pruned.edges).toBe(false);
+    expect("alledge" in pruned.labels).toBe(false);
+    expect(pruned.stats.nodes).toBe(6);
+    expect(pruned.stats.edges).toBe(kept.stats.edges); // pruning touches no edge
+    expect("animal" in pruned.edges).toBe(true); // referenced sink survives
+    expect(pruned.edges["animal"]).toEqual([]);
+  });
+
   it("records a representative original surface form as the label", () => {
     const { labels, edges } = buildDefinitionGraph({ Dog: ["A domesticated Animal"], Animal: ["a beast"] });
     expect(labels["dog"]).toBe("Dog"); // canonical key, original label

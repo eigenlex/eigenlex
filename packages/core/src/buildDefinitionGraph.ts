@@ -32,6 +32,7 @@ export function buildDefinitionGraph(
   const includeStopwords = options.includeStopwords ?? false;
   const includeSelfLoops = options.includeSelfLoops ?? false;
   const matchPhrases = options.matchPhrases ?? true;
+  const dropIsolated = options.dropIsolated ?? false;
   const stop = lang.stopwords ?? new Set<string>();
 
   // Pass 1: canonicalize headwords, build the matching trie and labels.
@@ -84,31 +85,45 @@ export function buildDefinitionGraph(
   }
 
   // Finalize: sorted edge lists, degree-based stats.
-  const edges: Record<Headword, Headword[]> = Object.create(null);
+  const sorted = [...nodes].sort();
+  const targetsOf = new Map<string, string[]>();
   const inDegree = new Map<string, number>();
   for (const node of nodes) inDegree.set(node, 0);
 
   let edgeCount = 0;
-  for (const node of [...nodes].sort()) {
+  for (const node of sorted) {
     const targets = [...(adj.get(node) ?? [])].sort();
-    edges[node] = targets;
+    targetsOf.set(node, targets);
     edgeCount += targets.length;
     for (const target of targets) {
       inDegree.set(target, (inDegree.get(target) ?? 0) + 1);
     }
   }
 
+  // An isolated node (no edge in or out) is "dead": nothing links to it and it
+  // links to nothing. Pruning one never touches an edge or another node's
+  // degree, so edgeCount and the counts below stay exact.
+  const edges: Record<Headword, Headword[]> = Object.create(null);
+  let nodeCount = 0;
   let sinks = 0;
   let sources = 0;
-  for (const node of nodes) {
-    if ((edges[node]?.length ?? 0) === 0) sinks += 1;
-    if ((inDegree.get(node) ?? 0) === 0) sources += 1;
+  for (const node of sorted) {
+    const targets = targetsOf.get(node) ?? [];
+    const inDeg = inDegree.get(node) ?? 0;
+    if (dropIsolated && targets.length === 0 && inDeg === 0) {
+      delete labels[node];
+      continue;
+    }
+    edges[node] = targets;
+    nodeCount += 1;
+    if (targets.length === 0) sinks += 1;
+    if (inDeg === 0) sources += 1;
   }
 
   return {
     language: lang.id,
     edges,
     labels,
-    stats: { nodes: nodes.size, edges: edgeCount, sinks, sources },
+    stats: { nodes: nodeCount, edges: edgeCount, sinks, sources },
   };
 }
