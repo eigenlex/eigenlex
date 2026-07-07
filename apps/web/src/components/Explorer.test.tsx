@@ -78,4 +78,10 @@ describe("Explorer", () => {
     render(<Explorer info={null} onSelect={() => {}} />);
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
   });
+
+  it("shows a spinner instead of the graph while a word is being looked up", () => {
+    render(<Explorer info={wordInfo("love")} onSelect={() => {}} loading />);
+    expect(screen.getByText(/Loading graph for “love”/)).toBeInTheDocument();
+    expect(screen.queryByTestId("graphview")).not.toBeInTheDocument();
+  });
 });

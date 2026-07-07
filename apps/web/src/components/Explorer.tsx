@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import Loading from "@/components/Loading";
 import type { EgoGraph, WordInfo } from "@/lib/types";
 
 const GraphView = dynamic(() => import("@/components/GraphView"), { ssr: false });
@@ -16,13 +17,17 @@ const CHIP =
 export default function Explorer({
   info,
   onSelect,
+  loading = false,
 }: {
   info: WordInfo | null;
   onSelect: (word: string) => void;
+  /** The parent is looking up a word — show the spinner before its ego arrives. */
+  loading?: boolean;
 }) {
   const [ego, setEgo] = useState<EgoGraph | null>(null);
   const [egoLoading, setEgoLoading] = useState(false);
   const word = info?.word ?? "";
+  const busy = loading || egoLoading;
 
   // The word is owned by the parent; refetch this view's neighborhood when it changes.
   useEffect(() => {
@@ -45,11 +50,16 @@ export default function Explorer({
     <div className="Explorer">
       <div className="tw-grid tw-grid-cols-1 tw-gap-5 min-[800px]:tw-grid-cols-[1.3fr_1fr]">
         <section className="tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-p-2">
-          {ego && ego.nodes.length > 1 ? (
+          {busy ? (
+            <Loading
+              className="tw-h-[460px] tw-w-full tw-rounded-large"
+              label={word ? `Loading graph for “${word}”…` : "Loading graph…"}
+            />
+          ) : ego && ego.nodes.length > 1 ? (
             <GraphView ego={ego} onSelect={onSelect} />
           ) : (
             <div className="tw-flex tw-h-[460px] tw-w-full tw-items-center tw-justify-center tw-rounded-large tw-text-low-contrast">
-              {egoLoading ? "…" : "no connections"}
+              no connections
             </div>
           )}
           <p className="tw-mx-1 tw-mb-1 tw-mt-2 tw-flex tw-flex-wrap tw-items-center tw-gap-1 tw-body-small tw-text-low-contrast">

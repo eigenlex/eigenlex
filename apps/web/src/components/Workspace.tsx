@@ -64,13 +64,13 @@ export default function Workspace({ initialWord }: { initialWord: string }) {
         <Tabs.Tab value="layers">
           <Tabs.Trigger>layers</Tabs.Trigger>
           <Tabs.Content>
-            <LayersView info={info} onSelect={(w) => void lookup(w)} />
+            <LayersView info={info} onSelect={(w) => void lookup(w)} loading={loading} />
           </Tabs.Content>
         </Tabs.Tab>
         <Tabs.Tab value="graph">
           <Tabs.Trigger>graph</Tabs.Trigger>
           <Tabs.Content>
-            <Explorer info={info} onSelect={(w) => void lookup(w)} />
+            <Explorer info={info} onSelect={(w) => void lookup(w)} loading={loading} />
           </Tabs.Content>
         </Tabs.Tab>
       </Tabs.Root>
