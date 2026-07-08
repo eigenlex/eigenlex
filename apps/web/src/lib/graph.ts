@@ -35,15 +35,22 @@ interface Model {
  * The bundled sample (the 10k most central Webster headwords; see
  * scripts/build-sample.mjs), or the full Webster file if EIGENLEX_WEBSTER
  * points at one.
+ *
+ * `dropObsolete` needs full definitions, so it only applies to the full file:
+ * the bundled sample already has obsolete words removed at build time, and its
+ * trimmed definitions would trip the wholly-obsolete check if re-scanned here.
  */
-function loadSource(): WebsterSource {
+function loadSource(): { source: WebsterSource; dropObsolete: boolean } {
   const path = process.env.EIGENLEX_WEBSTER;
-  if (path) return JSON.parse(readFileSync(path, "utf8")) as WebsterSource;
-  return sampleData as WebsterSource;
+  if (path) {
+    return { source: JSON.parse(readFileSync(path, "utf8")) as WebsterSource, dropObsolete: true };
+  }
+  return { source: sampleData as WebsterSource, dropObsolete: false };
 }
 
 function buildModel(): Model {
-  const dict = websterAdapter(loadSource());
+  const { source, dropObsolete } = loadSource();
+  const dict = websterAdapter(source, { dropObsolete });
   // Drop dead headwords (archaic spelling stubs like "alledge" that reference
   // nothing and that nothing references) so they don't surface as unconnected
   // depth-0 nodes.
