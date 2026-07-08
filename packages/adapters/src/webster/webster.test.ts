@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { buildDefinitionGraph } from "@eigenlex/core";
-import { splitWebsterSenses, websterAdapter, type WebsterSource } from "./index";
+import {
+  isObsoleteSense,
+  splitWebsterSenses,
+  websterAdapter,
+  type WebsterSource,
+} from "./index";
 
 // Webster-style entries: numbered senses, a "(Zoöl.)" field label, a "Note:".
 const source: WebsterSource = {
@@ -77,5 +82,43 @@ describe("websterAdapter", () => {
     expect(graph.edges["dog"]).toEqual(["mammal"]);
     expect(graph.edges["cat"]).toEqual(["mammal"]);
     expect(graph.edges["mammal"]).toEqual(["animal"]);
+  });
+});
+
+describe("isObsoleteSense", () => {
+  it("flags bracketed obsolete tags and their compounds", () => {
+    for (const tag of ["[Obs.]", "[Obs]", "[obs.]", "[Obs. or R.]", "[R. & Obs.]"]) {
+      expect(isObsoleteSense(`A gloss. ${tag}`)).toBe(true);
+    }
+  });
+
+  it("does not flag obsolescent or untagged senses", () => {
+    expect(isObsoleteSense("A becoming-rare word. [Obsoles.]")).toBe(false);
+    expect(isObsoleteSense("A word about observations.")).toBe(false);
+  });
+});
+
+describe("websterAdapter dropObsolete", () => {
+  const obs: WebsterSource = {
+    // Every sense obsolete -> the word itself is obsolete.
+    sopite: "To lay asleep; to put to rest; to quiet. [Obs.]",
+    // Obsolete sense sits beside a current one -> keep the word.
+    sir: "1. A man of social authority; a lord. [Obs.] 2. A respectful address.",
+    // No obsolete tag at all.
+    dog: "A domesticated carnivorous mammal.",
+  };
+
+  it("drops words whose every sense is obsolete", () => {
+    const dict = websterAdapter(obs, { dropObsolete: true });
+    expect("sopite" in dict).toBe(false);
+    expect(dict["sir"]).toEqual([
+      "A man of social authority; a lord. [Obs.]",
+      "A respectful address.",
+    ]);
+    expect(dict["dog"]).toEqual(["A domesticated carnivorous mammal."]);
+  });
+
+  it("keeps every word when the flag is off (default)", () => {
+    expect("sopite" in websterAdapter(obs)).toBe(true);
   });
 });

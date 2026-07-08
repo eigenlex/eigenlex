@@ -14,6 +14,13 @@ export interface WebsterCleanOptions {
   keepAbbreviations?: boolean;
   /** Drop senses shorter than this many characters. Default 1. */
   minSenseLength?: number;
+  /**
+   * Drop a headword entirely when *every* one of its (cleaned) senses is tagged
+   * obsolete — i.e. the word itself is obsolete, not merely one of its senses.
+   * A word like "sir" or "god", whose obsolete sense sits beside current ones,
+   * is kept. Default false. Consumed by `websterAdapter`, not the splitter.
+   */
+  dropObsolete?: boolean;
 }
 
 const WHITESPACE = /\s+/g;
@@ -35,6 +42,16 @@ const LEADING_FIELD_LABEL = /^\([^)]{1,20}\.\)\s*/;
 // Trailing editorial sections, not part of the gloss: usage "Note:" passages
 // and "Syn." synonym lists.
 const EDITORIAL_TAIL = /\b(?:Note:|Syn\.)\s.*$/s;
+// A bracketed obsolete tag: "[Obs.]", "[Obs]", "[obs.]", and compounds like
+// "[Obs. or R.]" / "[R. & Obs.]". The `\bObs\b` boundary excludes the milder
+// "[Obsoles.]" / "[Obsolescent]" (obsolescent is not obsolete). Survives sense
+// cleaning untouched — no other rule strips brackets.
+const OBSOLETE_MARKER = /\[[^\]]*\bObs\b[^\]]*\]/i;
+
+/** Whether a cleaned sense carries an obsolete tag. */
+export function isObsoleteSense(sense: string): boolean {
+  return OBSOLETE_MARKER.test(sense);
+}
 
 /**
  * Split one Webster 1913 definition blob into clean senses. Sense boundaries are
