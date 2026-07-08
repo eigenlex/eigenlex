@@ -113,6 +113,21 @@ export default function GraphView({
       defaultDrawNodeHover: drawDiscNodeLabel,
     });
 
+    // Sigma fits the camera to node discs only, but drawDiscNodeLabel draws each
+    // label to the right of its disc — so a rightmost node (e.g. a lone "defines"
+    // neighbor, pinned to the far right) gets its word clipped by the container
+    // edge. Widen the fit box rightward to reserve room for those labels.
+    let [minX, maxX, minY, maxY] = [Infinity, -Infinity, Infinity, -Infinity];
+    graph.forEachNode((_, a) => {
+      minX = Math.min(minX, a.x);
+      maxX = Math.max(maxX, a.x);
+      minY = Math.min(minY, a.y);
+      maxY = Math.max(maxY, a.y);
+    });
+    const span = Math.max(maxX - minX, maxY - minY) || 1;
+    renderer.setCustomBBox({ x: [minX, maxX + span * 0.22], y: [minY, maxY] });
+    renderer.refresh();
+
     // Hover spotlight: emphasize a node and its neighbors, fade the rest.
     let hovered: string | null = null;
     renderer.setSetting("nodeReducer", (node, data) => {

@@ -24,3 +24,11 @@ if (typeof globalThis.ResizeObserver === "undefined") {
 if (typeof window !== "undefined" && !window.Element.prototype.scrollIntoView) {
   window.Element.prototype.scrollIntoView = () => {};
 }
+// jsdom's canvas returns no 2d context; GraphView measures label widths through
+// one. Hand back a minimal stub with approximate text metrics.
+if (typeof window !== "undefined") {
+  window.HTMLCanvasElement.prototype.getContext = (() => ({
+    font: "",
+    measureText: (text: string) => ({ width: text.length * 7 }),
+  })) as unknown as typeof window.HTMLCanvasElement.prototype.getContext;
+}

@@ -1,26 +1,54 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import GraphView from "./GraphView";
 import type { EgoGraph } from "@/lib/types";
 
-// Sigma needs WebGL; capture a fake renderer so we can drive its events. graphology
-// is left real — it runs fine without a GPU.
-const holder = vi.hoisted(() => ({ handlers: {} as Record<string, (p: { node: string }) => void> }));
+// The subset of graphology the fake renderer reads back.
+type FakeGraph = {
+  hasNode(node: string): boolean;
+  getNodeAttributes(node: string): { x: number; y: number; size: number; label: string };
+};
+
+// Sigma needs a GPU; stand in a fake renderer whose geometry helpers are
+// consistent enough to drive the component's own DOM hit-testing. graphology is
+// left real — it runs fine without one. `toViewport` spreads nodes far apart so
+// their discs never overlap, letting a click resolve to exactly one node.
+const holder = vi.hoisted(() => ({
+  graph: null as FakeGraph | null,
+  toViewport: (x: number, y: number) => ({ x: 500 + x * 100, y: 500 + y * 100 }),
+}));
 vi.mock("sigma", () => ({
   default: class {
-    constructor() {
-      holder.handlers = {};
+    graph: FakeGraph;
+    constructor(graph: FakeGraph) {
+      this.graph = graph;
+      holder.graph = graph;
     }
     setSetting() {}
-    on(event: string, cb: (p: { node: string }) => void) {
-      holder.handlers[event] = cb;
+    getSetting(key: string) {
+      return ({ labelSize: 14, labelWeight: "400", labelFont: "sans-serif" } as Record<
+        string,
+        unknown
+      >)[key];
+    }
+    getNodeDisplayData(node: string) {
+      return this.graph.hasNode(node) ? { ...this.graph.getNodeAttributes(node) } : undefined;
+    }
+    framedGraphToViewport(data: { x: number; y: number }) {
+      return holder.toViewport(data.x, data.y);
+    }
+    scaleSize(size: number) {
+      return size;
+    }
+    setCustomBBox() {
+      return this;
     }
     refresh() {}
     kill() {}
   },
 }));
-vi.mock("sigma/rendering", () => ({ EdgeArrowProgram: class {} }));
+vi.mock("sigma/rendering", () => ({ EdgeArrowProgram: class {}, drawDiscNodeLabel: () => {} }));
 
 const ego: EgoGraph = {
   focus: "love",
@@ -53,9 +81,19 @@ describe("GraphView", () => {
   it("selects a neighbor on click but ignores the focus node", () => {
     const onSelect = vi.fn();
     render(<GraphView ego={ego} onSelect={onSelect} />);
-    holder.handlers.clickNode!({ node: "care" });
+    const el = screen.getByRole("img");
+
+    // Click at a node's viewport position (jsdom's getBoundingClientRect is all
+    // zeros, so client coords map straight through to the component).
+    const clickNode = (id: string) => {
+      const { x, y } = holder.graph!.getNodeAttributes(id);
+      const p = holder.toViewport(x, y);
+      fireEvent.click(el, { clientX: p.x, clientY: p.y });
+    };
+
+    clickNode("care");
     expect(onSelect).toHaveBeenCalledWith("care");
-    holder.handlers.clickNode!({ node: "love" });
+    clickNode("love"); // the focus node
     expect(onSelect).toHaveBeenCalledTimes(1); // focus click did nothing
   });
 });
