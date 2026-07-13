@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import Explorer from "@/components/Explorer";
 import Loading from "@/components/Loading";
 import WordChips from "@/components/WordChips";
 import type { Layer, LayerSummary, WordInfo } from "@/lib/types";
@@ -141,6 +142,14 @@ export default function LayersView({
               />
             )}
           </section>
+        </div>
+      )}
+
+      {/* The selected word's graph and details, inline: picking a chip above
+          reveals its neighborhood right here — there is no separate graph tab. */}
+      {info && (
+        <div className="tw-mt-4">
+          <Explorer info={info} onSelect={onSelect} loading={loading} />
         </div>
       )}
     </div>

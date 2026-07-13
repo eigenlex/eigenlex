@@ -1,18 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Tabs } from "@frontify/fondue/components";
-import Explorer from "@/components/Explorer";
 import LayersView from "@/components/LayersView";
 import WordSearchBox from "@/components/WordSearchBox";
 import type { WordInfo } from "@/lib/types";
 
-type View = "layers" | "graph";
-
 export default function Workspace({ initialWord }: { initialWord: string }) {
-  const [view, setView] = useState<View>("layers");
-  // The searched word drives both tabs, so its lookup lives here — above the tabs
-  // — rather than being duplicated inside each view.
+  // The searched word drives the whole view, so its lookup lives here, above it.
   const [query, setQuery] = useState(initialWord);
   const [info, setInfo] = useState<WordInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +35,6 @@ export default function Workspace({ initialWord }: { initialWord: string }) {
     void lookup(initialWord);
   }, [lookup, initialWord]);
 
-  // Tabs.Root doesn't accept className, so a passthrough wrapper carries the name.
   return (
     <div className="Workspace">
       <WordSearchBox
@@ -60,20 +53,7 @@ export default function Workspace({ initialWord }: { initialWord: string }) {
         </p>
       )}
 
-      <Tabs.Root padding="none" activeTab={view} onActiveTabChange={(v) => setView(v as View)}>
-        <Tabs.Tab value="layers">
-          <Tabs.Trigger>layers</Tabs.Trigger>
-          <Tabs.Content>
-            <LayersView info={info} onSelect={(w) => void lookup(w)} loading={loading} />
-          </Tabs.Content>
-        </Tabs.Tab>
-        <Tabs.Tab value="graph">
-          <Tabs.Trigger>graph</Tabs.Trigger>
-          <Tabs.Content>
-            <Explorer info={info} onSelect={(w) => void lookup(w)} loading={loading} />
-          </Tabs.Content>
-        </Tabs.Tab>
-      </Tabs.Root>
+      <LayersView info={info} onSelect={(w) => void lookup(w)} loading={loading} />
     </div>
   );
 }

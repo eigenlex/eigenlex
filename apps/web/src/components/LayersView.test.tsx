@@ -5,6 +5,12 @@ import userEvent from "@testing-library/user-event";
 import LayersView from "./LayersView";
 import type { WordInfo } from "@/lib/types";
 
+// next/dynamic would lazy-load the WebGL GraphView; swap it for a stub so the
+// inline graph beneath the layers is observable without WebGL.
+vi.mock("next/dynamic", () => ({
+  default: () => () => <div data-testid="graphview" />,
+}));
+
 // "love" sits in layer depth 1 of a 3-layer world.
 const love: WordInfo = {
   word: "love",
@@ -29,6 +35,20 @@ function mockFetch() {
       const n = Number(u.split("/api/layer/")[1]);
       const words = n === 1 ? ["love", "other"] : [`w${n}a`, `w${n}b`];
       return new Response(JSON.stringify({ depth: n, layerCount: 3, words }), { status: 200 });
+    }
+    if (u.includes("/api/ego/")) {
+      const term = decodeURIComponent(u.split("/api/ego/")[1]!);
+      return new Response(
+        JSON.stringify({
+          focus: term,
+          nodes: [
+            { id: term, kind: "focus", score: 1, depth: 1 },
+            { id: "care", kind: "defines", score: 0.5, depth: 0 },
+          ],
+          edges: [{ source: term, target: "care" }],
+        }),
+        { status: 200 },
+      );
     }
     return new Response("no", { status: 404 });
   });
@@ -58,6 +78,22 @@ describe("LayersView", () => {
     render(<LayersView info={love} onSelect={onSelect} />);
     await user.click(await screen.findByRole("button", { name: "other" }));
     expect(onSelect).toHaveBeenCalledWith("other");
+  });
+
+  it("loads the selected word's graph and details inline, beneath the layer chips", async () => {
+    render(<LayersView info={love} onSelect={() => {}} />);
+    // the details aside (its heading is the word) renders below the layers...
+    expect(await screen.findByRole("heading", { name: "love" })).toBeInTheDocument();
+    // ...and the neighborhood fetch settles into the (stubbed) graph canvas.
+    expect(await screen.findByTestId("graphview")).toBeInTheDocument();
+  });
+
+  it("swaps the inline detail when the selected word changes", async () => {
+    const { rerender } = render(<LayersView info={love} onSelect={() => {}} />);
+    await screen.findByRole("heading", { name: "love" });
+
+    rerender(<LayersView info={{ ...love, word: "care", depth: 0 }} onSelect={() => {}} />);
+    expect(await screen.findByRole("heading", { name: "care" })).toBeInTheDocument();
   });
 
   it("scrolls the searched word into view within its layer", async () => {
