@@ -93,6 +93,27 @@ To make it the default for a plain `pnpm dev`, put an absolute
 Prepending the var to the root `pnpm dev` won't work — Turborepo's strict env
 mode filters it out.
 
+### Full dictionary in production
+
+Building the 88k-node graph on every cold start is too slow for a serverless
+deploy, so production loads a **precomputed model** instead. `build:model` runs
+the whole pipeline (graph, PageRank, SCCs, stratification) once and writes the
+result to `apps/web/data/webster-model.json` (gitignored):
+
+```sh
+pnpm --filter @eigenlex/web build:model   # reads data/webster-full.json → webster-model.json
+```
+
+At runtime `graph.ts` prefers, in order: `EIGENLEX_MODEL` (or the default
+`data/webster-model.json`) → `EIGENLEX_WEBSTER` (built on first request) → the
+bundled sample. So once the model file exists, `pnpm dev` serves the full
+dictionary with only a `JSON.parse` + rehydrate on startup (no graph build).
+
+On **Vercel** this is wired into `apps/web/vercel.json`: the build downloads the
+source, runs `build:model`, then `next build`. Because the model is read through
+a computed path, `next.config.mjs`'s `outputFileTracingIncludes` force-bundles
+`webster-model.json` into each API function.
+
 > **Heads up:** `next dev` and `next build` share `apps/web/.next`, so running
 > `pnpm build` while the web dev server is live corrupts it (its API routes start
 > 500ing). To verify a production build without stopping `pnpm dev`, use

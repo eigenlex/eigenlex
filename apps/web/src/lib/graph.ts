@@ -1,125 +1,44 @@
 import "server-only";
-import { readFileSync } from "node:fs";
-import { buildDefinitionGraph, type DefinitionGraph } from "@eigenlex/core";
-import { websterAdapter, type WebsterSource } from "@eigenlex/adapters/webster";
-import {
-  compile,
-  kernel,
-  pageRank,
-  shortestPath,
-  stratify,
-  stronglyConnectedComponents,
-  type CompiledGraph,
-} from "@eigenlex/analysis";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { shortestPath } from "@eigenlex/analysis";
+import type { WebsterSource } from "@eigenlex/adapters/webster";
+import { assembleModel, computeModelData, type Model, type ModelData } from "@/lib/model";
 import type { EgoGraph, EgoNode, Layer, LayerSummary, TopWord, WordInfo } from "@/lib/types";
 import sampleData from "../../data/webster-sample.json";
 
-interface Model {
-  graph: DefinitionGraph;
-  compiled: CompiledGraph;
-  senses: Map<string, string[]>;
-  defines: Map<string, string[]>;
-  usedBy: Map<string, string[]>;
-  pr: Record<string, number>;
-  rankOf: Map<string, number>;
-  kernelSet: Set<string>;
-  componentSize: Map<string, number>;
-  depthOf: Map<string, number>;
-  layerCount: number;
-  /** depth -> words at that depth, most central first. */
-  layerWords: string[][];
-  ranked: TopWord[];
-}
-
 /**
- * The bundled sample (the 10k most central Webster headwords; see
- * scripts/build-sample.mjs), or the full Webster file if EIGENLEX_WEBSTER
- * points at one.
+ * The model backing every query, in order of preference:
  *
- * `dropObsolete` needs full definitions, so it only applies to the full file:
- * the bundled sample already has obsolete words removed at build time, and its
- * trimmed definitions would trip the wholly-obsolete check if re-scanned here.
+ *  1. a precomputed model JSON — `EIGENLEX_MODEL`, else `data/webster-model.json`.
+ *     Built at deploy time (see scripts/build-model.ts) so a cold start loads a
+ *     ready model instead of running the graph pipeline. This is how production
+ *     serves the full dictionary without a multi-second first request.
+ *  2. a full Webster source — `EIGENLEX_WEBSTER` — built on first request. The
+ *     dev workflow for the whole dictionary.
+ *  3. the bundled 10k sample.
+ *
+ * `dropObsolete` needs full definitions, so it applies only to the full source:
+ * the sample is already obsolete-trimmed, and its trimmed definitions would trip
+ * the wholly-obsolete check if re-scanned here.
  */
-function loadSource(): { source: WebsterSource; dropObsolete: boolean } {
-  const path = process.env.EIGENLEX_WEBSTER;
-  if (path) {
-    return { source: JSON.parse(readFileSync(path, "utf8")) as WebsterSource, dropObsolete: true };
+function loadModel(): Model {
+  const modelPath = process.env.EIGENLEX_MODEL ?? join(process.cwd(), "data/webster-model.json");
+  if (existsSync(modelPath)) {
+    return assembleModel(JSON.parse(readFileSync(modelPath, "utf8")) as ModelData);
   }
-  return { source: sampleData as WebsterSource, dropObsolete: false };
-}
-
-function buildModel(): Model {
-  const { source, dropObsolete } = loadSource();
-  const dict = websterAdapter(source, { dropObsolete });
-  // Drop dead headwords (archaic spelling stubs like "alledge" that reference
-  // nothing and that nothing references) so they don't surface as unconnected
-  // depth-0 nodes.
-  const graph = buildDefinitionGraph(dict, { dropIsolated: true });
-  const compiled = compile(graph);
-  const pr = pageRank(compiled);
-
-  const ranked: TopWord[] = Object.entries(pr)
-    .map(([word, score]) => ({ word, score }))
-    .sort((a, b) => b.score - a.score);
-  const rankOf = new Map<string, number>();
-  ranked.forEach((entry, i) => rankOf.set(entry.word, i + 1));
-
-  const defines = new Map<string, string[]>(Object.entries(graph.edges));
-  const usedBy = new Map<string, string[]>();
-  for (const [word, targets] of defines) {
-    for (const target of targets) {
-      const list = usedBy.get(target);
-      if (list) list.push(word);
-      else usedBy.set(target, [word]);
-    }
+  const sourcePath = process.env.EIGENLEX_WEBSTER;
+  if (sourcePath) {
+    return assembleModel(
+      computeModelData(JSON.parse(readFileSync(sourcePath, "utf8")) as WebsterSource, true),
+    );
   }
-
-  const kernelSet = new Set(kernel(graph).words);
-  const componentSize = new Map<string, number>();
-  for (const component of stronglyConnectedComponents(compiled)) {
-    for (const word of component) componentSize.set(word, component.length);
-  }
-
-  // Stratify into advancement layers: depth 0 = most basic (the kernel), higher
-  // depths are progressively more derived words.
-  const strat = stratify(compiled);
-  const depthOf = new Map<string, number>();
-  let maxDepth = 0;
-  compiled.nodes.forEach((word, i) => {
-    const d = strat.depth[strat.sccOf[i]!]!;
-    depthOf.set(word, d);
-    if (d > maxDepth) maxDepth = d;
-  });
-  const layerCount = compiled.nodes.length > 0 ? maxDepth + 1 : 0;
-
-  // Each layer, words ordered by PageRank so the most central surface first.
-  const layerWords: string[][] = Array.from({ length: layerCount }, () => []);
-  for (const [word, d] of depthOf) layerWords[d]!.push(word);
-  const byRankIn = (a: string, b: string) =>
-    (rankOf.get(a) ?? Infinity) - (rankOf.get(b) ?? Infinity);
-  for (const words of layerWords) words.sort(byRankIn);
-
-  const senses = new Map<string, string[]>(Object.entries(dict));
-  return {
-    graph,
-    compiled,
-    senses,
-    defines,
-    usedBy,
-    pr,
-    rankOf,
-    kernelSet,
-    componentSize,
-    depthOf,
-    layerCount,
-    layerWords,
-    ranked,
-  };
+  return assembleModel(computeModelData(sampleData as WebsterSource, false));
 }
 
 // Cache across dev hot-reloads (one build per server process).
 const cache = globalThis as unknown as { __eigenlexModel?: Model };
-const model: Model = cache.__eigenlexModel ?? (cache.__eigenlexModel = buildModel());
+const model: Model = cache.__eigenlexModel ?? (cache.__eigenlexModel = loadModel());
 
 const byRank = (a: string, b: string) =>
   (model.rankOf.get(a) ?? Infinity) - (model.rankOf.get(b) ?? Infinity);
