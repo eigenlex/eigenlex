@@ -9,7 +9,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import { Button, TextInput } from "@frontify/fondue/components";
+import { Button, LoadingCircle, TextInput } from "@frontify/fondue/components";
 
 // A typeahead <li role="option">, painted with Fondue tokens (per the ARIA combobox
 // pattern the options carry the click handlers directly, not a nested control).
@@ -42,6 +42,7 @@ export default function WordSearchBox({
 }) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Bumped on every suggest/commit so a slow in-flight response can't clobber
@@ -55,6 +56,7 @@ export default function WordSearchBox({
     suggestSeq.current++;
     setSuggestions([]);
     setOpen(false);
+    setLoading(false);
     setActiveIndex(-1);
   }, []);
 
@@ -63,6 +65,7 @@ export default function WordSearchBox({
       const term = raw.trim();
       if (!term) return closeSuggestions();
       const reqId = ++suggestSeq.current;
+      setLoading(true);
       try {
         const res = await fetch(`/api/suggest?q=${encodeURIComponent(term)}`);
         if (!res.ok || reqId !== suggestSeq.current) return;
@@ -73,6 +76,9 @@ export default function WordSearchBox({
         setOpen(words.length > 0);
       } catch {
         /* a failed suggest fetch just leaves the dropdown as-is */
+      } finally {
+        // Only the latest request owns the spinner; a superseded one leaves it on.
+        if (reqId === suggestSeq.current) setLoading(false);
       }
     },
     [closeSuggestions],
@@ -137,7 +143,7 @@ export default function WordSearchBox({
         commit(value);
       }}
     >
-      <div className="tw-relative tw-flex-1">
+      <div className="tw-relative tw-w-fit">
         <TextInput.Root
           // TextInput.Root forwards unknown props to its <input> but omits the
           // combobox ARIA from its typed surface; attach them via a plain spread.
@@ -147,6 +153,10 @@ export default function WordSearchBox({
             "aria-expanded": open,
             "aria-controls": listboxId,
             "aria-activedescendant": open && activeIndex >= 0 ? optionId(activeIndex) : undefined,
+            // Size the field to hold ~40 characters (HTML `size` → intrinsic width);
+            // the tw-w-fit wrapper then hugs it instead of stretching to the row.
+            // `size` is forwarded to the <input> at runtime but absent from Fondue's types.
+            size: 40,
           } as object)}
           aria-label={ariaLabel}
           value={value}
@@ -157,8 +167,12 @@ export default function WordSearchBox({
           autoComplete="off"
           placeholder={placeholder}
           spellCheck={false}
-          className="tw-w-full"
         />
+        {loading && (
+          <div className="tw-pointer-events-none tw-absolute tw-inset-y-0 tw-right-3 tw-flex tw-items-center">
+            <LoadingCircle size="x-small" />
+          </div>
+        )}
         {open && suggestions.length > 0 && (
           <ul
             id={listboxId}
