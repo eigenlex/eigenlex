@@ -2,7 +2,7 @@
   "name": "eigenlex",
   "version": "0.0.0",
   "private": true,
-  "description": "The directed graph a dictionary's definitions form — core function and the products built on it.",
+  "description": "eigenlex — a vocabulary learning tool: every English word placed on a frequency and CEFR learning band.",
   "type": "module",
   "packageManager": "pnpm@11.5.2",
   "engines": {

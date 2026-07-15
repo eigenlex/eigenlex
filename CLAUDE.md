@@ -1,7 +1,18 @@
 # eigenlex — agent notes
 
-pnpm + turbo monorepo. `packages/*` are libraries (core → adapters → analysis);
-`apps/web` is the Next.js site + hosted API.
+pnpm + turbo monorepo, now a single app: `apps/web` is the Next.js site + hosted API.
+It's a vocabulary learning tool — every English word placed on a **frequency** band
+and a **CEFR** band, so a learner can see where a word sits and browse the vocabulary
+in order.
+
+## Data
+
+The app reads one committed artifact, `apps/web/data/word-bands.json` (a pure-frequency,
+lemma-merged word ranking + the band definitions). It's built by
+`apps/web/scripts/build-bands.ts` from two gitignored inputs in `apps/web/data/`:
+`subtlex.csv` (SUBTLEX-US frequencies) and `lemma-en.txt` (a lemmatization list).
+Rebuild with `pnpm --filter @eigenlex/web build:bands`. CEFR bands are frequency-rank
+thresholds calibrated against CEFR-J; no graph or external dictionary is involved.
 
 ## Verifying a build while the web dev server is running
 

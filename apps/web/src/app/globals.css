@@ -2,16 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
- * Graph accent colours. These are app-domain semantics (defined-using / used-to-define /
- * mutual / focus) with no Fondue token equivalent, so they live here and are kept in sync
- * with the hex constants the sigma canvas uses in GraphView.tsx.
- */
+/* Accent used to mark the active band tab and the looked-up word chip. */
 :root {
   --accent-focus: #f5c542;
-  --accent-defines: #4f9dff;
-  --accent-usedby: #56c271;
-  --accent-mutual: #c478ff;
 }
 
 html,
@@ -52,19 +45,6 @@ body {
 .skip-link:focus {
   top: 0.5rem;
 }
-
-/* Legend/graph accent swatches — coloured by the accent vars above. */
-.dot {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  margin-left: 0.6rem;
-}
-.dot.focus { background: var(--accent-focus); }
-.dot.defines { background: var(--accent-defines); }
-.dot.usedBy { background: var(--accent-usedby); }
-.dot.mutual { background: var(--accent-mutual); }
 
 @media (prefers-reduced-motion: reduce) {
   *,
