@@ -10,12 +10,12 @@ export default function Home() {
       <header className="tw-mb-6">
         <h1 className="tw-heading-xx-large-strong tw-mb-1">eigenlex</h1>
         <p className="tw-body-large tw-max-w-[60ch] tw-text-low-contrast">
-          A dictionary is language defining itself. Explore the directed graph
-          its definitions form — the words each word is built from, and the words
-          built from it.
+          Which English words to learn first. Every word sits on a learning band —
+          by raw frequency, or by CEFR level. Look one up to see where it lands, or
+          browse the whole vocabulary in order.
         </p>
       </header>
-      <Workspace initialWord="love" />
+      <Workspace initialWord="water" />
     </main>
   );
 }

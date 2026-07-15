@@ -16,7 +16,6 @@ out/
 # Claude Code local (personal) settings
 .claude/settings.local.json
 
-# Full Webster dictionary (downloaded; too large to commit — see README)
-apps/web/data/webster-full.json
-# Precomputed full-dictionary model (generated at build time — see README)
-apps/web/data/webster-model.json
+# word-bands build inputs (derived artifact word-bands.json is committed)
+apps/web/data/subtlex.csv
+apps/web/data/lemma-en.txt

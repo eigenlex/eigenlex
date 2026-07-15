@@ -4,14 +4,6 @@
 # buildCommand cd's there first).
 set -euo pipefail
 
-# Build the web app's workspace dependencies.
-pnpm turbo run build --filter='@eigenlex/web^...'
-
-# Download the full Webster source, then precompute the query-ready model so the
-# deployed app loads a finished model instead of building the graph on cold start.
-curl -fSL 'https://raw.githubusercontent.com/matthewreagan/WebstersEnglishDictionary/master/dictionary.json' \
-  -o apps/web/data/webster-full.json
-pnpm --filter @eigenlex/web build:model
-
-# Build the app itself.
+# The app reads the committed apps/web/data/word-bands.json — no data download or
+# model precompute is needed. Just build the app.
 pnpm turbo run build --filter=@eigenlex/web

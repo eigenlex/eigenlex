@@ -4,8 +4,8 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Workspace from "./Workspace";
 
-// Isolate the search box + lookup wiring from the data-fetching layers view.
-vi.mock("./LayersView", () => ({ default: () => <div>layers view</div> }));
+// Isolate the search box + lookup wiring from the data-fetching band browser.
+vi.mock("./BandBrowser", () => ({ default: () => <div>band browser</div> }));
 
 function mockFetch() {
   return vi.fn(async (url: string | URL) => {
@@ -16,15 +16,9 @@ function mockFetch() {
       return new Response(
         JSON.stringify({
           word,
-          senses: [],
-          defines: [],
-          usedBy: [],
-          pageRank: 0,
           rank: 1,
-          inKernel: false,
-          componentSize: 1,
-          depth: 1,
-          layerCount: 3,
+          freq: { key: "1", label: "Top 1,000" },
+          cefr: { key: "A1", label: "A1 · Beginner" },
         }),
         { status: 200 },
       );
@@ -55,15 +49,39 @@ describe("Workspace", () => {
     expect(screen.getAllByRole("combobox")).toHaveLength(1);
   });
 
-  it("renders the layers view beneath the search box", () => {
+  it("renders the band browser beneath the search box", () => {
     render(<Workspace initialWord="love" />);
-    expect(screen.getByText("layers view")).toBeInTheDocument();
+    expect(screen.getByText("band browser")).toBeInTheDocument();
+  });
+
+  it("shows the looked-up word's frequency and CEFR bands", async () => {
+    render(<Workspace initialWord="love" />);
+    expect(await screen.findByRole("heading", { name: "love" })).toBeInTheDocument();
+    expect(screen.getByText("Top 1,000")).toBeInTheDocument();
+    expect(screen.getByText("A1 · Beginner")).toBeInTheDocument();
+  });
+
+  it("lets the user switch between the Frequency and CEFR views", async () => {
+    const user = userEvent.setup();
+    render(<Workspace initialWord="love" />);
+    const cefr = screen.getByRole("tab", { name: "CEFR" });
+    expect(cefr).toHaveAttribute("aria-selected", "false");
+    await user.click(cefr);
+    expect(cefr).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("credits the active view's data source", async () => {
+    const user = userEvent.setup();
+    render(<Workspace initialWord="love" />);
+    expect(screen.getByRole("link", { name: "SUBTLEX-US" })).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "CEFR" }));
+    expect(screen.getByRole("link", { name: "CEFR-J" })).toBeInTheDocument();
   });
 
   it("offers a debounced typeahead that looks up the picked word", async () => {
     const user = userEvent.setup();
     render(<Workspace initialWord="love" />);
-    await screen.findByRole("button", { name: "explore" }); // initial lookup settled
+    await screen.findByRole("button", { name: "look up" }); // initial lookup settled
 
     const input = screen.getByRole("combobox", { name: /look up a word/i });
     await user.clear(input);
@@ -77,7 +95,7 @@ describe("Workspace", () => {
   it("announces an unknown word through an alert", async () => {
     const user = userEvent.setup();
     render(<Workspace initialWord="love" />);
-    await screen.findByRole("button", { name: "explore" }); // initial lookup settled
+    await screen.findByRole("button", { name: "look up" }); // initial lookup settled
 
     const input = screen.getByRole("combobox", { name: /look up a word/i });
     await user.clear(input);

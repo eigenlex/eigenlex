@@ -1,4 +1,4 @@
-import { getSuggestions } from "@/lib/graph";
+import { getSuggestions } from "@/lib/bands";
 
 export const dynamic = "force-dynamic";
 

@@ -1,4 +1,4 @@
-import { getWord } from "@/lib/graph";
+import { getWord } from "@/lib/bands";
 
 export const dynamic = "force-dynamic";
 
