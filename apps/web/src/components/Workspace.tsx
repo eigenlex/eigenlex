@@ -123,7 +123,13 @@ export default function Workspace({ initialWord }: { initialWord: string }) {
         onSelect={(w) => void lookup(w)}
       />
 
-      <p className="tw-mt-3 tw-body-x-small tw-text-low-contrast">Source: {SOURCES[view]}</p>
+      {/* line-height 1.5 for blocks of text (WCAG 1.4.8), capped at 80ch line length. */}
+      <p
+        className="tw-mt-3 tw-max-w-[80ch] tw-body-x-small tw-text-low-contrast"
+        style={{ lineHeight: 1.5 }}
+      >
+        Source: {SOURCES[view]}
+      </p>
     </div>
   );
 }
