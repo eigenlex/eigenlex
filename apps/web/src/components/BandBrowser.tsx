@@ -113,7 +113,13 @@ export default function BandBrowser({
               }
             >
               <span>{b.label}</span>
-              <span className="tw-tabular-nums tw-body-x-small tw-text-low-contrast">
+              {/* Lift the count off low-contrast on the darker active bg (WCAG 1.4.3). */}
+              <span
+                className={
+                  "tw-tabular-nums tw-body-x-small " +
+                  (active ? "tw-text-secondary" : "tw-text-low-contrast")
+                }
+              >
                 {b.count.toLocaleString()}
               </span>
             </button>

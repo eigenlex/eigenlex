@@ -103,7 +103,7 @@ function LanguageSelect({ value, onChange }: { value: string; onChange: (l: stri
       className="tw-shrink-0 tw-cursor-pointer tw-rounded-full tw-border tw-border-line-subtle tw-bg-surface-hover tw-px-3 tw-py-1 tw-body-small tw-text-secondary hover:tw-text-primary"
     >
       {options.map((code) => (
-        <option key={code} value={code}>
+        <option key={code} value={code} lang={code}>
           {endonym(code)}
         </option>
       ))}
@@ -126,15 +126,20 @@ export default function WordCard({ info }: { info: WordBands }) {
         <LanguageSelect value={tl} onChange={setTl} />
       </div>
       <div className="tw-mt-1 tw-flex tw-items-baseline tw-gap-3">
-        {translate && gloss.status === "loading" && (
-          <span className="tw-body-small tw-text-low-contrast">translating…</span>
-        )}
-        {translate && gloss.status === "done" && gloss.text && (
-          <span className="tw-body-large tw-font-medium tw-text-primary">{gloss.text}</span>
-        )}
-        {translate && missing && (
-          <span className="tw-body-small tw-text-low-contrast">no translation</span>
-        )}
+        {/* Announce translation state changes to assistive tech (WCAG 4.1.3). */}
+        <span aria-live="polite" className="tw-contents">
+          {translate && gloss.status === "loading" && (
+            <span className="tw-body-small tw-text-low-contrast">translating…</span>
+          )}
+          {translate && gloss.status === "done" && gloss.text && (
+            <span lang={tl} className="tw-body-large tw-font-medium tw-text-primary">
+              {gloss.text}
+            </span>
+          )}
+          {translate && missing && (
+            <span className="tw-body-small tw-text-low-contrast">no translation</span>
+          )}
+        </span>
         <a
           href={translateHref(info.word, tl)}
           // Opens a fresh tab every time (named-tab reuse can't survive Google
