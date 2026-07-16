@@ -106,16 +106,16 @@ export default function BandBrowser({
               aria-selected={active}
               onClick={() => setSelectedKey(b.key)}
               className={
-                "tw-flex tw-min-h-[28px] tw-items-center tw-justify-between tw-gap-3 tw-rounded-[6px] tw-px-2 tw-py-1 tw-text-left tw-body-small tw-transition-colors " +
+                "tw-flex tw-min-h-[44px] tw-items-center tw-justify-between tw-gap-3 tw-rounded-[6px] tw-px-2 tw-py-1 tw-text-left tw-body-small tw-transition-colors " +
                 (active
                   ? "tw-bg-surface-hover tw-text-primary"
-                  : "tw-text-low-contrast hover:tw-bg-surface-hover hover:tw-text-primary")
+                  : "text-muted-aaa hover:tw-bg-surface-hover hover:tw-text-primary")
               }
             >
               <span>{b.label}</span>
-              <span className="tw-tabular-nums tw-body-x-small tw-text-low-contrast">
-                {b.count.toLocaleString()}
-              </span>
+              {/* Count inherits the tab's text color so it stays ≥7:1 in every
+                  state, active or not (WCAG 1.4.6). */}
+              <span className="tw-tabular-nums tw-body-x-small">{b.count.toLocaleString()}</span>
             </button>
           );
         })}
@@ -125,8 +125,8 @@ export default function BandBrowser({
         {band ? (
           <>
             <header>
-              <h2 className="tw-heading-x-large-strong">{band.label}</h2>
-              <p className="tw-mb-4 tw-mt-1 tw-body-small tw-text-low-contrast">
+              <h3 className="tw-heading-x-large-strong">{band.label}</h3>
+              <p className="tw-mb-4 tw-mt-1 tw-body-small text-muted-aaa">
                 {band.words.length.toLocaleString()} words · most frequent first
               </p>
             </header>

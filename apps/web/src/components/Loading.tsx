@@ -21,7 +21,7 @@ export default function Loading({
   return (
     <div
       role="status"
-      className={`Loading tw-flex tw-items-center tw-justify-center tw-gap-2 tw-text-low-contrast ${className}`}
+      className={`Loading tw-flex tw-items-center tw-justify-center tw-gap-2 text-muted-aaa ${className}`}
     >
       <LoadingCircle size={size} />
       <span className="tw-body-small">{label}</span>

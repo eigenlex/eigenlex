@@ -7,6 +7,35 @@
   --accent-focus: #f5c542;
 }
 
+/* Muted text at WCAG 1.4.6 (Enhanced, AAA) 7:1. Fondue's low-contrast token is
+   ~5.2:1 on our dark surfaces; neutral-50 gives ~7.5:1 while staying subdued. */
+.text-muted-aaa {
+  color: var(--color-neutral-50);
+}
+
+/* 2.5.5 Target Size (Enhanced, AAA): 44px pointer targets for the primary
+   controls. The Fondue Button/TextInput own their className, so size them here.
+   (Word-cloud chips stay compact — the search box is the equivalent mechanism.) */
+form[role="search"] button[type="submit"],
+form[role="search"] [data-test-id="fondue-text-input"] {
+  min-height: 44px;
+}
+
+/* Visually hidden but exposed to assistive tech — for section headings (2.4.10)
+   and the search help text (3.3.5). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
 html,
 body {
   margin: 0;
