@@ -100,7 +100,7 @@ function LanguageSelect({ value, onChange }: { value: string; onChange: (l: stri
       aria-label="Translation language"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="tw-shrink-0 tw-cursor-pointer tw-rounded-full tw-border tw-border-line-subtle tw-bg-surface-hover tw-px-3 tw-py-1 tw-body-small tw-text-secondary hover:tw-text-primary"
+      className="tw-min-h-[44px] tw-shrink-0 tw-cursor-pointer tw-rounded-full tw-border tw-border-line-subtle tw-bg-surface-hover tw-px-3 tw-py-1 tw-body-small tw-text-secondary hover:tw-text-primary"
     >
       {options.map((code) => (
         <option key={code} value={code} lang={code}>
@@ -129,7 +129,7 @@ export default function WordCard({ info }: { info: WordBands }) {
         {/* Announce translation state changes to assistive tech (WCAG 4.1.3). */}
         <span aria-live="polite" className="tw-contents">
           {translate && gloss.status === "loading" && (
-            <span className="tw-body-small tw-text-low-contrast">translating…</span>
+            <span className="tw-body-small text-muted-aaa">translating…</span>
           )}
           {translate && gloss.status === "done" && gloss.text && (
             <span lang={tl} className="tw-body-large tw-font-medium tw-text-primary">
@@ -137,7 +137,7 @@ export default function WordCard({ info }: { info: WordBands }) {
             </span>
           )}
           {translate && missing && (
-            <span className="tw-body-small tw-text-low-contrast">no translation</span>
+            <span className="tw-body-small text-muted-aaa">no translation</span>
           )}
         </span>
         <a
@@ -151,16 +151,16 @@ export default function WordCard({ info }: { info: WordBands }) {
           Google Translate ↗
         </a>
       </div>
-      <p className="tw-mb-3 tw-mt-1 tw-body-small tw-text-low-contrast">
+      <p className="tw-mb-3 tw-mt-1 tw-body-small text-muted-aaa">
         frequency rank #{info.rank.toLocaleString()}
       </p>
       <div className="tw-flex tw-flex-wrap tw-gap-6">
         <div>
-          <span className="tw-mb-1 tw-block tw-body-x-small tw-text-low-contrast">Frequency band</span>
+          <span className="tw-mb-1 tw-block tw-body-x-small text-muted-aaa">Frequency band</span>
           <span className={PILL}>{info.freq.label}</span>
         </div>
         <div>
-          <span className="tw-mb-1 tw-block tw-body-x-small tw-text-low-contrast">CEFR level</span>
+          <span className="tw-mb-1 tw-block tw-body-x-small text-muted-aaa">CEFR level</span>
           <span className={PILL}>{info.cefr.label}</span>
         </div>
       </div>

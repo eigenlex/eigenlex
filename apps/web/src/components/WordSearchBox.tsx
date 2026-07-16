@@ -14,7 +14,7 @@ import { Button, LoadingCircle, TextInput } from "@frontify/fondue/components";
 // A typeahead <li role="option">, painted with Fondue tokens (per the ARIA combobox
 // pattern the options carry the click handlers directly, not a nested control).
 const OPTION =
-  "tw-flex tw-w-full tw-items-center tw-px-3 tw-py-1.5 tw-body-small tw-text-left tw-transition-colors";
+  "tw-flex tw-min-h-[44px] tw-w-full tw-items-center tw-px-3 tw-py-1.5 tw-body-small tw-text-left tw-transition-colors";
 const SUGGEST_DEBOUNCE_MS = 500;
 
 /**
@@ -28,6 +28,7 @@ export default function WordSearchBox({
   onValueChange,
   onSubmit,
   ariaLabel,
+  describedBy,
   placeholder,
   submitLabel,
   submitDisabled = false,
@@ -36,6 +37,7 @@ export default function WordSearchBox({
   onValueChange: (value: string) => void;
   onSubmit: (word: string) => void;
   ariaLabel: string;
+  describedBy?: string;
   placeholder: string;
   submitLabel: ReactNode;
   submitDisabled?: boolean;
@@ -152,6 +154,7 @@ export default function WordSearchBox({
             "aria-autocomplete": "list",
             "aria-expanded": open,
             "aria-controls": listboxId,
+            "aria-describedby": describedBy,
             "aria-activedescendant": open && activeIndex >= 0 ? optionId(activeIndex) : undefined,
             // Size the field to hold ~40 characters (HTML `size` → intrinsic width);
             // the tw-w-fit wrapper then hugs it instead of stretching to the row.
