@@ -53,7 +53,8 @@ function useTargetLang(): [string, (l: string) => void] {
   return [lang, choose];
 }
 
-// Google Translate UI link — the escape hatch for the full entry (examples, senses).
+// Google Translate UI link — the escape hatch for what we don't do inline:
+// pronunciation audio, example sentences, alternate senses. Always a new tab.
 function translateHref(word: string, tl: string) {
   const p = new URLSearchParams({ sl: "en", tl, text: word, op: "translate" });
   return `https://translate.google.com/?${p}`;
@@ -124,26 +125,27 @@ export default function WordCard({ info }: { info: WordBands }) {
         <h2 className="tw-heading-x-large-strong">{info.word}</h2>
         <LanguageSelect value={tl} onChange={setTl} />
       </div>
-      {translate && (
-        <p className="tw-mt-1 tw-body-large">
-          {gloss.status === "loading" && (
-            <span className="tw-body-small tw-text-low-contrast">translating…</span>
-          )}
-          {gloss.status === "done" && gloss.text && (
-            <span className="tw-font-medium tw-text-primary">{gloss.text}</span>
-          )}
-          {missing && (
-            <a
-              href={translateHref(info.word, tl)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="tw-body-small tw-text-secondary tw-underline hover:tw-text-primary"
-            >
-              See translation ↗
-            </a>
-          )}
-        </p>
-      )}
+      <div className="tw-mt-1 tw-flex tw-items-baseline tw-gap-3">
+        {translate && gloss.status === "loading" && (
+          <span className="tw-body-small tw-text-low-contrast">translating…</span>
+        )}
+        {translate && gloss.status === "done" && gloss.text && (
+          <span className="tw-body-large tw-font-medium tw-text-primary">{gloss.text}</span>
+        )}
+        {translate && missing && (
+          <span className="tw-body-small tw-text-low-contrast">no translation</span>
+        )}
+        <a
+          href={translateHref(info.word, tl)}
+          // Opens a fresh tab every time (named-tab reuse can't survive Google
+          // clearing window.name) — accepted, for its pronunciation audio.
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tw-body-small tw-text-secondary tw-underline hover:tw-text-primary"
+        >
+          Google Translate ↗
+        </a>
+      </div>
       <p className="tw-mb-3 tw-mt-1 tw-body-small tw-text-low-contrast">
         frequency rank #{info.rank.toLocaleString()}
       </p>

@@ -43,6 +43,13 @@ describe("WordCard language selector", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("always offers a Google Translate link opening in a new tab, even for English", () => {
+    render(<WordCard info={info} />);
+    const link = screen.getByRole("link", { name: /google translate/i });
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link.getAttribute("href")).toContain("translate.google.com");
+  });
+
   it("uses the stored language and translates the word into it", async () => {
     localStorage.setItem("eigenlex:lang", "es");
     render(<WordCard info={info} />);
