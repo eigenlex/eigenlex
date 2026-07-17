@@ -1,11 +1,17 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
 import Workspace from "./Workspace";
 
-// Isolate the search box + lookup wiring from the data-fetching band browser.
-vi.mock("./BandBrowser", () => ({ default: () => <div>band browser</div> }));
+// Isolate the search box + lookup wiring from the data-fetching band browser, but
+// still render the view toggle it hosts (Workspace owns it, via the viewControl slot).
+vi.mock("./BandBrowser", () => ({
+  default: ({ viewControl }: { viewControl?: ReactNode }) => (
+    <div>band browser{viewControl}</div>
+  ),
+}));
 
 function mockFetch() {
   return vi.fn(async (url: string | URL) => {

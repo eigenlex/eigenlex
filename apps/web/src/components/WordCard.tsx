@@ -127,7 +127,7 @@ export default function WordCard({ info, lang }: { info: WordBands; lang: string
   const missing = gloss.status === "error" || (gloss.status === "done" && !gloss.text);
 
   return (
-    <section className="WordCard tw-mb-4 tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-6 tw-py-5">
+    <section className="WordCard tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-6 tw-py-5">
       <div className="tw-flex tw-items-start tw-justify-between tw-gap-4">
         {/* The word and, beneath it, its meaning — the card's two-line hero. */}
         <div className="tw-min-w-0">

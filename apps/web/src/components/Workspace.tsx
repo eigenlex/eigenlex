@@ -76,7 +76,7 @@ function SourceSelect({ lang, onChange }: { lang: SourceLang; onChange: (l: Sour
 
 function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView) => void }) {
   return (
-    <div className="tw-mb-4">
+    <div>
       <SegmentedControl.Root aria-label="Band view" value={view} onValueChange={(v) => onChange(v as BandView)}>
         <SegmentedControl.Item value="freq">Frequency</SegmentedControl.Item>
         {/* Tooltip wraps the item itself — nesting a focusable inside the radio would
@@ -178,47 +178,57 @@ export default function Workspace() {
 
   return (
     <div className="Workspace">
-      {/* Section headings (WCAG 2.4.10) — visually hidden, structural for AT. */}
-      <section aria-labelledby="lang-heading">
-        <h2 id="lang-heading" className="visually-hidden">
-          Choose a language to study
-        </h2>
-        <SourceSelect lang={lang} onChange={chooseLang} />
-      </section>
+      {/* Hero: pick a language and look a word up on the left; the result card fills
+          the right on wide screens, so a query and its answer sit side by side. */}
+      <div className="tw-mb-12 tw-grid tw-grid-cols-1 tw-items-start tw-gap-x-8 tw-gap-y-6 min-[860px]:tw-grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        <div>
+          {/* Section headings (WCAG 2.4.10) — visually hidden, structural for AT. */}
+          <section aria-labelledby="lang-heading">
+            <h2 id="lang-heading" className="visually-hidden">
+              Choose a language to study
+            </h2>
+            <SourceSelect lang={lang} onChange={chooseLang} />
+          </section>
 
-      <section aria-labelledby="search-heading">
-        <h2 id="search-heading" className="visually-hidden">
-          Look up a word
-        </h2>
-        <WordSearchBox
-          value={query}
-          onValueChange={setQuery}
-          onSubmit={(w) => void lookup(w, lang)}
-          lang={lang}
-          ariaLabel="Look up a word"
-          describedBy="search-help"
-          placeholder="look up a word…"
-          submitLabel={loading ? "…" : "look up"}
-          submitDisabled={loading}
-        />
-        {/* Context-sensitive help for the field (WCAG 3.3.5). */}
-        <p id="search-help" className="visually-hidden">
-          Type a {langName} word, then press Enter or choose a suggestion to see its
-          frequency and CEFR level.
-        </p>
-      </section>
+          <section aria-labelledby="search-heading">
+            <h2 id="search-heading" className="visually-hidden">
+              Look up a word
+            </h2>
+            <WordSearchBox
+              value={query}
+              onValueChange={setQuery}
+              onSubmit={(w) => void lookup(w, lang)}
+              lang={lang}
+              ariaLabel="Look up a word"
+              describedBy="search-help"
+              placeholder="look up a word…"
+              submitLabel={loading ? "…" : "look up"}
+              submitDisabled={loading}
+            />
+            {/* Context-sensitive help for the field (WCAG 3.3.5). */}
+            <p id="search-help" className="visually-hidden">
+              Type a {langName} word, then press Enter or choose a suggestion to see its
+              frequency and CEFR level.
+            </p>
+          </section>
 
-      {error && (
-        <p className="tw-mb-4 tw-body-medium tw-text-error" role="alert">
-          {error}
-        </p>
-      )}
+          {error && (
+            <p className="tw-body-medium tw-text-error" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+
+        {info && <WordCard info={info} lang={lang} />}
+      </div>
 
       <section aria-labelledby="browse-heading">
-        <h2 id="browse-heading" className="visually-hidden">
-          Browse the vocabulary by band
+        <h2 id="browse-heading" className="tw-mb-1 tw-heading-medium-strong">
+          Browse the vocabulary
         </h2>
-        <ViewToggle view={view} onChange={setView} />
+        <p className="tw-mb-4 tw-body-small text-muted-aaa">
+          Every {langName} word in order — by raw frequency, or by CEFR level.
+        </p>
 
         <BandBrowser
           view={view}
@@ -226,19 +236,18 @@ export default function Workspace() {
           anchorWord={info?.word ?? null}
           anchorBandKey={info ? info[view].key : null}
           onSelect={(w) => void lookup(w, lang)}
+          viewControl={<ViewToggle view={view} onChange={setView} />}
         />
+
+        {/* Source credit / CEFR disclaimer, under the data it describes.
+            line-height 1.5 for blocks of text (WCAG 1.4.8), capped at 80ch line length. */}
+        <p
+          className="tw-mt-3 tw-max-w-[80ch] tw-body-x-small text-muted-aaa"
+          style={{ lineHeight: 1.5 }}
+        >
+          Source: {view === "cefr" ? <CefrSource lang={lang} /> : <FreqSource lang={lang} />}
+        </p>
       </section>
-
-      {info && <WordCard info={info} lang={lang} />}
-
-      {/* Source credit / CEFR disclaimer — kept at the very bottom of the page.
-          line-height 1.5 for blocks of text (WCAG 1.4.8), capped at 80ch line length. */}
-      <p
-        className="tw-mt-3 tw-max-w-[80ch] tw-body-x-small text-muted-aaa"
-        style={{ lineHeight: 1.5 }}
-      >
-        Source: {view === "cefr" ? <CefrSource lang={lang} /> : <FreqSource lang={lang} />}
-      </p>
     </div>
   );
 }
