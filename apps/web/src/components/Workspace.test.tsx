@@ -67,7 +67,9 @@ describe("Workspace", () => {
     const user = userEvent.setup();
     render(<Workspace />);
     await screen.findByRole("heading", { name: "water" }); // English default settled
-    await user.click(screen.getByRole("tab", { name: "Español" }));
+    // The Fondue SegmentedControl renders radios whose label is duplicated for the
+    // active/inactive states, so match the name loosely.
+    await user.click(screen.getByRole("radio", { name: /Español/ }));
     expect(await screen.findByRole("heading", { name: "agua" })).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/agua?lang=es"));
   });
@@ -75,17 +77,17 @@ describe("Workspace", () => {
   it("lets the user switch between the Frequency and CEFR views", async () => {
     const user = userEvent.setup();
     render(<Workspace />);
-    const cefr = screen.getByRole("tab", { name: "CEFR" });
-    expect(cefr).toHaveAttribute("aria-selected", "false");
+    const cefr = screen.getByRole("radio", { name: /CEFR/ });
+    expect(cefr).toHaveAttribute("aria-checked", "false");
     await user.click(cefr);
-    expect(cefr).toHaveAttribute("aria-selected", "true");
+    expect(cefr).toHaveAttribute("aria-checked", "true");
   });
 
   it("credits the active view's data source", async () => {
     const user = userEvent.setup();
     render(<Workspace />);
     expect(screen.getByRole("link", { name: "SUBTLEX-US" })).toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: "CEFR" }));
+    await user.click(screen.getByRole("radio", { name: /CEFR/ }));
     expect(screen.getByRole("link", { name: "CEFR-J" })).toBeInTheDocument();
   });
 

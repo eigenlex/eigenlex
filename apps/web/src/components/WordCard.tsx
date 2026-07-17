@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Badge } from "@frontify/fondue/components";
 import type { WordBands } from "@/lib/types";
 import { baseLang } from "@/lib/translate";
-
-const PILL =
-  "tw-inline-flex tw-items-center tw-rounded-full tw-border tw-border-line-subtle " +
-  "tw-bg-surface-hover tw-px-3 tw-py-1 tw-body-small tw-text-secondary";
 
 const LANG_KEY = "eigenlex:lang";
 
@@ -159,11 +156,11 @@ export default function WordCard({ info, lang }: { info: WordBands; lang: string
       <div className="tw-flex tw-flex-wrap tw-gap-6">
         <div>
           <span className="tw-mb-1 tw-block tw-body-x-small text-muted-aaa">Frequency band</span>
-          <span className={PILL}>{info.freq.label}</span>
+          <Badge emphasis="weak">{info.freq.label}</Badge>
         </div>
         <div>
           <span className="tw-mb-1 tw-block tw-body-x-small text-muted-aaa">CEFR level</span>
-          <span className={PILL}>{info.cefr.label}</span>
+          <Badge emphasis="weak">{info.cefr.label}</Badge>
         </div>
       </div>
     </section>

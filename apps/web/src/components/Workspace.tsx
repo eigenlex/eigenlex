@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { SegmentedControl } from "@frontify/fondue/components";
 import BandBrowser from "@/components/BandBrowser";
 import WordCard from "@/components/WordCard";
 import WordSearchBox from "@/components/WordSearchBox";
@@ -51,55 +52,29 @@ function useSourceLang(): [SourceLang, (l: SourceLang) => void] {
   return [lang, choose];
 }
 
-const PILL_BASE =
-  "tw-inline-flex tw-min-h-[44px] tw-items-center tw-justify-center tw-rounded-full tw-px-4 tw-body-small tw-transition-colors";
-const PILL_ON = "tw-bg-[color:var(--accent-focus)] tw-font-medium tw-text-[#0b1220]";
-const PILL_OFF = "tw-text-secondary hover:tw-text-primary";
-
 function SourceSelect({ lang, onChange }: { lang: SourceLang; onChange: (l: SourceLang) => void }) {
   return (
-    <div
-      role="tablist"
-      aria-label="Source language"
-      className="tw-mb-4 tw-inline-flex tw-flex-wrap tw-gap-1 tw-rounded-full tw-border tw-border-line-subtle tw-bg-surface tw-p-1"
-    >
-      {SOURCE_LANGS.map((code) => (
-        <button
-          key={code}
-          type="button"
-          role="tab"
-          lang={code}
-          aria-selected={lang === code}
-          onClick={() => onChange(code)}
-          className={`${PILL_BASE} ${lang === code ? PILL_ON : PILL_OFF}`}
-        >
-          {SOURCE_LANG_META[code].name}
-        </button>
-      ))}
+    <div className="tw-mb-4">
+      <SegmentedControl.Root aria-label="Source language" value={lang} onValueChange={(v) => onChange(v as SourceLang)} hugWidth={false}>
+        {SOURCE_LANGS.map((code) => (
+          <SegmentedControl.Item key={code} value={code}>
+            <span lang={code}>{SOURCE_LANG_META[code].name}</span>
+          </SegmentedControl.Item>
+        ))}
+      </SegmentedControl.Root>
     </div>
   );
 }
 
 function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView) => void }) {
-  const opt = (v: BandView, label: ReactNode) => (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={view === v}
-      onClick={() => onChange(v)}
-      className={`${PILL_BASE} ${view === v ? PILL_ON : PILL_OFF}`}
-    >
-      {label}
-    </button>
-  );
   return (
-    <div
-      role="tablist"
-      aria-label="Band view"
-      className="tw-mb-4 tw-inline-flex tw-gap-1 tw-rounded-full tw-border tw-border-line-subtle tw-bg-surface tw-p-1"
-    >
-      {opt("freq", "Frequency")}
-      {opt("cefr", <Abbr title={CEFR_TITLE}>CEFR</Abbr>)}
+    <div className="tw-mb-4">
+      <SegmentedControl.Root aria-label="Band view" value={view} onValueChange={(v) => onChange(v as BandView)}>
+        <SegmentedControl.Item value="freq">Frequency</SegmentedControl.Item>
+        <SegmentedControl.Item value="cefr">
+          <Abbr title={CEFR_TITLE}>CEFR</Abbr>
+        </SegmentedControl.Item>
+      </SegmentedControl.Root>
     </div>
   );
 }
