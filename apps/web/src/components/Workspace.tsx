@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { SegmentedControl } from "@frontify/fondue/components";
+import { SegmentedControl, Tooltip } from "@frontify/fondue/components";
 import BandBrowser from "@/components/BandBrowser";
 import WordCard from "@/components/WordCard";
 import WordSearchBox from "@/components/WordSearchBox";
@@ -19,11 +19,19 @@ const CEFR_TITLE = "Common European Framework of Reference for Languages";
 const CEFRJ_TITLE = "CEFR-J — a Japanese adaptation of the CEFR for finer levelling";
 const SUBTLEX_TITLE = "SUBTLEX-US — a US-English word-frequency database drawn from film subtitles";
 
+// Abbreviation whose expansion shows in a Fondue tooltip. The <abbr> stays for its
+// expansion semantics (WCAG 3.1.4); tabIndex makes it a focus target so the tooltip
+// also opens on keyboard focus, not just hover.
 function Abbr({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <abbr title={title} className="tw-cursor-help tw-decoration-dotted">
-      {children}
-    </abbr>
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <abbr tabIndex={0} className="tw-cursor-help tw-decoration-dotted">
+          {children}
+        </abbr>
+      </Tooltip.Trigger>
+      <Tooltip.Content>{title}</Tooltip.Content>
+    </Tooltip.Root>
   );
 }
 
@@ -71,9 +79,14 @@ function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView
     <div className="tw-mb-4">
       <SegmentedControl.Root aria-label="Band view" value={view} onValueChange={(v) => onChange(v as BandView)}>
         <SegmentedControl.Item value="freq">Frequency</SegmentedControl.Item>
-        <SegmentedControl.Item value="cefr">
-          <Abbr title={CEFR_TITLE}>CEFR</Abbr>
-        </SegmentedControl.Item>
+        {/* Tooltip wraps the item itself — nesting a focusable inside the radio would
+            be invalid, so we follow Fondue's SegmentedControl + Tooltip pattern. */}
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
+            <SegmentedControl.Item value="cefr">CEFR</SegmentedControl.Item>
+          </Tooltip.Trigger>
+          <Tooltip.Content>{CEFR_TITLE}</Tooltip.Content>
+        </Tooltip.Root>
       </SegmentedControl.Root>
     </div>
   );

@@ -39,7 +39,8 @@ afterEach(() => {
 describe("WordCard language selector", () => {
   it("defaults to the browser language (English in jsdom) and skips en→en translation", () => {
     render(<WordCard info={info} lang="en" />);
-    expect(selector()).toHaveValue("en");
+    // Fondue's Select shows the picked language's endonym in its trigger, not a value.
+    expect(selector()).toHaveTextContent("English");
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -53,7 +54,7 @@ describe("WordCard language selector", () => {
   it("uses the stored language and translates the word into it", async () => {
     localStorage.setItem("eigenlex:lang", "es");
     render(<WordCard info={info} lang="en" />);
-    expect(selector()).toHaveValue("es");
+    expect(selector()).toHaveTextContent(/español/i);
     expect(await screen.findByText("agua")).toBeInTheDocument();
   });
 
@@ -72,7 +73,9 @@ describe("WordCard language selector", () => {
     render(<WordCard info={info} lang="en" />);
     await screen.findByText("agua");
 
-    await userEvent.selectOptions(selector(), "fr");
+    // Open the Fondue Select and pick French from the listbox.
+    await userEvent.click(selector());
+    await userEvent.click(await screen.findByRole("option", { name: /français/i }));
 
     expect(localStorage.getItem("eigenlex:lang")).toBe("fr");
     expect(await screen.findByText("eau")).toBeInTheDocument();

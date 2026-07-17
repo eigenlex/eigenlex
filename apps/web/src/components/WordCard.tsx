@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge } from "@frontify/fondue/components";
+import { Badge, Select } from "@frontify/fondue/components";
 import type { WordBands } from "@/lib/types";
 import { baseLang } from "@/lib/translate";
 
@@ -93,18 +93,18 @@ function LanguageSelect({ value, onChange }: { value: string; onChange: (l: stri
     endonym(a).localeCompare(endonym(b)),
   );
   return (
-    <select
+    <Select
       aria-label="Translation language"
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="tw-min-h-[44px] tw-shrink-0 tw-cursor-pointer tw-rounded-full tw-border tw-border-line-subtle tw-bg-surface-hover tw-px-3 tw-py-1 tw-body-small tw-text-secondary hover:tw-text-primary"
+      onSelect={(v) => v && onChange(v)}
+      showStringValue
     >
       {options.map((code) => (
-        <option key={code} value={code} lang={code}>
-          {endonym(code)}
-        </option>
+        <Select.Item key={code} value={code} label={endonym(code)}>
+          <span lang={code}>{endonym(code)}</span>
+        </Select.Item>
       ))}
-    </select>
+    </Select>
   );
 }
 
