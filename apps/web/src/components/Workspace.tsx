@@ -227,17 +227,18 @@ export default function Workspace() {
           anchorBandKey={info ? info[view].key : null}
           onSelect={(w) => void lookup(w, lang)}
         />
-
-        {/* line-height 1.5 for blocks of text (WCAG 1.4.8), capped at 80ch line length. */}
-        <p
-          className="tw-mt-3 tw-max-w-[80ch] tw-body-x-small text-muted-aaa"
-          style={{ lineHeight: 1.5 }}
-        >
-          Source: {view === "cefr" ? <CefrSource lang={lang} /> : <FreqSource lang={lang} />}
-        </p>
       </section>
 
       {info && <WordCard info={info} lang={lang} />}
+
+      {/* Source credit / CEFR disclaimer — kept at the very bottom of the page.
+          line-height 1.5 for blocks of text (WCAG 1.4.8), capped at 80ch line length. */}
+      <p
+        className="tw-mt-3 tw-max-w-[80ch] tw-body-x-small text-muted-aaa"
+        style={{ lineHeight: 1.5 }}
+      >
+        Source: {view === "cefr" ? <CefrSource lang={lang} /> : <FreqSource lang={lang} />}
+      </p>
     </div>
   );
 }
