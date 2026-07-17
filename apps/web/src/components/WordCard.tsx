@@ -55,8 +55,8 @@ function useTargetLang(): [string, (l: string) => void] {
 
 // Google Translate UI link — the escape hatch for what we don't do inline:
 // pronunciation audio, example sentences, alternate senses. Always a new tab.
-function translateHref(word: string, tl: string) {
-  const p = new URLSearchParams({ sl: "en", tl, text: word, op: "translate" });
+function translateHref(word: string, sl: string, tl: string) {
+  const p = new URLSearchParams({ sl, tl, text: word, op: "translate" });
   return `https://translate.google.com/?${p}`;
 }
 
@@ -65,11 +65,11 @@ const glossCache = new Map<string, string>();
 
 type Gloss = { status: "loading" | "done" | "error"; text: string };
 
-function useGloss(word: string, tl: string, enabled: boolean): Gloss {
+function useGloss(word: string, sl: string, tl: string, enabled: boolean): Gloss {
   const [gloss, setGloss] = useState<Gloss>({ status: "loading", text: "" });
   useEffect(() => {
     if (!enabled) return;
-    const key = `${tl}:${word}`;
+    const key = `${sl}:${tl}:${word}`;
     const cached = glossCache.get(key);
     if (cached !== undefined) {
       setGloss({ status: "done", text: cached });
@@ -77,7 +77,7 @@ function useGloss(word: string, tl: string, enabled: boolean): Gloss {
     }
     setGloss({ status: "loading", text: "" });
     const ac = new AbortController();
-    fetch(`/api/translate/${encodeURIComponent(word)}?tl=${tl}`, { signal: ac.signal })
+    fetch(`/api/translate/${encodeURIComponent(word)}?sl=${sl}&tl=${tl}`, { signal: ac.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d: { translation: string }) => {
         glossCache.set(key, d.translation);
@@ -87,7 +87,7 @@ function useGloss(word: string, tl: string, enabled: boolean): Gloss {
         if (!ac.signal.aborted) setGloss({ status: "error", text: "" });
       });
     return () => ac.abort();
-  }, [word, tl, enabled]);
+  }, [word, sl, tl, enabled]);
   return gloss;
 }
 
@@ -112,17 +112,19 @@ function LanguageSelect({ value, onChange }: { value: string; onChange: (l: stri
 }
 
 /** The looked-up word, its translation, and where it sits — both band labelings. */
-export default function WordCard({ info }: { info: WordBands }) {
+export default function WordCard({ info, lang }: { info: WordBands; lang: string }) {
   const [tl, setTl] = useTargetLang();
-  // No point translating English into English.
-  const translate = tl !== "en";
-  const gloss = useGloss(info.word, tl, translate);
+  // No point translating a word into its own language.
+  const translate = tl !== lang;
+  const gloss = useGloss(info.word, lang, tl, translate);
   const missing = gloss.status === "error" || (gloss.status === "done" && !gloss.text);
 
   return (
     <section className="WordCard tw-mb-4 tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-5 tw-py-4">
       <div className="tw-flex tw-items-baseline tw-justify-between tw-gap-3">
-        <h2 className="tw-heading-x-large-strong">{info.word}</h2>
+        <h2 className="tw-heading-x-large-strong" lang={lang}>
+          {info.word}
+        </h2>
         <LanguageSelect value={tl} onChange={setTl} />
       </div>
       <div className="tw-mt-1 tw-flex tw-items-baseline tw-gap-3">
@@ -141,7 +143,7 @@ export default function WordCard({ info }: { info: WordBands }) {
           )}
         </span>
         <a
-          href={translateHref(info.word, tl)}
+          href={translateHref(info.word, lang, tl)}
           // Opens a fresh tab every time (named-tab reuse can't survive Google
           // clearing window.name) — accepted, for its pronunciation audio.
           target="_blank"

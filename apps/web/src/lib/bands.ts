@@ -1,8 +1,15 @@
 import "server-only";
 import type { Band, BandSummary, BandView, WordBands } from "@/lib/types";
-// The word-bands artifact (built by scripts/build-bands.ts). Imported directly so
-// Next bundles it into the API functions — the file is small and always present.
-import data from "../../data/word-bands.json";
+import type { SourceLang } from "@/lib/languages";
+// The per-language word-bands artifacts (built by scripts/build-bands.ts). Imported
+// directly so Next bundles them into the API functions — each file is small.
+import en from "../../data/word-bands.en.json";
+import es from "../../data/word-bands.es.json";
+import fr from "../../data/word-bands.fr.json";
+import de from "../../data/word-bands.de.json";
+import pt from "../../data/word-bands.pt.json";
+
+export { isSourceLang } from "@/lib/languages";
 
 interface BandDef {
   key: string;
@@ -12,28 +19,44 @@ interface BandDef {
   max: number | null;
 }
 
-const ranked: string[] = data.ranked;
-const freqBands: BandDef[] = data.freqBands;
-const cefrBands: BandDef[] = data.cefrBands;
+interface LangData {
+  ranked: string[];
+  freqBands: BandDef[];
+  cefrBands: BandDef[];
+  /** word -> 1-based frequency rank, built once per process. */
+  rankOf: Map<string, number>;
+}
 
-// word -> 1-based frequency rank, built once per server process.
-const rankOf = new Map<string, number>();
-ranked.forEach((w, i) => rankOf.set(w, i + 1));
+function load(data: { ranked: string[]; freqBands: BandDef[]; cefrBands: BandDef[] }): LangData {
+  const rankOf = new Map<string, number>();
+  data.ranked.forEach((w, i) => rankOf.set(w, i + 1));
+  return { ranked: data.ranked, freqBands: data.freqBands, cefrBands: data.cefrBands, rankOf };
+}
 
-const defsFor = (view: BandView) => (view === "cefr" ? cefrBands : freqBands);
+const REGISTRY: Record<SourceLang, LangData> = {
+  en: load(en),
+  es: load(es),
+  fr: load(fr),
+  de: load(de),
+  pt: load(pt),
+};
+
+const defsFor = (d: LangData, view: BandView) => (view === "cefr" ? d.cefrBands : d.freqBands);
 const bandAtRank = (defs: BandDef[], rank: number) =>
-  defs.find((d) => rank >= d.min && (d.max === null || rank <= d.max));
-const lastRank = (d: BandDef) => (d.max === null ? ranked.length : Math.min(d.max, ranked.length));
+  defs.find((b) => rank >= b.min && (b.max === null || rank <= b.max));
+const lastRank = (d: LangData, b: BandDef) =>
+  b.max === null ? d.ranked.length : Math.min(b.max, d.ranked.length);
 
 export function isView(v: string): v is BandView {
   return v === "freq" || v === "cefr";
 }
 
-export function getWord(word: string): WordBands | null {
-  const rank = rankOf.get(word);
+export function getWord(lang: SourceLang, word: string): WordBands | null {
+  const d = REGISTRY[lang];
+  const rank = d.rankOf.get(word);
   if (rank === undefined) return null;
-  const freq = bandAtRank(freqBands, rank)!;
-  const cefr = bandAtRank(cefrBands, rank)!;
+  const freq = bandAtRank(d.freqBands, rank)!;
+  const cefr = bandAtRank(d.cefrBands, rank)!;
   return {
     word,
     rank,
@@ -43,28 +66,30 @@ export function getWord(word: string): WordBands | null {
 }
 
 /** Every band of a view with its word count — the browser's tabs. */
-export function getBandSummary(view: BandView): BandSummary[] {
-  return defsFor(view).map((d) => ({
-    key: d.key,
-    label: d.label,
-    count: Math.max(0, lastRank(d) - d.min + 1),
+export function getBandSummary(lang: SourceLang, view: BandView): BandSummary[] {
+  const d = REGISTRY[lang];
+  return defsFor(d, view).map((b) => ({
+    key: b.key,
+    label: b.label,
+    count: Math.max(0, lastRank(d, b) - b.min + 1),
   }));
 }
 
 /** One band's words, in frequency order. */
-export function getBand(view: BandView, key: string): Band | null {
-  const d = defsFor(view).find((b) => b.key === key);
-  if (!d) return null;
-  return { key: d.key, label: d.label, words: ranked.slice(d.min - 1, lastRank(d)) };
+export function getBand(lang: SourceLang, view: BandView, key: string): Band | null {
+  const d = REGISTRY[lang];
+  const b = defsFor(d, view).find((x) => x.key === key);
+  if (!b) return null;
+  return { key: b.key, label: b.label, words: d.ranked.slice(b.min - 1, lastRank(d, b)) };
 }
 
 /** Words starting with `prefix`, most frequent first, for typeahead. */
-export function getSuggestions(prefix: string, limit = 8): string[] {
+export function getSuggestions(lang: SourceLang, prefix: string, limit = 8): string[] {
   const p = prefix.trim().toLowerCase();
   if (!p) return [];
   const out: string[] = [];
   // `ranked` is frequency-descending, so the first matches are the most useful.
-  for (const word of ranked) {
+  for (const word of REGISTRY[lang].ranked) {
     if (word.startsWith(p)) {
       out.push(word);
       if (out.length >= limit) break;

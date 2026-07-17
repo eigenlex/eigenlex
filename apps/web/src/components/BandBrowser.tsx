@@ -23,11 +23,14 @@ const CHIP_ANCHOR =
  */
 export default function BandBrowser({
   view,
+  lang,
   anchorWord,
   anchorBandKey,
   onSelect,
 }: {
   view: BandView;
+  /** Source language whose bands to browse. */
+  lang: string;
   anchorWord: string | null;
   anchorBandKey: string | null;
   onSelect: (word: string) => void;
@@ -38,18 +41,18 @@ export default function BandBrowser({
   // Warm-cache bands by `view:key` so re-selecting is instant.
   const cache = useRef<Record<string, Band>>({});
 
-  // Load the summary (the tabs) whenever the view changes.
+  // Load the summary (the tabs) whenever the view or source language changes.
   useEffect(() => {
     let live = true;
     setSummary(null);
     setBand(null);
-    void fetch(`/api/bands/${view}`)
+    void fetch(`/api/bands/${view}?lang=${lang}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((s) => live && s && setSummary(s as BandSummary[]));
     return () => {
       live = false;
     };
-  }, [view]);
+  }, [view, lang]);
 
   // Select the anchor's band; else keep the current one; else the first.
   useEffect(() => {
@@ -66,19 +69,19 @@ export default function BandBrowser({
 
   const fetchBand = useCallback(
     async (key: string) => {
-      const ck = `${view}:${key}`;
+      const ck = `${lang}:${view}:${key}`;
       const hit = cache.current[ck];
       if (hit) {
         setBand(hit);
         return;
       }
-      const res = await fetch(`/api/band/${view}/${encodeURIComponent(key)}`);
+      const res = await fetch(`/api/band/${view}/${encodeURIComponent(key)}?lang=${lang}`);
       if (!res.ok) return;
       const b = (await res.json()) as Band;
       cache.current[ck] = b;
       setBand(b);
     },
-    [view],
+    [view, lang],
   );
 
   useEffect(() => {
@@ -137,6 +140,7 @@ export default function BandBrowser({
               anchorClass={CHIP_ANCHOR}
               onPick={onSelect}
               label={`Words in ${band.label}`}
+              lang={lang}
             />
           </>
         ) : (

@@ -46,7 +46,7 @@ afterEach(() => {
 
 describe("BandBrowser", () => {
   it("renders the active view's band tabs with counts and shows the first band", async () => {
-    render(<BandBrowser view="freq" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+    render(<BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
     expect(await screen.findByRole("tab", { name: /Top 1,000/ })).toBeInTheDocument();
     // First band opens by default; its words render as chips.
     expect(await screen.findByRole("button", { name: "water" })).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe("BandBrowser", () => {
   it("opens the anchor's band and looks a chip up when picked", async () => {
     const onSelect = vi.fn();
     render(
-      <BandBrowser view="cefr" anchorWord="water" anchorBandKey="A1" onSelect={onSelect} />,
+      <BandBrowser view="cefr" lang="en" anchorWord="water" anchorBandKey="A1" onSelect={onSelect} />,
     );
     await screen.findByRole("button", { name: "water" });
     await userEvent.click(screen.getByRole("button", { name: "be" }));
@@ -63,7 +63,7 @@ describe("BandBrowser", () => {
   });
 
   it("switches bands when another tab is selected", async () => {
-    render(<BandBrowser view="freq" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+    render(<BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
     await screen.findByRole("button", { name: "water" });
     await userEvent.click(await screen.findByRole("tab", { name: /1,001/ }));
     expect(await screen.findByRole("button", { name: "engine" })).toBeInTheDocument();
@@ -71,10 +71,10 @@ describe("BandBrowser", () => {
 
   it("reloads the summary and words when the view changes", async () => {
     const { rerender } = render(
-      <BandBrowser view="freq" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />,
+      <BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />,
     );
     await screen.findByRole("tab", { name: /Top 1,000/ });
-    rerender(<BandBrowser view="cefr" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+    rerender(<BandBrowser view="cefr" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
     await waitFor(() =>
       expect(screen.getByRole("tab", { name: /A1/ })).toBeInTheDocument(),
     );

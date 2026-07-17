@@ -1,5 +1,5 @@
-// English → the reader's language via Google Translate's public gtx endpoint.
-// Single words, so we only ask for the translation segments (dt=t).
+// The source-language word → the reader's language via Google Translate's public
+// gtx endpoint. Single words, so we only ask for the translation segments (dt=t).
 
 const ENDPOINT = "https://translate.googleapis.com/translate_a/single";
 
@@ -8,8 +8,8 @@ export function baseLang(tag: string | null | undefined): string {
   return (tag ?? "en").split("-")[0]?.toLowerCase() || "en";
 }
 
-export function gtxUrl(word: string, tl: string): string {
-  const q = new URLSearchParams({ client: "gtx", sl: "en", tl, dt: "t", q: word });
+export function gtxUrl(word: string, sl: string, tl: string): string {
+  const q = new URLSearchParams({ client: "gtx", sl, tl, dt: "t", q: word });
   return `${ENDPOINT}?${q}`;
 }
 

@@ -85,6 +85,7 @@ export default function WordChips({
   anchorClass,
   onPick,
   label,
+  lang,
 }: {
   words: string[];
   anchor: string | null;
@@ -92,6 +93,8 @@ export default function WordChips({
   anchorClass: string;
   onPick: (word: string) => void;
   label: string;
+  /** Source language of the words, for assistive tech. */
+  lang?: string;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const probeRef = useRef<HTMLSpanElement | null>(null);
@@ -333,6 +336,7 @@ export default function WordChips({
       className="WordChips tw-relative tw-max-h-[22rem] tw-overflow-y-auto tw-overflow-x-hidden"
       role="group"
       aria-label={label}
+      lang={lang}
     >
       {/* Hidden probe: the source of truth for chip font and height. */}
       <span
