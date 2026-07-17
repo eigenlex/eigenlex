@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Badge, Select } from "@frontify/fondue/components";
 import type { WordBands } from "@/lib/types";
 import { baseLang } from "@/lib/translate";
@@ -108,6 +108,16 @@ function LanguageSelect({ value, onChange }: { value: string; onChange: (l: stri
   );
 }
 
+/** A labelled metric in the card's stat row: small caption over its value. */
+function Stat({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <span className="tw-mb-1 tw-block tw-body-x-small text-muted-aaa">{label}</span>
+      {children}
+    </div>
+  );
+}
+
 /** The looked-up word, its translation, and where it sits — both band labelings. */
 export default function WordCard({ info, lang }: { info: WordBands; lang: string }) {
   const [tl, setTl] = useTargetLang();
@@ -117,51 +127,58 @@ export default function WordCard({ info, lang }: { info: WordBands; lang: string
   const missing = gloss.status === "error" || (gloss.status === "done" && !gloss.text);
 
   return (
-    <section className="WordCard tw-mb-4 tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-5 tw-py-4">
-      <div className="tw-flex tw-items-baseline tw-justify-between tw-gap-3">
-        <h2 className="tw-heading-x-large-strong" lang={lang}>
-          {info.word}
-        </h2>
-        <LanguageSelect value={tl} onChange={setTl} />
+    <section className="WordCard tw-mb-4 tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-6 tw-py-5">
+      <div className="tw-flex tw-items-start tw-justify-between tw-gap-4">
+        {/* The word and, beneath it, its meaning — the card's two-line hero. */}
+        <div className="tw-min-w-0">
+          <h2 className="tw-heading-xx-large-strong tw-break-words" lang={lang}>
+            {info.word}
+          </h2>
+          {/* Announce translation state changes to assistive tech (WCAG 4.1.3). */}
+          <div aria-live="polite" className="tw-mt-0.5">
+            {translate && gloss.status === "loading" && (
+              <span className="tw-body-small text-muted-aaa">translating…</span>
+            )}
+            {translate && gloss.status === "done" && gloss.text && (
+              <span lang={tl} className="tw-body-large tw-font-medium tw-text-primary">
+                {gloss.text}
+              </span>
+            )}
+            {translate && missing && (
+              <span className="tw-body-small text-muted-aaa">no translation</span>
+            )}
+          </div>
+        </div>
+        {/* Translation controls, kept compact in the top-right. */}
+        <div className="tw-flex tw-shrink-0 tw-flex-col tw-items-end tw-gap-1.5">
+          <div className="tw-w-44">
+            <LanguageSelect value={tl} onChange={setTl} />
+          </div>
+          <a
+            href={translateHref(info.word, lang, tl)}
+            // Opens a fresh tab every time (named-tab reuse can't survive Google
+            // clearing window.name) — accepted, for its pronunciation audio.
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tw-body-x-small tw-text-secondary tw-underline hover:tw-text-primary"
+          >
+            Google Translate ↗
+          </a>
+        </div>
       </div>
-      <div className="tw-mt-1 tw-flex tw-items-baseline tw-gap-3">
-        {/* Announce translation state changes to assistive tech (WCAG 4.1.3). */}
-        <span aria-live="polite" className="tw-contents">
-          {translate && gloss.status === "loading" && (
-            <span className="tw-body-small text-muted-aaa">translating…</span>
-          )}
-          {translate && gloss.status === "done" && gloss.text && (
-            <span lang={tl} className="tw-body-large tw-font-medium tw-text-primary">
-              {gloss.text}
-            </span>
-          )}
-          {translate && missing && (
-            <span className="tw-body-small text-muted-aaa">no translation</span>
-          )}
-        </span>
-        <a
-          href={translateHref(info.word, lang, tl)}
-          // Opens a fresh tab every time (named-tab reuse can't survive Google
-          // clearing window.name) — accepted, for its pronunciation audio.
-          target="_blank"
-          rel="noopener noreferrer"
-          className="tw-body-small tw-text-secondary tw-underline hover:tw-text-primary"
-        >
-          Google Translate ↗
-        </a>
-      </div>
-      <p className="tw-mb-3 tw-mt-1 tw-body-small text-muted-aaa">
-        frequency rank #{info.rank.toLocaleString()}
-      </p>
-      <div className="tw-flex tw-flex-wrap tw-gap-6">
-        <div>
-          <span className="tw-mb-1 tw-block tw-body-x-small text-muted-aaa">Frequency band</span>
+
+      <div className="tw-mt-5 tw-flex tw-flex-wrap tw-items-start tw-gap-x-10 tw-gap-y-4 tw-border-t tw-border-line-subtle tw-pt-4">
+        <Stat label="Frequency rank">
+          <span className="tw-body-large tw-font-medium tw-tabular-nums tw-text-primary">
+            #{info.rank.toLocaleString()}
+          </span>
+        </Stat>
+        <Stat label="Frequency band">
           <Badge emphasis="weak">{info.freq.label}</Badge>
-        </div>
-        <div>
-          <span className="tw-mb-1 tw-block tw-body-x-small text-muted-aaa">CEFR level</span>
+        </Stat>
+        <Stat label="CEFR level">
           <Badge emphasis="weak">{info.cefr.label}</Badge>
-        </div>
+        </Stat>
       </div>
     </section>
   );
