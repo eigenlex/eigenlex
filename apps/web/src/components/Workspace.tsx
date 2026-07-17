@@ -226,8 +226,6 @@ export default function Workspace() {
         </p>
       )}
 
-      {info && <WordCard info={info} lang={lang} />}
-
       <section aria-labelledby="browse-heading">
         <h2 id="browse-heading" className="visually-hidden">
           Browse the vocabulary by band
@@ -250,6 +248,8 @@ export default function Workspace() {
           Source: {view === "cefr" ? <CefrSource lang={lang} /> : <FreqSource lang={lang} />}
         </p>
       </section>
+
+      {info && <WordCard info={info} lang={lang} />}
     </div>
   );
 }
