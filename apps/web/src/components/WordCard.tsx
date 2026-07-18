@@ -177,24 +177,25 @@ export default function WordCard({ info, lang }: { info: WordBands; lang: string
   return (
     <section className="WordCard tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-6 tw-py-5">
       <div className="tw-flex tw-items-start tw-justify-between tw-gap-4">
-        {/* The word and, beneath it, its meaning — the card's two-line hero. */}
+        {/* The word is a quiet label — it's already in the search box and word chips;
+            its meaning is the card's hero. */}
         <div className="tw-min-w-0">
-          <h2 className="tw-heading-xx-large-strong tw-break-words" lang={lang}>
+          <h2 className="tw-heading-medium text-muted-aaa tw-break-words" lang={lang}>
             {info.word}
           </h2>
           {/* Announce translation state changes to assistive tech (WCAG 4.1.3). */}
-          <div aria-live="polite" className="tw-mt-0.5">
+          <div aria-live="polite" className="tw-mt-1">
             {translate && status === "loading" && (
               <span className="tw-body-small text-muted-aaa">translating…</span>
             )}
             {translate && status === "done" && showForms && (
-              <ul className="tw-mt-1 tw-flex tw-flex-col tw-gap-1">
+              <ul className="tw-flex tw-flex-col tw-gap-1.5">
                 {lines.map((l) => (
                   <li key={l.form} className="tw-flex tw-flex-wrap tw-items-baseline tw-gap-x-2">
-                    <span lang={lang} className="tw-body-medium tw-font-medium tw-text-primary">
+                    <span lang={lang} className="tw-body-medium text-muted-aaa">
                       {l.form}
                     </span>
-                    <span lang={tl} className="tw-body-medium text-muted-aaa">
+                    <span lang={tl} className="tw-heading-medium-strong tw-text-primary">
                       {l.gloss}
                     </span>
                   </li>
@@ -202,7 +203,7 @@ export default function WordCard({ info, lang }: { info: WordBands; lang: string
               </ul>
             )}
             {translate && status === "done" && !showForms && lines[0] && (
-              <span lang={tl} className="tw-body-large tw-font-medium tw-text-primary">
+              <span lang={tl} className="tw-heading-large-strong tw-text-primary">
                 {lines[0].gloss}
               </span>
             )}
