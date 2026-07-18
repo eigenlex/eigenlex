@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Loading from "@/components/Loading";
 import WordChips from "@/components/WordChips";
 import type { Band, BandSummary, BandView } from "@/lib/types";
 
 // Word pills, painted with Fondue tokens; the anchor variant marks the looked-up word.
+// Sized for comfortable scanning of dozens of words at a time (bigger hit target
+// and readable type, not the minimal 24px pill).
 const CHIP_BASE =
-  "tw-inline-flex tw-items-center tw-min-h-[24px] tw-rounded-full tw-border tw-px-3 tw-py-1 " +
-  "tw-body-small tw-transition-colors";
+  "tw-inline-flex tw-items-center tw-min-h-[40px] tw-rounded-full tw-border tw-px-4 tw-py-2 " +
+  "tw-body-medium tw-transition-colors";
 const CHIP =
   `${CHIP_BASE} tw-border-line-subtle tw-bg-surface-hover tw-text-secondary ` +
   "hover:tw-bg-surface-active hover:tw-text-primary";
@@ -23,14 +25,20 @@ const CHIP_ANCHOR =
  */
 export default function BandBrowser({
   view,
+  lang,
   anchorWord,
   anchorBandKey,
   onSelect,
+  viewControl,
 }: {
   view: BandView;
+  /** Source language whose bands to browse. */
+  lang: string;
   anchorWord: string | null;
   anchorBandKey: string | null;
   onSelect: (word: string) => void;
+  /** The frequency/CEFR switch, hosted in this panel's header alongside the bands. */
+  viewControl?: ReactNode;
 }) {
   const [summary, setSummary] = useState<BandSummary[] | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -38,18 +46,18 @@ export default function BandBrowser({
   // Warm-cache bands by `view:key` so re-selecting is instant.
   const cache = useRef<Record<string, Band>>({});
 
-  // Load the summary (the tabs) whenever the view changes.
+  // Load the summary (the tabs) whenever the view or source language changes.
   useEffect(() => {
     let live = true;
     setSummary(null);
     setBand(null);
-    void fetch(`/api/bands/${view}`)
+    void fetch(`/api/bands/${view}?lang=${lang}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((s) => live && s && setSummary(s as BandSummary[]));
     return () => {
       live = false;
     };
-  }, [view]);
+  }, [view, lang]);
 
   // Select the anchor's band; else keep the current one; else the first.
   useEffect(() => {
@@ -66,19 +74,19 @@ export default function BandBrowser({
 
   const fetchBand = useCallback(
     async (key: string) => {
-      const ck = `${view}:${key}`;
+      const ck = `${lang}:${view}:${key}`;
       const hit = cache.current[ck];
       if (hit) {
         setBand(hit);
         return;
       }
-      const res = await fetch(`/api/band/${view}/${encodeURIComponent(key)}`);
+      const res = await fetch(`/api/band/${view}/${encodeURIComponent(key)}?lang=${lang}`);
       if (!res.ok) return;
       const b = (await res.json()) as Band;
       cache.current[ck] = b;
       setBand(b);
     },
-    [view],
+    [view, lang],
   );
 
   useEffect(() => {
@@ -89,47 +97,50 @@ export default function BandBrowser({
   const anchorInBand = band && band.key === anchorBandKey ? anchorWord : null;
 
   return (
-    <div className="BandBrowser tw-grid tw-grid-cols-1 tw-items-start tw-gap-4 min-[700px]:tw-grid-cols-[auto_1fr]">
-      <div
-        role="tablist"
-        aria-label={view === "cefr" ? "CEFR levels" : "Frequency bands"}
-        aria-orientation="vertical"
-        className="tw-flex tw-flex-row tw-flex-wrap tw-gap-1 tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-p-2 min-[700px]:tw-w-56 min-[700px]:tw-flex-col"
-      >
-        {(summary ?? []).map((b) => {
-          const active = b.key === selectedKey;
-          return (
-            <button
-              key={b.key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setSelectedKey(b.key)}
-              className={
-                "tw-flex tw-min-h-[44px] tw-items-center tw-justify-between tw-gap-3 tw-rounded-[6px] tw-px-2 tw-py-1 tw-text-left tw-body-small tw-transition-colors " +
-                (active
-                  ? "tw-bg-surface-hover tw-text-primary"
-                  : "text-muted-aaa hover:tw-bg-surface-hover hover:tw-text-primary")
-              }
-            >
-              <span>{b.label}</span>
-              {/* Count inherits the tab's text color so it stays ≥7:1 in every
-                  state, active or not (WCAG 1.4.6). */}
-              <span className="tw-tabular-nums tw-body-x-small">{b.count.toLocaleString()}</span>
-            </button>
-          );
-        })}
+    <div className="BandBrowser tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface">
+      {/* Controls header: the view switch over a horizontal row of band tabs. */}
+      <div className="tw-flex tw-flex-col tw-gap-3 tw-border-b tw-border-line-subtle tw-p-3 min-[700px]:tw-p-4">
+        {viewControl}
+        <div
+          role="tablist"
+          aria-label={view === "cefr" ? "CEFR levels" : "Frequency bands"}
+          aria-orientation="horizontal"
+          className="tw-flex tw-flex-row tw-flex-wrap tw-gap-1.5"
+        >
+          {(summary ?? []).map((b) => {
+            const active = b.key === selectedKey;
+            return (
+              <button
+                key={b.key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setSelectedKey(b.key)}
+                className={
+                  "tw-flex tw-min-h-[44px] tw-flex-col tw-items-start tw-justify-center tw-gap-0.5 tw-rounded-[8px] tw-px-3 tw-py-1.5 tw-text-left tw-transition-colors " +
+                  (active
+                    ? "tw-bg-surface-hover tw-text-primary"
+                    : "text-muted-aaa hover:tw-bg-surface-hover hover:tw-text-primary")
+                }
+              >
+                <span className="tw-body-small tw-whitespace-nowrap">{b.label}</span>
+                {/* Count inherits the tab's text color so it stays ≥7:1 in every
+                    state, active or not (WCAG 1.4.6). */}
+                <span className="tw-tabular-nums tw-body-x-small tw-opacity-90">
+                  {b.count.toLocaleString()} words
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <section className="tw-min-w-0 tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-5 tw-py-4">
+      <div className="tw-min-w-0 tw-px-3 tw-py-4 min-[700px]:tw-px-5">
         {band ? (
           <>
-            <header>
-              <h3 className="tw-heading-x-large-strong">{band.label}</h3>
-              <p className="tw-mb-4 tw-mt-1 tw-body-small text-muted-aaa">
-                {band.words.length.toLocaleString()} words · most frequent first
-              </p>
-            </header>
+            <p className="tw-mb-3 tw-body-small text-muted-aaa">
+              {band.label} · most frequent first
+            </p>
             <WordChips
               words={band.words}
               anchor={anchorInBand}
@@ -137,12 +148,13 @@ export default function BandBrowser({
               anchorClass={CHIP_ANCHOR}
               onPick={onSelect}
               label={`Words in ${band.label}`}
+              lang={lang}
             />
           </>
         ) : (
           <Loading className="tw-min-h-[200px]" label="Loading band…" />
         )}
-      </section>
+      </div>
     </div>
   );
 }

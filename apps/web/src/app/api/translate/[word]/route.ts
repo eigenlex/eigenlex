@@ -9,12 +9,14 @@ export async function GET(
 ) {
   const { word } = await params;
   const text = decodeURIComponent(word).toLowerCase();
-  const tl = baseLang(new URL(req.url).searchParams.get("tl"));
+  const q = new URL(req.url).searchParams;
+  const sl = baseLang(q.get("sl"));
+  const tl = baseLang(q.get("tl"));
 
   try {
-    const res = await fetch(gtxUrl(text, tl), { next: { revalidate } });
+    const res = await fetch(gtxUrl(text, sl, tl), { next: { revalidate } });
     if (!res.ok) return new Response("upstream error", { status: 502 });
-    return Response.json({ word: text, tl, translation: parseGtx(await res.json()) });
+    return Response.json({ word: text, sl, tl, translation: parseGtx(await res.json()) });
   } catch {
     return new Response("upstream error", { status: 502 });
   }

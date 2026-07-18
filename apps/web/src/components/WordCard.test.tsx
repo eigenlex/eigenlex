@@ -38,13 +38,14 @@ afterEach(() => {
 
 describe("WordCard language selector", () => {
   it("defaults to the browser language (English in jsdom) and skips en→en translation", () => {
-    render(<WordCard info={info} />);
-    expect(selector()).toHaveValue("en");
+    render(<WordCard info={info} lang="en" />);
+    // Fondue's Select shows the picked language's endonym in its trigger, not a value.
+    expect(selector()).toHaveTextContent("English");
     expect(fetch).not.toHaveBeenCalled();
   });
 
   it("always offers a Google Translate link opening in a new tab, even for English", () => {
-    render(<WordCard info={info} />);
+    render(<WordCard info={info} lang="en" />);
     const link = screen.getByRole("link", { name: /google translate/i });
     expect(link).toHaveAttribute("target", "_blank");
     expect(link.getAttribute("href")).toContain("translate.google.com");
@@ -52,17 +53,29 @@ describe("WordCard language selector", () => {
 
   it("uses the stored language and translates the word into it", async () => {
     localStorage.setItem("eigenlex:lang", "es");
-    render(<WordCard info={info} />);
-    expect(selector()).toHaveValue("es");
+    render(<WordCard info={info} lang="en" />);
+    expect(selector()).toHaveTextContent(/español/i);
     expect(await screen.findByText("agua")).toBeInTheDocument();
+  });
+
+  it("translates from a non-English source language, tagging the request with sl", async () => {
+    localStorage.setItem("eigenlex:lang", "fr");
+    render(<WordCard info={info} lang="es" />);
+    expect(await screen.findByText("eau")).toBeInTheDocument();
+    const call = (fetch as unknown as { mock: { calls: [string][] } }).mock.calls.find(([u]) =>
+      String(u).includes("/api/translate/"),
+    );
+    expect(String(call![0])).toContain("sl=es");
   });
 
   it("persists a language change to localStorage and re-translates", async () => {
     localStorage.setItem("eigenlex:lang", "es");
-    render(<WordCard info={info} />);
+    render(<WordCard info={info} lang="en" />);
     await screen.findByText("agua");
 
-    await userEvent.selectOptions(selector(), "fr");
+    // Open the Fondue Select and pick French from the listbox.
+    await userEvent.click(selector());
+    await userEvent.click(await screen.findByRole("option", { name: /français/i }));
 
     expect(localStorage.getItem("eigenlex:lang")).toBe("fr");
     expect(await screen.findByText("eau")).toBeInTheDocument();

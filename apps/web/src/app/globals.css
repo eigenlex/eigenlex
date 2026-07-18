@@ -7,10 +7,15 @@
   --accent-focus: #f5c542;
 }
 
-/* Muted text at WCAG 1.4.6 (Enhanced, AAA) 7:1. Fondue's low-contrast token is
-   ~5.2:1 on our dark surfaces; neutral-50 gives ~7.5:1 while staying subdued. */
+/* Muted text at WCAG 1.4.6 (Enhanced, AAA) 7:1 in both themes. Fondue's low-contrast
+   token is only ~5.2:1; neutral-50 gives ~7.5:1 on the dark surface but just ~2.5:1
+   on the light one, so light mode steps down to neutral-75 (~7.3:1) — still subdued. */
 .text-muted-aaa {
   color: var(--color-neutral-50);
+}
+
+.light .text-muted-aaa {
+  color: var(--color-neutral-75);
 }
 
 /* 2.5.5 Target Size (Enhanced, AAA): 44px pointer targets for the primary
@@ -40,10 +45,17 @@ html,
 body {
   margin: 0;
   padding: 0;
-  /* neutral-100 is theme-invariant and matches the dark page surface, so the area
-     behind the themed wrapper never flashes light. */
+  /* Matches the page surface behind the wrapper (overscroll, first paint). Uses the
+     theme-invariant neutral ramp keyed off data-theme rather than surface-dim: at the
+     <html> level Fondue's :root default outranks the theme class, so surface-dim would
+     resolve to the wrong theme here (it's only reliable inside the wrapper). */
   background-color: var(--color-neutral-100);
   font-family: var(--typography-font-family-primary);
+}
+
+html[data-theme="light"],
+html[data-theme="light"] body {
+  background-color: var(--color-neutral-05);
 }
 
 /* A single, consistent keyboard focus indicator (WCAG 2.4.7), on the Fondue focus token. */

@@ -6,7 +6,8 @@ import { GET as bandsGET } from "./bands/[view]/route";
 import { GET as bandGET } from "./band/[view]/[key]/route";
 
 // A guaranteed-present headword (the single most frequent) and an absent one.
-const REAL = getBand("freq", "1")!.words[0]!;
+const REAL = getBand("en", "freq", "1")!.words[0]!;
+const REAL_ES = getBand("es", "freq", "1")!.words[0]!;
 const MISSING = "zzzzznotaword";
 const req = (url: string) => new Request(`http://test${url}`);
 const promise = <T>(v: T) => Promise.resolve(v);
@@ -24,6 +25,17 @@ describe("GET /api/word/[word]", () => {
 
   it("404s for an unknown word", async () => {
     const res = await wordGET(req("/api/word/x"), { params: promise({ word: MISSING }) });
+    expect(res.status).toBe(404);
+  });
+
+  it("looks the word up in the requested source language", async () => {
+    const res = await wordGET(req(`/api/word/x?lang=es`), { params: promise({ word: REAL_ES }) });
+    expect(res.status).toBe(200);
+    expect((await res.json()).word).toBe(REAL_ES);
+  });
+
+  it("404s for an unknown source language", async () => {
+    const res = await wordGET(req("/api/word/x?lang=zz"), { params: promise({ word: REAL }) });
     expect(res.status).toBe(404);
   });
 });

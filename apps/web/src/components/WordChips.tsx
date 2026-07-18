@@ -11,7 +11,7 @@ import {
   useState,
 } from "react";
 
-const GAP = 4; // tw-gap-1, in px — the space between chips, horizontally and between rows
+const GAP = 8; // tw-gap-2, in px — the space between chips, horizontally and between rows
 const OVERSCAN = 4; // extra rows kept mounted above and below the viewport
 
 /**
@@ -85,6 +85,7 @@ export default function WordChips({
   anchorClass,
   onPick,
   label,
+  lang,
 }: {
   words: string[];
   anchor: string | null;
@@ -92,6 +93,8 @@ export default function WordChips({
   anchorClass: string;
   onPick: (word: string) => void;
   label: string;
+  /** Source language of the words, for assistive tech. */
+  lang?: string;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const probeRef = useRef<HTMLSpanElement | null>(null);
@@ -295,7 +298,7 @@ export default function WordChips({
 
   let content: ReactNode;
   if (mode === "fallback") {
-    content = <div className="tw-flex tw-flex-wrap tw-gap-1">{words.map(chip)}</div>;
+    content = <div className="tw-flex tw-flex-wrap tw-gap-2">{words.map(chip)}</div>;
   } else if (rows && stride > 0) {
     const first = Math.max(0, Math.floor(scrollTop / stride) - OVERSCAN);
     const last = Math.min(rows.length, Math.ceil((scrollTop + viewport) / stride) + OVERSCAN);
@@ -309,7 +312,7 @@ export default function WordChips({
       return (
         <div
           key={start}
-          className="tw-absolute tw-left-0 tw-right-0 tw-flex tw-gap-1"
+          className="tw-absolute tw-left-0 tw-right-0 tw-flex tw-gap-2"
           style={{ top: r * stride }}
         >
           {words.slice(start, end).map((w, i) => chip(w, start + i))}
@@ -330,9 +333,10 @@ export default function WordChips({
       ref={scrollRef}
       onScroll={onScroll}
       onKeyDown={onKeyDown}
-      className="WordChips tw-relative tw-max-h-[22rem] tw-overflow-y-auto tw-overflow-x-hidden"
+      className="WordChips tw-relative tw-max-h-[30rem] tw-overflow-y-auto tw-overflow-x-hidden"
       role="group"
       aria-label={label}
+      lang={lang}
     >
       {/* Hidden probe: the source of truth for chip font and height. */}
       <span

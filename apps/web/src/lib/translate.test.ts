@@ -11,12 +11,18 @@ describe("baseLang", () => {
 });
 
 describe("gtxUrl", () => {
-  it("builds an en→tl single-translation query", () => {
-    const url = new URL(gtxUrl("serendipity", "es"));
+  it("builds an sl→tl single-translation query", () => {
+    const url = new URL(gtxUrl("serendipity", "en", "es"));
     expect(url.searchParams.get("sl")).toBe("en");
     expect(url.searchParams.get("tl")).toBe("es");
     expect(url.searchParams.get("q")).toBe("serendipity");
     expect(url.searchParams.get("dt")).toBe("t");
+  });
+
+  it("carries a non-English source language", () => {
+    const url = new URL(gtxUrl("agua", "es", "en"));
+    expect(url.searchParams.get("sl")).toBe("es");
+    expect(url.searchParams.get("tl")).toBe("en");
   });
 });
 

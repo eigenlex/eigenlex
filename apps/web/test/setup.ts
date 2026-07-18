@@ -24,6 +24,14 @@ if (typeof globalThis.ResizeObserver === "undefined") {
 if (typeof window !== "undefined" && !window.Element.prototype.scrollIntoView) {
   window.Element.prototype.scrollIntoView = () => {};
 }
+// Radix's Select (Fondue's Select) drives its trigger through Pointer Capture,
+// which jsdom doesn't implement — stub the three methods so opening it works.
+if (typeof window !== "undefined") {
+  const el = window.Element.prototype;
+  el.hasPointerCapture ??= () => false;
+  el.setPointerCapture ??= () => {};
+  el.releasePointerCapture ??= () => {};
+}
 // jsdom's canvas returns no 2d context; GraphView measures label widths through
 // one. Hand back a minimal stub with approximate text metrics.
 if (typeof window !== "undefined") {

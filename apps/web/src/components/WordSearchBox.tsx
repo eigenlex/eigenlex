@@ -14,7 +14,7 @@ import { Button, LoadingCircle, TextInput } from "@frontify/fondue/components";
 // A typeahead <li role="option">, painted with Fondue tokens (per the ARIA combobox
 // pattern the options carry the click handlers directly, not a nested control).
 const OPTION =
-  "tw-flex tw-min-h-[44px] tw-w-full tw-items-center tw-px-3 tw-py-1.5 tw-body-small tw-text-left tw-transition-colors";
+  "tw-flex tw-min-h-[44px] tw-w-full tw-items-center tw-px-3 tw-py-1.5 tw-text-[16px] tw-text-left tw-transition-colors";
 const SUGGEST_DEBOUNCE_MS = 500;
 
 /**
@@ -27,6 +27,7 @@ export default function WordSearchBox({
   value,
   onValueChange,
   onSubmit,
+  lang,
   ariaLabel,
   describedBy,
   placeholder,
@@ -36,6 +37,8 @@ export default function WordSearchBox({
   value: string;
   onValueChange: (value: string) => void;
   onSubmit: (word: string) => void;
+  /** Source language whose vocabulary to suggest from. */
+  lang: string;
   ariaLabel: string;
   describedBy?: string;
   placeholder: string;
@@ -69,7 +72,7 @@ export default function WordSearchBox({
       const reqId = ++suggestSeq.current;
       setLoading(true);
       try {
-        const res = await fetch(`/api/suggest?q=${encodeURIComponent(term)}`);
+        const res = await fetch(`/api/suggest?q=${encodeURIComponent(term)}&lang=${lang}`);
         if (!res.ok || reqId !== suggestSeq.current) return;
         const words = (await res.json()) as string[];
         if (reqId !== suggestSeq.current) return; // superseded while fetching
@@ -83,7 +86,7 @@ export default function WordSearchBox({
         if (reqId === suggestSeq.current) setLoading(false);
       }
     },
-    [closeSuggestions],
+    [closeSuggestions, lang],
   );
 
   const onQueryChange = useCallback(
@@ -145,7 +148,8 @@ export default function WordSearchBox({
         commit(value);
       }}
     >
-      <div className="tw-relative tw-w-fit">
+      {/* Force the input to ≥16px — Fondue's body-small (~13px) triggers iOS zoom-on-focus. */}
+      <div className="tw-relative tw-w-fit [&_input]:tw-text-[16px]">
         <TextInput.Root
           // TextInput.Root forwards unknown props to its <input> but omits the
           // combobox ARIA from its typed surface; attach them via a plain spread.
@@ -181,6 +185,7 @@ export default function WordSearchBox({
             id={listboxId}
             role="listbox"
             aria-label="Word suggestions"
+            lang={lang}
             className="tw-absolute tw-inset-x-0 tw-top-full tw-z-20 tw-mt-1 tw-max-h-64 tw-overflow-auto tw-rounded-large tw-border tw-border-line-subtle tw-bg-surface tw-py-1 tw-shadow-mid"
           >
             {suggestions.map((w, i) => (
