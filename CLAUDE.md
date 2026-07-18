@@ -24,6 +24,27 @@ to the `LANGS` table in the build script and to `SOURCE_LANG_META` (+ the `bands
 registry import). CEFR bands are frequency-rank thresholds calibrated against CEFR-J
 (English-derived, reused for every language); no graph or external dictionary is involved.
 
+**Display casing** is optional per language, driven by a third input: `casing-<code>.txt`,
+a Leipzig Corpora *sentences* file (`downloads.wortschatz-leipzig.de`, e.g.
+`deu_news_2022_1M`), pointed to by `casingFile` in the `LANGS` table. The build measures
+each word's *mid-sentence* capitalization (ignoring sentence-initial position, which
+capitalizes everything) — so German nouns/names ("Wasser", "Berlin") and proper nouns in
+any language come out capitalized while verbs/pronouns stay lowercase, with no
+per-language rules. The already-present lemma list supplies an authoritative fallback for
+the rare tail. The stored `ranked` words carry display casing; all lookups in `bands.ts`
+key on lowercase, so search/typeahead stay case-insensitive. Languages without a
+`casingFile` stay lowercase. Only German uses this so far.
+
+**Case-homographs** (German "Essen" the noun vs "essen" the verb) merge into one source
+entry but keep both casings. The build flags an entry when both casings are genuinely
+used mid-sentence *and* the lemma list has a capitalized (noun) spelling — filtering
+surnames ("Klein") and quote-capitalized adjectives. The artifact stores these under
+`variants` (`"essen" -> ["Essen","essen"]`, most frequent first); `getWord` returns them
+as `forms`. The word card glosses each casing via the translate API's `dict=1` mode
+(Google's `dt=bd` dictionary block is casing-sensitive — "Essen"→food/meal,
+"essen"→eat/dine — unlike the plain translation) and shows a line per casing, collapsing
+to one when the meanings don't actually differ.
+
 ## Verifying a build while the web dev server is running
 
 `next dev` and `next build` both default to `apps/web/.next`. Running `pnpm build`

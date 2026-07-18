@@ -23,6 +23,7 @@ function mockFetch() {
       return new Response(
         JSON.stringify({
           word,
+          forms: [word],
           rank: 1,
           freq: { key: "1", label: "Top 1,000" },
           cefr: { key: "A1", label: "A1 · Beginner" },

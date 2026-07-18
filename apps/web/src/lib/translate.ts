@@ -8,8 +8,12 @@ export function baseLang(tag: string | null | undefined): string {
   return (tag ?? "en").split("-")[0]?.toLowerCase() || "en";
 }
 
-export function gtxUrl(word: string, sl: string, tl: string): string {
+// `dict` adds the bilingual-dictionary block (dt=bd), which — unlike the plain
+// translation — is casing-sensitive ("Essen" -> food/meal, "essen" -> eat/dine), so we
+// use it to gloss each casing of a case-homograph.
+export function gtxUrl(word: string, sl: string, tl: string, dict = false): string {
   const q = new URLSearchParams({ client: "gtx", sl, tl, dt: "t", q: word });
+  if (dict) q.append("dt", "bd");
   return `${ENDPOINT}?${q}`;
 }
 
@@ -25,4 +29,25 @@ export function parseGtx(data: unknown): string {
     .map((seg) => (Array.isArray(seg) && typeof seg[0] === "string" ? seg[0] : ""))
     .join("")
     .trim();
+}
+
+/**
+ * Pull dictionary senses out of a `dt=bd` response — its second element is
+ * `[[<pos>, [<terms>…], [[<term>, …], …]], …]`. We flatten to the distinct top terms
+ * (a compact gloss like "food, meal, dinner"). Returns [] when there's no dictionary
+ * block (e.g. a proper noun, or a word with no distinct sense in that casing).
+ */
+export function parseSenses(data: unknown, limit = 4): string[] {
+  const groups = Array.isArray(data) ? (data as unknown[])[1] : undefined;
+  if (!Array.isArray(groups)) return [];
+  const terms: string[] = [];
+  for (const g of groups) {
+    const entries = Array.isArray(g) ? g[2] : undefined;
+    if (!Array.isArray(entries)) continue;
+    for (const e of entries) {
+      const term = Array.isArray(e) && typeof e[0] === "string" ? e[0].trim() : "";
+      if (term && !terms.includes(term)) terms.push(term);
+    }
+  }
+  return terms.slice(0, limit);
 }

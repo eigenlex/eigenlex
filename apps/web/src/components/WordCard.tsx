@@ -88,6 +88,42 @@ function useGloss(word: string, sl: string, tl: string, enabled: boolean): Gloss
   return gloss;
 }
 
+type FormGloss = { form: string; gloss: string };
+type Forms = { status: "loading" | "done" | "error"; items: FormGloss[] };
+
+// Glosses for a case-homograph: translate each casing on its own (dict mode, which is
+// casing-sensitive), then keep only casings whose meaning is distinct — so a spurious
+// pairing ("wer"/"Wer" → both "who") collapses back to a single gloss.
+function useForms(forms: string[], sl: string, tl: string, enabled: boolean): Forms {
+  const [state, setState] = useState<Forms>({ status: "loading", items: [] });
+  const key = `${sl}:${tl}:${forms.join("|")}`;
+  useEffect(() => {
+    if (!enabled) return;
+    setState({ status: "loading", items: [] });
+    const ac = new AbortController();
+    Promise.all(
+      forms.map((form) =>
+        fetch(`/api/translate/${encodeURIComponent(form)}?sl=${sl}&tl=${tl}&dict=1`, { signal: ac.signal })
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+          .then((d: { translation: string; senses: string[] }): FormGloss => ({
+            form,
+            gloss: (d.senses.length ? d.senses : [d.translation]).filter(Boolean).join(", "),
+          })),
+      ),
+    )
+      .then((all) => {
+        const seen = new Set<string>();
+        const items = all.filter((it) => it.gloss && !seen.has(it.gloss.toLowerCase()) && seen.add(it.gloss.toLowerCase()));
+        setState({ status: "done", items });
+      })
+      .catch(() => {
+        if (!ac.signal.aborted) setState({ status: "error", items: [] });
+      });
+    return () => ac.abort();
+  }, [key, enabled]); // forms is captured via `key`
+  return state;
+}
+
 function LanguageSelect({ value, onChange }: { value: string; onChange: (l: string) => void }) {
   const options = [...new Set([...COMMON_LANGS, browserLang(), value])].sort((a, b) =>
     endonym(a).localeCompare(endonym(b)),
@@ -123,8 +159,20 @@ export default function WordCard({ info, lang }: { info: WordBands; lang: string
   const [tl, setTl] = useTargetLang();
   // No point translating a word into its own language.
   const translate = tl !== lang;
-  const gloss = useGloss(info.word, lang, tl, translate);
-  const missing = gloss.status === "error" || (gloss.status === "done" && !gloss.text);
+  // A case-homograph translates each casing separately; everything else is one gloss.
+  const forms = info.forms ?? [info.word];
+  const homograph = forms.length > 1;
+  const single = useGloss(info.word, lang, tl, translate && !homograph);
+  const multi = useForms(forms, lang, tl, translate && homograph);
+
+  const status = homograph ? multi.status : single.status;
+  const lines: FormGloss[] = homograph
+    ? multi.items
+    : single.text
+      ? [{ form: info.word, gloss: single.text }]
+      : [];
+  const missing = status === "error" || (status === "done" && lines.length === 0);
+  const showForms = lines.length > 1; // distinct meanings per casing — list them
 
   return (
     <section className="WordCard tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-6 tw-py-5">
@@ -136,12 +184,26 @@ export default function WordCard({ info, lang }: { info: WordBands; lang: string
           </h2>
           {/* Announce translation state changes to assistive tech (WCAG 4.1.3). */}
           <div aria-live="polite" className="tw-mt-0.5">
-            {translate && gloss.status === "loading" && (
+            {translate && status === "loading" && (
               <span className="tw-body-small text-muted-aaa">translating…</span>
             )}
-            {translate && gloss.status === "done" && gloss.text && (
+            {translate && status === "done" && showForms && (
+              <ul className="tw-mt-1 tw-flex tw-flex-col tw-gap-1">
+                {lines.map((l) => (
+                  <li key={l.form} className="tw-flex tw-flex-wrap tw-items-baseline tw-gap-x-2">
+                    <span lang={lang} className="tw-body-medium tw-font-medium tw-text-primary">
+                      {l.form}
+                    </span>
+                    <span lang={tl} className="tw-body-medium text-muted-aaa">
+                      {l.gloss}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {translate && status === "done" && !showForms && lines[0] && (
               <span lang={tl} className="tw-body-large tw-font-medium tw-text-primary">
-                {gloss.text}
+                {lines[0].gloss}
               </span>
             )}
             {translate && missing && (

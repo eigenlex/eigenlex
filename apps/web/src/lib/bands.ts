@@ -23,14 +23,28 @@ interface LangData {
   ranked: string[];
   freqBands: BandDef[];
   cefrBands: BandDef[];
-  /** word -> 1-based frequency rank, built once per process. */
+  /** lowercased word -> 1-based frequency rank, built once per process. */
   rankOf: Map<string, number>;
+  /** lowercased key -> both casings of a case-homograph ("essen" -> ["Essen","essen"]). */
+  variants: Record<string, string[]>;
 }
 
-function load(data: { ranked: string[]; freqBands: BandDef[]; cefrBands: BandDef[] }): LangData {
+// `ranked` may carry display casing (e.g. German "Wasser"); lookups key on lowercase.
+function load(data: {
+  ranked: string[];
+  variants?: Record<string, string[]>;
+  freqBands: BandDef[];
+  cefrBands: BandDef[];
+}): LangData {
   const rankOf = new Map<string, number>();
-  data.ranked.forEach((w, i) => rankOf.set(w, i + 1));
-  return { ranked: data.ranked, freqBands: data.freqBands, cefrBands: data.cefrBands, rankOf };
+  data.ranked.forEach((w, i) => rankOf.set(w.toLowerCase(), i + 1));
+  return {
+    ranked: data.ranked,
+    freqBands: data.freqBands,
+    cefrBands: data.cefrBands,
+    rankOf,
+    variants: data.variants ?? {},
+  };
 }
 
 const REGISTRY: Record<SourceLang, LangData> = {
@@ -53,12 +67,16 @@ export function isView(v: string): v is BandView {
 
 export function getWord(lang: SourceLang, word: string): WordBands | null {
   const d = REGISTRY[lang];
-  const rank = d.rankOf.get(word);
+  const rank = d.rankOf.get(word.toLowerCase());
   if (rank === undefined) return null;
   const freq = bandAtRank(d.freqBands, rank)!;
   const cefr = bandAtRank(d.cefrBands, rank)!;
+  const display = d.ranked[rank - 1]!;
   return {
-    word,
+    // Show the corpus's display casing ("Wasser"), not the caller's lowercased query.
+    word: display,
+    // Case-homographs carry both casings so the card can translate each; else just the word.
+    forms: d.variants[display.toLowerCase()] ?? [display],
     rank,
     freq: { key: freq.key, label: freq.label },
     cefr: { key: cefr.key, label: cefr.label },
@@ -90,7 +108,7 @@ export function getSuggestions(lang: SourceLang, prefix: string, limit = 8): str
   const out: string[] = [];
   // `ranked` is frequency-descending, so the first matches are the most useful.
   for (const word of REGISTRY[lang].ranked) {
-    if (word.startsWith(p)) {
+    if (word.toLowerCase().startsWith(p)) {
       out.push(word);
       if (out.length >= limit) break;
     }
