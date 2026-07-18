@@ -14,7 +14,7 @@ import { Button, LoadingCircle, TextInput } from "@frontify/fondue/components";
 // A typeahead <li role="option">, painted with Fondue tokens (per the ARIA combobox
 // pattern the options carry the click handlers directly, not a nested control).
 const OPTION =
-  "tw-flex tw-min-h-[44px] tw-w-full tw-items-center tw-px-3 tw-py-1.5 tw-body-small tw-text-left tw-transition-colors";
+  "tw-flex tw-min-h-[44px] tw-w-full tw-items-center tw-px-3 tw-py-1.5 tw-text-[16px] tw-text-left tw-transition-colors";
 const SUGGEST_DEBOUNCE_MS = 500;
 
 /**
@@ -148,7 +148,8 @@ export default function WordSearchBox({
         commit(value);
       }}
     >
-      <div className="tw-relative tw-w-fit">
+      {/* Force the input to ≥16px — Fondue's body-small (~13px) triggers iOS zoom-on-focus. */}
+      <div className="tw-relative tw-w-fit [&_input]:tw-text-[16px]">
         <TextInput.Root
           // TextInput.Root forwards unknown props to its <input> but omits the
           // combobox ARIA from its typed surface; attach them via a plain spread.
