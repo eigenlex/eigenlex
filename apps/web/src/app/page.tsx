@@ -1,3 +1,4 @@
+import ThemeToggle from "@/components/ThemeToggle";
 import Workspace from "@/components/WorkspaceLazy";
 
 export default function Home() {
@@ -8,7 +9,10 @@ export default function Home() {
       tabIndex={-1}
     >
       <header className="tw-mb-6">
-        <h1 className="tw-heading-xx-large-strong tw-mb-1">eigenlex</h1>
+        <div className="tw-mb-1 tw-flex tw-items-start tw-justify-between tw-gap-4">
+          <h1 className="tw-heading-xx-large-strong">eigenlex</h1>
+          <ThemeToggle />
+        </div>
         {/* line-height 1.5 for blocks of text (WCAG 1.4.8); the Fondue type token
             sets a tighter value, so override it inline. */}
         <p className="tw-body-large tw-max-w-[60ch] text-muted-aaa" style={{ lineHeight: 1.5 }}>
