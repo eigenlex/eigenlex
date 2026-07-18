@@ -20,3 +20,4 @@ out/
 apps/web/data/subtlex.csv
 apps/web/data/freq-*.txt
 apps/web/data/lemma-*.txt
+apps/web/data/casing-*.txt

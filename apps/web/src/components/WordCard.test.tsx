@@ -7,6 +7,7 @@ import type { WordBands } from "@/lib/types";
 
 const info: WordBands = {
   word: "water",
+  forms: ["water"],
   rank: 384,
   freq: { key: "1", label: "Top 1,000" },
   cefr: { key: "A1", label: "A1 · Beginner" },
@@ -79,5 +80,45 @@ describe("WordCard language selector", () => {
 
     expect(localStorage.getItem("eigenlex:lang")).toBe("fr");
     expect(await screen.findByText("eau")).toBeInTheDocument();
+  });
+});
+
+// A dt=1 fetch stub that glosses each casing from a lookup table of senses.
+function mockDict(senses: Record<string, string[]>) {
+  return vi.fn(async (url: string | URL) => {
+    const u = new URL(String(url), "http://localhost");
+    const form = decodeURIComponent(u.pathname.split("/api/translate/")[1] ?? "");
+    const s = senses[form] ?? [];
+    return new Response(JSON.stringify({ word: form, tl: "en", translation: form, senses: s }));
+  });
+}
+
+describe("WordCard case-homographs", () => {
+  const homo = (word: string, forms: string[]): WordBands => ({
+    word,
+    forms,
+    rank: 500,
+    freq: { key: "2", label: "1,001–2,000" },
+    cefr: { key: "A2", label: "A2 · Elementary" },
+  });
+
+  it("shows a distinct gloss for each casing", async () => {
+    vi.stubGlobal("fetch", mockDict({ Essen: ["food", "meal"], essen: ["to eat", "dine"] }));
+    localStorage.setItem("eigenlex:lang", "en");
+    render(<WordCard info={homo("Essen", ["Essen", "essen"])} lang="de" />);
+    // Both glosses and the lowercase casing label appear (the noun label doubles the hero).
+    expect(await screen.findByText("food, meal")).toBeInTheDocument();
+    expect(await screen.findByText("to eat, dine")).toBeInTheDocument();
+    expect(screen.getByText("essen")).toBeInTheDocument();
+  });
+
+  it("collapses to one gloss when the casings mean the same thing", async () => {
+    // "wer"/"Wer" both gloss to "who" — no distinct sense, so only one line shows.
+    vi.stubGlobal("fetch", mockDict({ Wer: ["who"], wer: ["who"] }));
+    localStorage.setItem("eigenlex:lang", "en");
+    render(<WordCard info={homo("Wer", ["Wer", "wer"])} lang="de" />);
+    expect(await screen.findByText("who")).toBeInTheDocument();
+    expect(screen.getAllByText("who")).toHaveLength(1);
+    expect(screen.queryByText("wer")).not.toBeInTheDocument();
   });
 });

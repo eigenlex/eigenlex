@@ -12,6 +12,12 @@ export interface BandRef {
 /** A single word's placement: its frequency rank and both band labelings. */
 export interface WordBands {
   word: string;
+  /**
+   * Casings to translate. Usually just `[word]`; a case-homograph (German "Essen" the
+   * noun vs "essen" the verb) carries both casings, most frequent first, so the card
+   * can show a gloss for each.
+   */
+  forms: string[];
   /** 1-based frequency rank (1 = most frequent). */
   rank: number;
   freq: BandRef;
