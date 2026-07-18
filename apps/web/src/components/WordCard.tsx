@@ -160,7 +160,7 @@ export default function WordCard({ info, lang }: { info: WordBands; lang: string
             // clearing window.name) — accepted, for its pronunciation audio.
             target="_blank"
             rel="noopener noreferrer"
-            className="tw-body-x-small tw-text-secondary tw-underline hover:tw-text-primary"
+            className="tw-inline-flex tw-items-center tw-gap-1 tw-rounded-full tw-border tw-border-line-subtle tw-px-3 tw-py-1.5 tw-body-medium tw-text-secondary tw-no-underline hover:tw-border-line hover:tw-text-primary"
           >
             Google Translate ↗
           </a>
