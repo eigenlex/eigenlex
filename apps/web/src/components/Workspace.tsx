@@ -13,6 +13,8 @@ import {
   SOURCE_LANG_META,
   type SourceLang,
 } from "@/lib/languages";
+import { baseLang } from "@/lib/translate";
+import { readScenario, writeScenario } from "@/lib/scenario";
 
 // Expanded forms for the abbreviations we show (WCAG 3.1.4).
 const CEFR_TITLE = "Common European Framework of Reference for Languages";
@@ -35,29 +37,33 @@ function Abbr({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-// Persist the picked source language so a learner returns to the language they study.
+// Persisted picks, so a returning learner lands back where they left off. A shareable
+// URL (see lib/scenario) takes precedence over these when present.
 const SOURCE_KEY = "eigenlex:source";
-function useSourceLang(): [SourceLang, (l: SourceLang) => void] {
-  // The workspace is client-only (see WorkspaceLazy), so localStorage is available at
-  // first render — read it in the initializer to avoid a default-language flash.
-  const [lang, setLang] = useState<SourceLang>(() => {
-    try {
-      const saved = window.localStorage.getItem(SOURCE_KEY);
-      if (saved && isSourceLang(saved)) return saved;
-    } catch {
-      /* storage unavailable */
-    }
-    return DEFAULT_SOURCE;
-  });
-  const choose = (l: SourceLang) => {
-    setLang(l);
-    try {
-      window.localStorage.setItem(SOURCE_KEY, l);
-    } catch {
-      /* private mode / storage disabled — selection still applies for the session */
-    }
-  };
-  return [lang, choose];
+const LANG_KEY = "eigenlex:lang";
+
+const browserLang = () =>
+  baseLang(typeof navigator !== "undefined" ? navigator.language : "en");
+
+// The workspace is client-only (see WorkspaceLazy), so localStorage is available at
+// first render — read it in the state initializers to avoid a default-value flash.
+function storedSource(): SourceLang | null {
+  try {
+    const s = window.localStorage.getItem(SOURCE_KEY);
+    if (s && isSourceLang(s)) return s;
+  } catch {
+    /* storage unavailable */
+  }
+  return null;
+}
+function storedTarget(): string | null {
+  try {
+    const s = window.localStorage.getItem(LANG_KEY);
+    if (s) return baseLang(s);
+  } catch {
+    /* storage unavailable */
+  }
+  return null;
 }
 
 function SourceSelect({ lang, onChange }: { lang: SourceLang; onChange: (l: SourceLang) => void }) {
@@ -126,19 +132,50 @@ function CefrSource({ lang }: { lang: SourceLang }) {
 }
 
 export default function Workspace() {
-  const [lang, setLang] = useSourceLang();
+  // A scenario carried in the URL wins over stored/default picks, so a shared deeplink
+  // restores exactly what the sender saw. Read once, on mount.
+  const initial = useRef(readScenario()).current;
+
+  const [lang, setLangState] = useState<SourceLang>(
+    () => initial.lang ?? storedSource() ?? DEFAULT_SOURCE,
+  );
+  const setLang = (l: SourceLang) => {
+    setLangState(l);
+    try {
+      window.localStorage.setItem(SOURCE_KEY, l);
+    } catch {
+      /* private mode / storage disabled — selection still applies for the session */
+    }
+  };
+
+  // Target/gloss language, lifted out of the word card so it too rides in the URL.
+  const [tl, setTlState] = useState<string>(
+    () => initial.tl ?? storedTarget() ?? browserLang(),
+  );
+  const setTl = (l: string) => {
+    setTlState(l);
+    try {
+      window.localStorage.setItem(LANG_KEY, l);
+    } catch {
+      /* private mode / storage disabled — selection still applies for the session */
+    }
+  };
+
   // The searched word drives the whole view, so its lookup lives here, above it.
-  const [query, setQuery] = useState(() => SOURCE_LANG_META[DEFAULT_SOURCE].defaultWord);
+  const [query, setQuery] = useState(() => initial.word ?? SOURCE_LANG_META[lang].defaultWord);
   const [info, setInfo] = useState<WordBands | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Starts true: the effect below looks the initial word up on mount straight away.
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<BandView>("freq");
+  const [view, setView] = useState<BandView>(() => initial.view ?? "freq");
+  // The band tab the user explicitly picked; null follows the looked-up word's band.
+  const [band, setBand] = useState<string | null>(() => initial.band ?? null);
 
   // `l` is passed explicitly so a language switch looks up the right dictionary
-  // without waiting for the `lang` state update to settle.
+  // without waiting for the `lang` state update to settle. `bandOverride` restores a
+  // pinned band from a shared link; a normal lookup follows the word's own band (null).
   const lookup = useCallback(
-    async (raw: string, l: SourceLang) => {
+    async (raw: string, l: SourceLang, bandOverride: string | null = null) => {
       const term = raw.trim().toLowerCase();
       if (!term) return;
       setLoading(true);
@@ -151,6 +188,7 @@ export default function Workspace() {
         setError(null);
         setInfo((await res.json()) as WordBands);
         setQuery(term);
+        setBand(bandOverride);
       } finally {
         setLoading(false);
       }
@@ -158,13 +196,22 @@ export default function Workspace() {
     [],
   );
 
-  // Initial lookup, once, using whatever source language was restored on mount.
+  // Initial lookup, once, honouring the word + pinned band restored from the URL.
   const bootstrapped = useRef(false);
   useEffect(() => {
     if (bootstrapped.current) return;
     bootstrapped.current = true;
-    void lookup(SOURCE_LANG_META[lang].defaultWord, lang);
-  }, [lookup, lang]);
+    void lookup(query, lang, initial.band ?? null);
+  }, [lookup, lang, query, initial.band]);
+
+  // Mirror the scenario into the URL so learners can exchange deeplinks. Keyed on the
+  // looked-up word (not the in-progress query), and only pins a band when it differs
+  // from the word's own — an unchanged band is already implied by the word + view.
+  useEffect(() => {
+    if (!info) return;
+    const anchor = info[view].key;
+    writeScenario({ lang, word: info.word, tl, view, band: band && band !== anchor ? band : null });
+  }, [lang, tl, view, band, info]);
 
   const chooseLang = (l: SourceLang) => {
     if (l === lang) return;
@@ -172,6 +219,12 @@ export default function Workspace() {
     const word = SOURCE_LANG_META[l].defaultWord;
     setQuery(word);
     void lookup(word, l);
+  };
+
+  // Switching view shows the word's band in the new view — drop any pinned tab.
+  const chooseView = (v: BandView) => {
+    setView(v);
+    setBand(null);
   };
 
   const langName = SOURCE_LANG_META[lang].name;
@@ -219,7 +272,7 @@ export default function Workspace() {
           )}
         </div>
 
-        {info && <WordCard info={info} lang={lang} />}
+        {info && <WordCard info={info} lang={lang} tl={tl} onTlChange={setTl} />}
       </div>
 
       <section aria-labelledby="browse-heading">
@@ -235,8 +288,10 @@ export default function Workspace() {
           lang={lang}
           anchorWord={info?.word ?? null}
           anchorBandKey={info ? info[view].key : null}
+          bandKey={band}
+          onBandChange={setBand}
           onSelect={(w) => void lookup(w, lang)}
-          viewControl={<ViewToggle view={view} onChange={setView} />}
+          viewControl={<ViewToggle view={view} onChange={chooseView} />}
         />
 
         {/* Source credit / CEFR disclaimer, under the data it describes.

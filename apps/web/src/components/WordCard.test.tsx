@@ -1,9 +1,17 @@
 // @vitest-environment jsdom
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import WordCard from "./WordCard";
 import type { WordBands } from "@/lib/types";
+
+// The workspace owns the target language now; a tiny stateful host stands in for it so
+// picking a language in the card re-renders with the new value, as it does in the app.
+function Host({ info, lang, tl: initial }: { info: WordBands; lang: string; tl: string }) {
+  const [tl, setTl] = useState(initial);
+  return <WordCard info={info} lang={lang} tl={tl} onTlChange={setTl} />;
+}
 
 const info: WordBands = {
   word: "water",
@@ -38,30 +46,28 @@ afterEach(() => {
 });
 
 describe("WordCard language selector", () => {
-  it("defaults to the browser language (English in jsdom) and skips en→en translation", () => {
-    render(<WordCard info={info} lang="en" />);
+  it("shows the target language and skips translating a word into its own language", () => {
+    render(<WordCard info={info} lang="en" tl="en" onTlChange={() => {}} />);
     // Fondue's Select shows the picked language's endonym in its trigger, not a value.
     expect(selector()).toHaveTextContent("English");
     expect(fetch).not.toHaveBeenCalled();
   });
 
   it("always offers a Google Translate link opening in a new tab, even for English", () => {
-    render(<WordCard info={info} lang="en" />);
+    render(<WordCard info={info} lang="en" tl="en" onTlChange={() => {}} />);
     const link = screen.getByRole("link", { name: /google translate/i });
     expect(link).toHaveAttribute("target", "_blank");
     expect(link.getAttribute("href")).toContain("translate.google.com");
   });
 
-  it("uses the stored language and translates the word into it", async () => {
-    localStorage.setItem("eigenlex:lang", "es");
-    render(<WordCard info={info} lang="en" />);
+  it("translates the word into the target language", async () => {
+    render(<WordCard info={info} lang="en" tl="es" onTlChange={() => {}} />);
     expect(selector()).toHaveTextContent(/español/i);
     expect(await screen.findByText("agua")).toBeInTheDocument();
   });
 
   it("translates from a non-English source language, tagging the request with sl", async () => {
-    localStorage.setItem("eigenlex:lang", "fr");
-    render(<WordCard info={info} lang="es" />);
+    render(<WordCard info={info} lang="es" tl="fr" onTlChange={() => {}} />);
     expect(await screen.findByText("eau")).toBeInTheDocument();
     const call = (fetch as unknown as { mock: { calls: [string][] } }).mock.calls.find(([u]) =>
       String(u).includes("/api/translate/"),
@@ -69,16 +75,25 @@ describe("WordCard language selector", () => {
     expect(String(call![0])).toContain("sl=es");
   });
 
-  it("persists a language change to localStorage and re-translates", async () => {
-    localStorage.setItem("eigenlex:lang", "es");
-    render(<WordCard info={info} lang="en" />);
+  it("re-translates and reports the pick when the language changes", async () => {
+    const onTlChange = vi.fn();
+    render(<WordCard info={info} lang="en" tl="es" onTlChange={onTlChange} />);
     await screen.findByText("agua");
 
     // Open the Fondue Select and pick French from the listbox.
     await userEvent.click(selector());
     await userEvent.click(await screen.findByRole("option", { name: /français/i }));
 
-    expect(localStorage.getItem("eigenlex:lang")).toBe("fr");
+    expect(onTlChange).toHaveBeenCalledWith("fr");
+  });
+
+  it("re-translates through a stateful host when the language changes", async () => {
+    render(<Host info={info} lang="en" tl="es" />);
+    await screen.findByText("agua");
+
+    await userEvent.click(selector());
+    await userEvent.click(await screen.findByRole("option", { name: /français/i }));
+
     expect(await screen.findByText("eau")).toBeInTheDocument();
   });
 });
@@ -104,8 +119,7 @@ describe("WordCard case-homographs", () => {
 
   it("shows a distinct gloss for each casing", async () => {
     vi.stubGlobal("fetch", mockDict({ Essen: ["food", "meal"], essen: ["to eat", "dine"] }));
-    localStorage.setItem("eigenlex:lang", "en");
-    render(<WordCard info={homo("Essen", ["Essen", "essen"])} lang="de" />);
+    render(<WordCard info={homo("Essen", ["Essen", "essen"])} lang="de" tl="en" onTlChange={() => {}} />);
     // Both glosses and the lowercase casing label appear (the noun label doubles the hero).
     expect(await screen.findByText("food, meal")).toBeInTheDocument();
     expect(await screen.findByText("to eat, dine")).toBeInTheDocument();
@@ -115,8 +129,7 @@ describe("WordCard case-homographs", () => {
   it("collapses to one gloss when the casings mean the same thing", async () => {
     // "wer"/"Wer" both gloss to "who" — no distinct sense, so only one line shows.
     vi.stubGlobal("fetch", mockDict({ Wer: ["who"], wer: ["who"] }));
-    localStorage.setItem("eigenlex:lang", "en");
-    render(<WordCard info={homo("Wer", ["Wer", "wer"])} lang="de" />);
+    render(<WordCard info={homo("Wer", ["Wer", "wer"])} lang="de" tl="en" onTlChange={() => {}} />);
     expect(await screen.findByText("who")).toBeInTheDocument();
     expect(screen.getAllByText("who")).toHaveLength(1);
     expect(screen.queryByText("wer")).not.toBeInTheDocument();

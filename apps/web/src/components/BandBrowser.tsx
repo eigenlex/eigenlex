@@ -28,6 +28,8 @@ export default function BandBrowser({
   lang,
   anchorWord,
   anchorBandKey,
+  bandKey = null,
+  onBandChange,
   onSelect,
   viewControl,
 }: {
@@ -36,12 +38,16 @@ export default function BandBrowser({
   lang: string;
   anchorWord: string | null;
   anchorBandKey: string | null;
+  /** Explicitly-picked band tab (controlled); null follows the anchor, then the first. */
+  bandKey?: string | null;
+  /** Reports a user's tab pick, so the parent can reflect it in the URL. */
+  onBandChange?: (key: string) => void;
   onSelect: (word: string) => void;
   /** The frequency/CEFR switch, hosted in this panel's header alongside the bands. */
   viewControl?: ReactNode;
 }) {
   const [summary, setSummary] = useState<BandSummary[] | null>(null);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(bandKey);
   const [band, setBand] = useState<Band | null>(null);
   // Warm-cache bands by `view:key` so re-selecting is instant.
   const cache = useRef<Record<string, Band>>({});
@@ -59,18 +65,23 @@ export default function BandBrowser({
     };
   }, [view, lang]);
 
-  // Select the anchor's band; else keep the current one; else the first.
+  // Show the explicitly-picked band; else the anchor's band; else the first.
   useEffect(() => {
     if (!summary) return;
     const keys = summary.map((b) => b.key);
-    setSelectedKey((prev) =>
-      anchorBandKey && keys.includes(anchorBandKey)
-        ? anchorBandKey
-        : prev && keys.includes(prev)
-          ? prev
+    setSelectedKey(
+      bandKey && keys.includes(bandKey)
+        ? bandKey
+        : anchorBandKey && keys.includes(anchorBandKey)
+          ? anchorBandKey
           : (keys[0] ?? null),
     );
-  }, [summary, anchorBandKey]);
+  }, [summary, bandKey, anchorBandKey]);
+
+  const pickBand = (key: string) => {
+    setSelectedKey(key);
+    onBandChange?.(key);
+  };
 
   const fetchBand = useCallback(
     async (key: string) => {
@@ -115,7 +126,7 @@ export default function BandBrowser({
                 type="button"
                 role="tab"
                 aria-selected={active}
-                onClick={() => setSelectedKey(b.key)}
+                onClick={() => pickBand(b.key)}
                 className={
                   "tw-flex tw-min-h-[44px] tw-flex-col tw-items-start tw-justify-center tw-gap-0.5 tw-rounded-[8px] tw-px-3 tw-py-1.5 tw-text-left tw-transition-colors " +
                   (active

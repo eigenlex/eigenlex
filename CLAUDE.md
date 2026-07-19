@@ -5,6 +5,17 @@ It's a vocabulary learning tool — every English word placed on a **frequency**
 and a **CEFR** band, so a learner can see where a word sits and browse the vocabulary
 in order.
 
+## URL state (deeplinks)
+
+The `Workspace` mirrors the current scenario into the query string so it can be shared
+as a deeplink: `?lang=<source>&word=<word>&tl=<gloss>&view=freq|cefr&band=<key>`. Encode
+/ decode lives in `apps/web/src/lib/scenario.ts`; `Workspace` is the single owner of all
+five pieces (target language lifted up out of `WordCard`, band tab lifted up out of
+`BandBrowser`). On mount the URL wins over the localStorage/browser defaults; thereafter
+state is written back with `replaceState`. `band` is only pinned when it differs from the
+looked-up word's own band (otherwise it's implied by word + view). `Workspace` is
+client-only (`WorkspaceLazy`, `ssr:false`), so this is all client-side.
+
 ## Data
 
 The tool is multi-**source-language**: a learner picks the language they're studying
