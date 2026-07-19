@@ -13,6 +13,7 @@ import {
 
 const GAP = 8; // tw-gap-2, in px — the space between chips, horizontally and between rows
 const OVERSCAN = 4; // extra rows kept mounted above and below the viewport
+const SELECT_DEBOUNCE = 300; // ms to settle on a chip before keyboard nav looks it up
 
 /**
  * Greedy line-break: pack chips into rows that fit `containerWidth`, always at
@@ -169,6 +170,15 @@ export default function WordChips({
   const active = Math.min(Math.max(activeRaw, 0), Math.max(0, words.length - 1));
   const activeBtnRef = useRef<HTMLButtonElement | null>(null);
   const focusPendingRef = useRef(false); // set only by keyboard moves — never steals focus otherwise
+  const selectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelSelect = useCallback(() => {
+    if (selectTimer.current) {
+      clearTimeout(selectTimer.current);
+      selectTimer.current = null;
+    }
+  }, []);
+  useEffect(() => cancelSelect, [cancelSelect]); // drop any pending select on unmount
 
   // Park the tab stop on the anchored word (or the first) when either changes, so
   // Tab enters the cloud at a sensible chip. Programmatic: doesn't move focus.
@@ -206,6 +216,11 @@ export default function WordChips({
     (idx: number) => {
       focusPendingRef.current = true;
       setActive(idx);
+      // Debounce the lookup so holding an arrow key doesn't fire one per chip;
+      // only the word focus settles on for SELECT_DEBOUNCE ms is looked up.
+      cancelSelect();
+      const word = words[idx];
+      if (word !== undefined) selectTimer.current = setTimeout(() => onPick(word), SELECT_DEBOUNCE);
       const el = scrollRef.current;
       if (el && mode === "virtual" && rows && stride > 0) {
         const top = rowOfIndex(rows, idx) * stride;
@@ -215,7 +230,7 @@ export default function WordChips({
         setScrollTop(el.scrollTop);
       }
     },
-    [mode, rows, stride],
+    [mode, rows, stride, words, onPick, cancelSelect],
   );
 
   const onKeyDown = useCallback(
@@ -287,6 +302,7 @@ export default function WordChips({
         aria-current={isAnchor ? "true" : undefined}
         tabIndex={isActive ? 0 : -1}
         onClick={() => {
+          cancelSelect();
           setActive(index);
           onPick(w);
         }}
