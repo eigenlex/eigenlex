@@ -20,6 +20,13 @@ import { readScenario, writeScenario } from "@/lib/scenario";
 const CEFR_TITLE = "Common European Framework of Reference for Languages";
 const CEFRJ_TITLE = "CEFR-J — a Japanese adaptation of the CEFR for finer levelling";
 const SUBTLEX_TITLE = "SUBTLEX-US — a US-English word-frequency database drawn from film subtitles";
+const LEIPZIG_TITLE =
+  "Leipzig Corpora Collection — sentence corpora used to measure mid-sentence capitalization";
+
+// Ancillary data sources not tied to one language's frequency list.
+const LEMMA_URL = "https://github.com/michmech/lemmatization-lists";
+const LEIPZIG_URL = "https://wortschatz.uni-leipzig.de/en/download";
+const TRANSLATE_URL = "https://translate.google.com/";
 
 // Abbreviation whose expansion shows in a Fondue tooltip. The <abbr> stays for its
 // expansion semantics (WCAG 3.1.4); tabIndex makes it a focus target so the tooltip
@@ -98,34 +105,43 @@ function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView
   );
 }
 
-// Data source credited beneath the browser, per active view and source language.
+// Data sources credited beneath the browser. All of them, in full, so the attribution
+// stays complete regardless of the active view — the ranking (frequency +
+// lemmatization), the CEFR calibration, German display casing, and the word-card glosses.
 const SOURCE_LINK = "tw-underline hover:tw-text-primary";
 
-function FreqSource({ lang }: { lang: SourceLang }) {
-  const { source } = SOURCE_LANG_META[lang];
+function SourceCredit({ lang }: { lang: SourceLang }) {
+  const { source, name } = SOURCE_LANG_META[lang];
   return (
     <>
       Word frequencies from{" "}
       <a className={SOURCE_LINK} href={source.url} target="_blank" rel="noreferrer">
         {lang === "en" ? <Abbr title={SUBTLEX_TITLE}>SUBTLEX-US</Abbr> : source.name}
       </a>
-      {lang === "en" ? " (Brysbaert & New, 2009)" : null}; inflections merged onto their base form.
-    </>
-  );
-}
-
-function CefrSource({ lang }: { lang: SourceLang }) {
-  return (
-    <>
-      <Abbr title={CEFR_TITLE}>CEFR</Abbr> levels estimated from frequency, with band
+      {lang === "en" ? " (Brysbaert & New, 2009)" : null}, with inflections merged onto
+      their base form via a{" "}
+      <a className={SOURCE_LINK} href={LEMMA_URL} target="_blank" rel="noreferrer">
+        lemmatization list
+      </a>
+      . <Abbr title={CEFR_TITLE}>CEFR</Abbr> levels are estimated from frequency, with band
       boundaries calibrated to the{" "}
       <a className={SOURCE_LINK} href="https://www.cefr-j.org/" target="_blank" rel="noreferrer">
         <Abbr title={CEFRJ_TITLE}>CEFR-J</Abbr>
       </a>{" "}
-      vocabulary profile
-      {lang !== "en" ? (
-        <> — an English-derived heuristic reused for {SOURCE_LANG_META[lang].name}</>
+      vocabulary profile{lang !== "en" ? <> — an English-derived heuristic reused for {name}</> : null}.{" "}
+      {lang === "de" ? (
+        <>
+          Display casing is measured from the{" "}
+          <a className={SOURCE_LINK} href={LEIPZIG_URL} target="_blank" rel="noreferrer">
+            <Abbr title={LEIPZIG_TITLE}>Leipzig Corpora</Abbr>
+          </a>
+          .{" "}
+        </>
       ) : null}
+      Word translations come from{" "}
+      <a className={SOURCE_LINK} href={TRANSLATE_URL} target="_blank" rel="noreferrer">
+        Google Translate
+      </a>
       .
     </>
   );
@@ -294,13 +310,13 @@ export default function Workspace() {
           viewControl={<ViewToggle view={view} onChange={chooseView} />}
         />
 
-        {/* Source credit / CEFR disclaimer, under the data it describes.
+        {/* Data-source credits / CEFR disclaimer, under the data they describe.
             line-height 1.5 for blocks of text (WCAG 1.4.8), capped at 80ch line length. */}
         <p
           className="tw-mt-3 tw-max-w-[80ch] tw-body-x-small text-muted-aaa"
           style={{ lineHeight: 1.5 }}
         >
-          Source: {view === "cefr" ? <CefrSource lang={lang} /> : <FreqSource lang={lang} />}
+          Sources: <SourceCredit lang={lang} />
         </p>
       </section>
     </div>
