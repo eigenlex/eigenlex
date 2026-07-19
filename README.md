@@ -22,6 +22,14 @@ learning order than any dictionary-structure metric, so the ranking rests on it 
   labels are learner-familiar while coverage stays the full vocabulary. The calibration
   is English-derived and reused for every language as a first-order heuristic. No
   external dictionary is required at runtime.
+- **Display casing** (German only, so far) is measured from the
+  [Leipzig Corpora](https://wortschatz.uni-leipzig.de/en/download) sentence collection:
+  how often each word is capitalized mid-sentence decides whether it's shown capitalized,
+  so German nouns and proper nouns come out right with no per-language rules.
+- **Translations** — the per-word gloss in the word card — are fetched live from
+  [Google Translate](https://translate.google.com/) (its public `gtx` endpoint) in the
+  reader's chosen language, and cached. This is the only source consulted at runtime;
+  everything above is baked into the committed artifacts at build time.
 
 This keeps the data footprint small and **scales to other languages**: add a frequency
 list and a lemmatization list for the language, register it, and rebuild.

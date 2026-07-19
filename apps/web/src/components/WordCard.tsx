@@ -5,8 +5,6 @@ import { Badge, Select } from "@frontify/fondue/components";
 import type { WordBands } from "@/lib/types";
 import { baseLang } from "@/lib/translate";
 
-const LANG_KEY = "eigenlex:lang";
-
 // Offered in the picker; the reader's browser language and current pick are merged in.
 const COMMON_LANGS = [
   "ar", "de", "en", "es", "fr", "hi", "id", "it", "ja",
@@ -24,30 +22,6 @@ function endonym(code: string) {
   } catch {
     return code;
   }
-}
-
-// Target language for translations: a stored pick if any, else the browser language.
-// The workspace is client-only (see WorkspaceLazy), so localStorage is available at
-// first render — read it in the initializer to avoid a browser-language flash.
-function useTargetLang(): [string, (l: string) => void] {
-  const [lang, setLang] = useState(() => {
-    try {
-      const saved = window.localStorage.getItem(LANG_KEY);
-      if (saved) return baseLang(saved);
-    } catch {
-      /* storage unavailable */
-    }
-    return browserLang();
-  });
-  const choose = (l: string) => {
-    setLang(l);
-    try {
-      window.localStorage.setItem(LANG_KEY, l);
-    } catch {
-      /* private mode / storage disabled — selection still applies for the session */
-    }
-  };
-  return [lang, choose];
 }
 
 // Google Translate UI link — the escape hatch for what we don't do inline:
@@ -155,8 +129,18 @@ function Stat({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** The looked-up word, its translation, and where it sits — both band labelings. */
-export default function WordCard({ info, lang }: { info: WordBands; lang: string }) {
-  const [tl, setTl] = useTargetLang();
+export default function WordCard({
+  info,
+  lang,
+  tl,
+  onTlChange,
+}: {
+  info: WordBands;
+  lang: string;
+  /** Target/gloss language, owned by the workspace so it can ride in the URL. */
+  tl: string;
+  onTlChange: (l: string) => void;
+}) {
   // No point translating a word into its own language.
   const translate = tl !== lang;
   // A case-homograph translates each casing separately; everything else is one gloss.
@@ -215,7 +199,7 @@ export default function WordCard({ info, lang }: { info: WordBands; lang: string
         {/* Translation controls, kept compact in the top-right. */}
         <div className="tw-flex tw-shrink-0 tw-flex-col tw-items-end tw-gap-1.5">
           <div className="tw-w-44">
-            <LanguageSelect value={tl} onChange={setTl} />
+            <LanguageSelect value={tl} onChange={onTlChange} />
           </div>
           <a
             href={translateHref(info.word, lang, tl)}

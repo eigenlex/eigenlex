@@ -42,6 +42,8 @@ function mockFetch() {
 
 beforeEach(() => {
   localStorage.clear();
+  // The workspace mirrors state into the URL; reset it so tests don't leak scenarios.
+  window.history.replaceState(null, "", "/");
   vi.stubGlobal("fetch", mockFetch());
 });
 afterEach(() => {
@@ -110,6 +112,24 @@ describe("Workspace", () => {
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/care")),
     );
+  });
+
+  it("restores the source language and word from the URL", async () => {
+    window.history.replaceState(null, "", "/?lang=es&word=agua");
+    render(<Workspace />);
+    expect(await screen.findByRole("heading", { name: "agua" })).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/agua?lang=es"));
+  });
+
+  it("reflects the looked-up word and language in the URL", async () => {
+    render(<Workspace />);
+    await screen.findByRole("heading", { name: "water" });
+    await waitFor(() => {
+      const p = new URLSearchParams(window.location.search);
+      expect(p.get("lang")).toBe("en");
+      expect(p.get("word")).toBe("water");
+      expect(p.get("view")).toBe("freq");
+    });
   });
 
   it("announces an unknown word through an alert", async () => {
