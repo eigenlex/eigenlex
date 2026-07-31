@@ -91,14 +91,19 @@ function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView
   return (
     <div>
       <SegmentedControl.Root aria-label="Band view" value={view} onValueChange={(v) => onChange(v as BandView)}>
-        <SegmentedControl.Item value="freq">Frequency</SegmentedControl.Item>
         {/* Tooltip wraps the item itself — nesting a focusable inside the radio would
             be invalid, so we follow Fondue's SegmentedControl + Tooltip pattern. */}
         <Tooltip.Root>
           <Tooltip.Trigger asChild>
+            <SegmentedControl.Item value="freq">Frequency</SegmentedControl.Item>
+          </Tooltip.Trigger>
+          <Tooltip.Content>Raw frequency</Tooltip.Content>
+        </Tooltip.Root>
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
             <SegmentedControl.Item value="cefr">CEFR</SegmentedControl.Item>
           </Tooltip.Trigger>
-          <Tooltip.Content>{CEFR_TITLE}</Tooltip.Content>
+          <Tooltip.Content>{`${CEFR_TITLE} (CEFR) level`}</Tooltip.Content>
         </Tooltip.Root>
       </SegmentedControl.Root>
     </div>
@@ -123,7 +128,9 @@ function SourceCredit({ lang }: { lang: SourceLang }) {
       <a className={SOURCE_LINK} href={LEMMA_URL} target="_blank" rel="noreferrer">
         lemmatization list
       </a>
-      . <Abbr title={CEFR_TITLE}>CEFR</Abbr> levels are estimated from frequency, with band
+      {/* Spelled out, not an Abbr: a tooltip expansion is unreachable by touch, and CEFR
+          is the one abbreviation the UI labels words with. */}
+      . CEFR ({CEFR_TITLE}) levels are estimated from frequency, with band
       boundaries calibrated to the{" "}
       <a className={SOURCE_LINK} href="https://www.cefr-j.org/" target="_blank" rel="noreferrer">
         <Abbr title={CEFRJ_TITLE}>CEFR-J</Abbr>
@@ -292,13 +299,9 @@ export default function Workspace() {
       </div>
 
       <section aria-labelledby="browse-heading">
-        <h2 id="browse-heading" className="tw-mb-1 tw-heading-medium-strong">
+        <h2 id="browse-heading" className="tw-mb-4 tw-heading-medium-strong">
           Browse the vocabulary
         </h2>
-        <p className="tw-mb-4 tw-body-small text-muted-aaa">
-          Every {langName} word in order — by raw frequency, or by CEFR level.
-        </p>
-
         <BandBrowser
           view={view}
           lang={lang}
