@@ -10,7 +10,7 @@ import type { Band, BandSummary, BandView } from "@/lib/types";
 // and readable type, not the minimal 24px pill).
 const CHIP_BASE =
   "tw-inline-flex tw-items-center tw-min-h-[40px] tw-rounded-full tw-border tw-px-4 tw-py-2 " +
-  "tw-body-medium tw-transition-colors";
+  "tw-body-large tw-transition-colors";
 const CHIP =
   `${CHIP_BASE} tw-border-line-subtle tw-bg-surface-hover tw-text-secondary ` +
   "hover:tw-bg-surface-active hover:tw-text-primary";
