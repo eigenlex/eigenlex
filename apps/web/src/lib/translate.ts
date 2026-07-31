@@ -31,23 +31,47 @@ export function parseGtx(data: unknown): string {
     .trim();
 }
 
+/** One part-of-speech reading of a word, as Google's dictionary block groups them. */
+export interface SenseGroup {
+  /** POS label, in the *reader's* language ("noun", "sustantivo"); "" if absent. */
+  pos: string;
+  terms: string[];
+}
+
 /**
  * Pull dictionary senses out of a `dt=bd` response — its second element is
- * `[[<pos>, [<terms>…], [[<term>, …], …]], …]`. We flatten to the distinct top terms
- * (a compact gloss like "food, meal, dinner"). Returns [] when there's no dictionary
- * block (e.g. a proper noun, or a word with no distinct sense in that casing).
+ * `[[<pos>, [<terms>…], [[<term>, …], …]], …]` — keeping Google's part-of-speech
+ * grouping, so a word with several readings (Spanish "nada": pronoun "nothing", noun
+ * "nothingness", adverb "not at all") can show each. Empty groups are dropped; returns
+ * [] when there's no dictionary block at all.
  */
-export function parseSenses(data: unknown, limit = 4): string[] {
+export function parseSenseGroups(data: unknown, limit = 4): SenseGroup[] {
   const groups = Array.isArray(data) ? (data as unknown[])[1] : undefined;
   if (!Array.isArray(groups)) return [];
-  const terms: string[] = [];
+  const out: SenseGroup[] = [];
   for (const g of groups) {
-    const entries = Array.isArray(g) ? g[2] : undefined;
-    if (!Array.isArray(entries)) continue;
+    if (!Array.isArray(g)) continue;
+    const entries = Array.isArray(g[2]) ? g[2] : undefined;
+    if (!entries) continue;
+    const terms: string[] = [];
     for (const e of entries) {
       const term = Array.isArray(e) && typeof e[0] === "string" ? e[0].trim() : "";
       if (term && !terms.includes(term)) terms.push(term);
     }
+    if (terms.length) out.push({ pos: typeof g[0] === "string" ? g[0].trim() : "", terms: terms.slice(0, limit) });
+  }
+  return out;
+}
+
+/**
+ * The same senses flattened to distinct top terms across every group — a compact gloss
+ * like "food, meal, dinner", used where one line is wanted per *casing* rather than per
+ * part of speech.
+ */
+export function parseSenses(data: unknown, limit = 4): string[] {
+  const terms: string[] = [];
+  for (const g of parseSenseGroups(data, Infinity)) {
+    for (const t of g.terms) if (!terms.includes(t)) terms.push(t);
   }
   return terms.slice(0, limit);
 }

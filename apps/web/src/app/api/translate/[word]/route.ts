@@ -1,4 +1,4 @@
-import { baseLang, gtxUrl, parseGtx, parseSenses } from "@/lib/translate";
+import { baseLang, gtxUrl, parseGtx, parseSenseGroups, parseSenses } from "@/lib/translate";
 
 // A word's translation is stable — let Next's data cache hold it for a day.
 export const revalidate = 86400;
@@ -26,6 +26,8 @@ export async function GET(
       tl,
       translation: parseGtx(data),
       senses: dict ? parseSenses(data) : [],
+      // Per-part-of-speech readings, so the card can show a word's distinct meanings.
+      groups: dict ? parseSenseGroups(data) : [],
     });
   } catch {
     return new Response("upstream error", { status: 502 });

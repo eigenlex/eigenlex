@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Badge, Select } from "@frontify/fondue/components";
 import type { WordBands } from "@/lib/types";
-import { baseLang } from "@/lib/translate";
+import { baseLang, type SenseGroup } from "@/lib/translate";
 
 // Offered in the picker; the reader's browser language and current pick are merged in.
 const COMMON_LANGS = [
@@ -32,38 +32,44 @@ function translateHref(word: string, sl: string, tl: string) {
 }
 
 // Session cache: learners check dozens of words and revisit some, so don't refetch.
-const glossCache = new Map<string, string>();
+const glossCache = new Map<string, { text: string; groups: SenseGroup[] }>();
 
-type Gloss = { status: "loading" | "done" | "error"; text: string };
+const NO_GROUPS: SenseGroup[] = [];
 
+type Gloss = { status: "loading" | "done" | "error"; text: string; groups: SenseGroup[] };
+
+// Dict mode, because it carries the per-part-of-speech readings alongside the plain
+// gloss — a word with more than one of them is worth showing in full.
 function useGloss(word: string, sl: string, tl: string, enabled: boolean): Gloss {
-  const [gloss, setGloss] = useState<Gloss>({ status: "loading", text: "" });
+  const [gloss, setGloss] = useState<Gloss>({ status: "loading", text: "", groups: NO_GROUPS });
   useEffect(() => {
     if (!enabled) return;
     const key = `${sl}:${tl}:${word}`;
     const cached = glossCache.get(key);
     if (cached !== undefined) {
-      setGloss({ status: "done", text: cached });
+      setGloss({ status: "done", ...cached });
       return;
     }
-    setGloss({ status: "loading", text: "" });
+    setGloss({ status: "loading", text: "", groups: NO_GROUPS });
     const ac = new AbortController();
-    fetch(`/api/translate/${encodeURIComponent(word)}?sl=${sl}&tl=${tl}`, { signal: ac.signal })
+    fetch(`/api/translate/${encodeURIComponent(word)}?sl=${sl}&tl=${tl}&dict=1`, { signal: ac.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d: { translation: string }) => {
-        glossCache.set(key, d.translation);
-        setGloss({ status: "done", text: d.translation });
+      .then((d: { translation: string; groups?: SenseGroup[] }) => {
+        const entry = { text: d.translation, groups: d.groups ?? NO_GROUPS };
+        glossCache.set(key, entry);
+        setGloss({ status: "done", ...entry });
       })
       .catch(() => {
-        if (!ac.signal.aborted) setGloss({ status: "error", text: "" });
+        if (!ac.signal.aborted) setGloss({ status: "error", text: "", groups: NO_GROUPS });
       });
     return () => ac.abort();
   }, [word, sl, tl, enabled]);
   return gloss;
 }
 
-type FormGloss = { form: string; gloss: string };
-type Forms = { status: "loading" | "done" | "error"; items: FormGloss[] };
+/** One listed line: a label — a source-language casing, or a part of speech — and its gloss. */
+type GlossLine = { label: string; gloss: string };
+type Forms = { status: "loading" | "done" | "error"; items: GlossLine[] };
 
 // Glosses for a case-homograph: translate each casing on its own (dict mode, which is
 // casing-sensitive), then keep only casings whose meaning is distinct — so a spurious
@@ -79,8 +85,8 @@ function useForms(forms: string[], sl: string, tl: string, enabled: boolean): Fo
       forms.map((form) =>
         fetch(`/api/translate/${encodeURIComponent(form)}?sl=${sl}&tl=${tl}&dict=1`, { signal: ac.signal })
           .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-          .then((d: { translation: string; senses: string[] }): FormGloss => ({
-            form,
+          .then((d: { translation: string; senses: string[] }): GlossLine => ({
+            label: form,
             gloss: (d.senses.length ? d.senses : [d.translation]).filter(Boolean).join(", "),
           })),
       ),
@@ -150,13 +156,25 @@ export default function WordCard({
   const multi = useForms(forms, lang, tl, translate && homograph);
 
   const status = homograph ? multi.status : single.status;
-  const lines: FormGloss[] = homograph
+  // Break the gloss out into labelled lines when the word has genuinely separate
+  // readings: one per casing for a case-homograph, else one per part of speech
+  // (Italian "solo" — adjective "only, alone", adverb "just"). A word with a single
+  // reading keeps the one uncluttered gloss.
+  const lines: GlossLine[] = homograph
     ? multi.items
-    : single.text
-      ? [{ form: info.word, gloss: single.text }]
+    : single.groups.length > 1
+      ? single.groups.map((g) => ({ label: g.pos, gloss: g.terms.join(", ") }))
       : [];
-  const missing = status === "error" || (status === "done" && lines.length === 0);
-  const showForms = lines.length > 1; // distinct meanings per casing — list them
+  const showLines = lines.length > 1;
+  // One reading: its dictionary terms, which beat the plain translation (Italian
+  // "acqua" plainly translates to "waterfall", but the dictionary has "water, aqua").
+  // Only fall back to the plain gloss when there's no dictionary entry at all.
+  const hero = homograph
+    ? (multi.items[0]?.gloss ?? "")
+    : single.groups.length === 1
+      ? single.groups[0]!.terms.join(", ")
+      : single.text;
+  const missing = status === "error" || (status === "done" && !showLines && !hero);
 
   return (
     <section className="WordCard tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-6 tw-py-5">
@@ -172,13 +190,23 @@ export default function WordCard({
             {translate && status === "loading" && (
               <span className="tw-body-small text-muted-aaa">translating…</span>
             )}
-            {translate && status === "done" && showForms && (
+            {translate && status === "done" && showLines && (
               <ul className="tw-flex tw-flex-col tw-gap-1.5">
                 {lines.map((l) => (
-                  <li key={l.form} className="tw-flex tw-flex-wrap tw-items-baseline tw-gap-x-2">
-                    <span lang={lang} className="tw-body-medium text-muted-aaa">
-                      {l.form}
-                    </span>
+                  <li
+                    key={`${l.label}:${l.gloss}`}
+                    className="tw-flex tw-flex-wrap tw-items-baseline tw-gap-x-2"
+                  >
+                    {l.label && (
+                      // A casing is source-language text; a part of speech is Google's
+                      // own label, so it comes back in the reader's language.
+                      <span
+                        lang={homograph ? lang : tl}
+                        className="tw-body-medium text-muted-aaa"
+                      >
+                        {l.label}
+                      </span>
+                    )}
                     <span lang={tl} className="tw-heading-medium-strong tw-text-primary">
                       {l.gloss}
                     </span>
@@ -186,9 +214,9 @@ export default function WordCard({
                 ))}
               </ul>
             )}
-            {translate && status === "done" && !showForms && lines[0] && (
+            {translate && status === "done" && !showLines && hero && (
               <span lang={tl} className="tw-heading-large-strong tw-text-primary">
-                {lines[0].gloss}
+                {hero}
               </span>
             )}
             {translate && missing && (

@@ -135,3 +135,79 @@ describe("WordCard case-homographs", () => {
     expect(screen.queryByText("wer")).not.toBeInTheDocument();
   });
 });
+
+// A dict-mode stub returning Google's part-of-speech groups for a single-casing word.
+function mockGroups(groups: { pos: string; terms: string[] }[], translation: string) {
+  return vi.fn(async (url: string | URL) => {
+    const u = new URL(String(url), "http://localhost");
+    const word = decodeURIComponent(u.pathname.split("/api/translate/")[1] ?? "");
+    return new Response(JSON.stringify({ word, tl: "en", translation, senses: [], groups }));
+  });
+}
+
+describe("WordCard multi-sense words", () => {
+  // Italian "solo": adjective "only/alone" and adverb "just" — one word, two readings.
+  const solo: WordBands = {
+    word: "solo",
+    forms: ["solo"],
+    rank: 47,
+    freq: { key: "1", label: "Top 1,000" },
+    cefr: { key: "A1", label: "A1 · Beginner" },
+  };
+
+  it("lists a gloss per part of speech when a word reads as more than one", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockGroups(
+        [
+          { pos: "adjective", terms: ["only", "alone"] },
+          { pos: "adverb", terms: ["just"] },
+        ],
+        "Alone",
+      ),
+    );
+    render(<WordCard info={solo} lang="it" tl="en" onTlChange={() => {}} />);
+    expect(await screen.findByText("only, alone")).toBeInTheDocument();
+    expect(screen.getByText("just")).toBeInTheDocument();
+    expect(screen.getByText("adjective")).toBeInTheDocument();
+    expect(screen.getByText("adverb")).toBeInTheDocument();
+  });
+
+  it("keeps a single reading as one unlabelled gloss", async () => {
+    vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["water"] }], "water"));
+    render(
+      <WordCard info={{ ...solo, word: "acqua", forms: ["acqua"] }} lang="it" tl="en" onTlChange={() => {}} />,
+    );
+    expect(await screen.findByText("water")).toBeInTheDocument();
+    expect(screen.queryByText("noun")).not.toBeInTheDocument();
+  });
+
+  it("prefers the dictionary terms over a poor plain translation", async () => {
+    // Real case: "acqua" plainly translates to "waterfall", but the dictionary is right.
+    vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["water", "aqua"] }], "waterfall"));
+    render(
+      <WordCard info={{ ...solo, word: "acquario", forms: ["acquario"] }} lang="it" tl="en" onTlChange={() => {}} />,
+    );
+    expect(await screen.findByText("water, aqua")).toBeInTheDocument();
+    expect(screen.queryByText("waterfall")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the plain gloss when there is no dictionary entry", async () => {
+    vi.stubGlobal("fetch", mockGroups([], "Milan"));
+    render(
+      <WordCard info={{ ...solo, word: "Milano", forms: ["Milano"] }} lang="it" tl="en" onTlChange={() => {}} />,
+    );
+    expect(await screen.findByText("Milan")).toBeInTheDocument();
+  });
+
+  it("asks for the dictionary block, which is what carries the readings", async () => {
+    vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["need"] }], "need"));
+    // A word no other test looks up — the gloss cache is module-level, by design.
+    render(
+      <WordCard info={{ ...solo, word: "bisogno", forms: ["bisogno"] }} lang="it" tl="en" onTlChange={() => {}} />,
+    );
+    await screen.findByText("need");
+    const call = (fetch as unknown as { mock: { calls: [string][] } }).mock.calls[0]!;
+    expect(String(call[0])).toContain("dict=1");
+  });
+});

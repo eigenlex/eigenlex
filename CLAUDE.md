@@ -29,6 +29,11 @@ The app reads one committed artifact per language, `apps/web/data/word-bands.<co
 frequency list + a lemmatization list per language. English uses `subtlex.csv`
 (SUBTLEX-US); es/fr/de/pt/it use `freq-<code>.txt` (OpenSubtitles frequency lists from
 hermitdave/FrequencyWords). Lemmas are `lemma-<code>.txt` (michmech/lemmatization-lists).
+A surface word that **heads its own entry** in the lemma list keeps it, rather than being
+merged into whichever lemma claims it. The lists are lemma-sorted, so plain first-wins
+silently hands a shared form to the alphabetically-first claimant — which used to delete
+common words outright (Italian "governo" absorbed into "governare", French "tu" into "il",
+~100–160 of the top 1,000 per language) and float the absorber into the beginner bands.
 Rebuild all with `pnpm --filter @eigenlex/web build:bands`, or one with
 `… build:bands <code>`. To add a language, drop its two inputs in `data/`, add an entry
 to the `LANGS` table in the build script and to `SOURCE_LANG_META` (+ the `bands.ts`
@@ -55,6 +60,13 @@ as `forms`. The word card glosses each casing via the translate API's `dict=1` m
 (Google's `dt=bd` dictionary block is casing-sensitive — "Essen"→food/meal,
 "essen"→eat/dine — unlike the plain translation) and shows a line per casing, collapsing
 to one when the meanings don't actually differ.
+
+**Parts of speech.** The same `dt=bd` block groups its senses by part of speech, which
+`parseSenseGroups` keeps (`parseSenses` flattens them, for the per-casing lines above).
+A word reading as more than one — Italian "solo" adj. "only" / adv. "just", Spanish
+"nada" pron./noun/adv. — gets a labelled line each; a single reading stays one gloss.
+That gloss is the dictionary terms, not the plain translation, which for a lone word is
+sometimes just wrong ("acqua" → "waterfall"). So every word card fetches `dict=1` now.
 
 ## Verifying a build while the web dev server is running
 

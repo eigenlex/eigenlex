@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { baseLang, gtxUrl, parseGtx, parseSenses } from "./translate";
+import { baseLang, gtxUrl, parseGtx, parseSenseGroups, parseSenses } from "./translate";
 
 describe("baseLang", () => {
   it("strips region and lowercases, defaulting to en", () => {
@@ -47,6 +47,48 @@ describe("parseSenses", () => {
     expect(parseSenses([[["who"]]])).toEqual([]);
     expect(parseSenses(null)).toEqual([]);
     expect(parseSenses([[["x"]], null])).toEqual([]);
+  });
+
+  it("flattens across parts of speech, so a casing gloss stays one line", () => {
+    expect(parseSenses(nada)).toEqual(["nothing", "none", "nothingness", "nil"]);
+  });
+});
+
+// A word reading as several parts of speech — Spanish "nada": pronoun, noun, adverb.
+const nada = [
+  [["nothing", "nada"]],
+  [
+    ["pronoun", ["nothing"], [["nothing", [], 0.9], ["none", [], 0.4]]],
+    ["noun", ["nothingness"], [["nothingness", [], 0.5], ["nil", [], 0.2]]],
+    ["adverb", ["not at all"], [["not at all", [], 0.3]]],
+  ],
+];
+
+describe("parseSenseGroups", () => {
+  it("keeps Google's part-of-speech grouping", () => {
+    expect(parseSenseGroups(nada)).toEqual([
+      { pos: "pronoun", terms: ["nothing", "none"] },
+      { pos: "noun", terms: ["nothingness", "nil"] },
+      { pos: "adverb", terms: ["not at all"] },
+    ]);
+  });
+
+  it("caps terms per group, not across all of them", () => {
+    expect(parseSenseGroups(nada, 1)).toEqual([
+      { pos: "pronoun", terms: ["nothing"] },
+      { pos: "noun", terms: ["nothingness"] },
+      { pos: "adverb", terms: ["not at all"] },
+    ]);
+  });
+
+  it("drops groups carrying no terms, and tolerates a missing pos label", () => {
+    const odd = [[["x"]], [["verb", ["y"], []], [null, ["z"], [["z", [], 0.5]]]]];
+    expect(parseSenseGroups(odd)).toEqual([{ pos: "", terms: ["z"] }]);
+  });
+
+  it("returns [] when there is no dictionary block", () => {
+    expect(parseSenseGroups([[["who"]]])).toEqual([]);
+    expect(parseSenseGroups(null)).toEqual([]);
   });
 });
 

@@ -16,8 +16,7 @@ export default function Home() {
         {/* line-height 1.5 for blocks of text (WCAG 1.4.8); the Fondue type token
             sets a tighter value, so override it inline. */}
         <p className="tw-body-large tw-max-w-[60ch] text-muted-aaa" style={{ lineHeight: 1.5 }}>
-          Which words to learn first — in English, Spanish, French, German,
-          Portuguese, or Italian. Every word sits on a learning band, by raw frequency
+          Which words to learn first. Every word sits on a learning band, by raw frequency
           or by CEFR level. Look one up to see where it lands, or browse the whole
           vocabulary in order.
         </p>
