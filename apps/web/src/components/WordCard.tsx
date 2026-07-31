@@ -217,9 +217,9 @@ export default function WordCard({
             )}
           </div>
         </div>
-        {/* Translation controls, kept compact in the top-right. */}
+        {/* Translation controls, top-right. Both are 44px targets (WCAG 2.5.5). */}
         <div className="tw-flex tw-shrink-0 tw-flex-col tw-items-end tw-gap-1.5">
-          <div className="tw-w-44">
+          <div className="tw-w-44 [&_[role=combobox]]:tw-min-h-[44px]">
             <LanguageSelect value={tl} onChange={onTlChange} />
           </div>
           <a
@@ -228,7 +228,7 @@ export default function WordCard({
             // clearing window.name) — accepted, for its pronunciation audio.
             target="_blank"
             rel="noopener noreferrer"
-            className="tw-inline-flex tw-items-center tw-gap-1 tw-rounded-full tw-border tw-border-line-subtle tw-px-3 tw-py-1.5 tw-body-medium tw-text-secondary tw-no-underline hover:tw-border-line hover:tw-text-primary"
+            className="tw-inline-flex tw-min-h-[44px] tw-items-center tw-gap-1 tw-rounded-full tw-border tw-border-line-subtle tw-px-4 tw-py-1.5 tw-body-large tw-text-secondary tw-no-underline hover:tw-border-line hover:tw-text-primary"
           >
             Google Translate ↗
           </a>
