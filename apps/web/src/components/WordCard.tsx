@@ -176,7 +176,7 @@ export default function WordCard({
         {/* The word is a quiet label — it's already in the search box and word chips;
             its meaning is the card's hero. */}
         <div className="tw-min-w-0">
-          <h2 className="tw-heading-medium text-muted-aaa tw-break-words" lang={lang}>
+          <h2 className="tw-heading-large text-muted-aaa tw-break-words" lang={lang}>
             {info.word}
           </h2>
           {/* Announce translation state changes to assistive tech (WCAG 4.1.3). */}
