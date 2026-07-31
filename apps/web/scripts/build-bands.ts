@@ -290,9 +290,7 @@ function buildLang(cfg: LangConfig) {
     isHeadword.add(l);
     if (!form2lemma.has(f)) form2lemma.set(f, l);
   }
-  // A word that heads its own entry keeps it. The lists are lemma-sorted, so first-wins
-  // otherwise hands a shared surface form to whichever claimant sorts first — losing the
-  // headword entirely: "governo" vanished into "governare", French "tu" into "il".
+  // A word heading its own entry keeps it — else first-wins silently swallows it.
   const lemmaOf = (w: string) => (isHeadword.has(w) ? w : form2lemma.get(w) ?? w);
 
   // Sum frequency per lemma across all its inflections.

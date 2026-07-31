@@ -39,11 +39,9 @@ export interface SenseGroup {
 }
 
 /**
- * Pull dictionary senses out of a `dt=bd` response — its second element is
- * `[[<pos>, [<terms>…], [[<term>, …], …]], …]` — keeping Google's part-of-speech
- * grouping, so a word with several readings (Spanish "nada": pronoun "nothing", noun
- * "nothingness", adverb "not at all") can show each. Empty groups are dropped; returns
- * [] when there's no dictionary block at all.
+ * Dictionary senses from a `dt=bd` response — second element, shaped
+ * `[[<pos>, [<terms>…], [[<term>, …], …]], …]` — keeping the part-of-speech grouping.
+ * Empty groups are dropped; [] when there's no dictionary block.
  */
 export function parseSenseGroups(data: unknown, limit = 4): SenseGroup[] {
   const groups = Array.isArray(data) ? (data as unknown[])[1] : undefined;
@@ -63,11 +61,7 @@ export function parseSenseGroups(data: unknown, limit = 4): SenseGroup[] {
   return out;
 }
 
-/**
- * The same senses flattened to distinct top terms across every group — a compact gloss
- * like "food, meal, dinner", used where one line is wanted per *casing* rather than per
- * part of speech.
- */
+/** The same senses flattened across groups — a compact gloss, "food, meal, dinner". */
 export function parseSenses(data: unknown, limit = 4): string[] {
   const terms: string[] = [];
   for (const g of parseSenseGroups(data, Infinity)) {

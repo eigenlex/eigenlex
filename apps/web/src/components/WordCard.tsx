@@ -38,8 +38,7 @@ const NO_GROUPS: SenseGroup[] = [];
 
 type Gloss = { status: "loading" | "done" | "error"; text: string; groups: SenseGroup[] };
 
-// Dict mode, because it carries the per-part-of-speech readings alongside the plain
-// gloss — a word with more than one of them is worth showing in full.
+// Dict mode: it carries the per-part-of-speech readings.
 function useGloss(word: string, sl: string, tl: string, enabled: boolean): Gloss {
   const [gloss, setGloss] = useState<Gloss>({ status: "loading", text: "", groups: NO_GROUPS });
   useEffect(() => {
@@ -156,19 +155,14 @@ export default function WordCard({
   const multi = useForms(forms, lang, tl, translate && homograph);
 
   const status = homograph ? multi.status : single.status;
-  // Break the gloss out into labelled lines when the word has genuinely separate
-  // readings: one per casing for a case-homograph, else one per part of speech
-  // (Italian "solo" — adjective "only, alone", adverb "just"). A word with a single
-  // reading keeps the one uncluttered gloss.
+  // Separate readings get a line each: per casing for a homograph, else per part of speech.
   const lines: GlossLine[] = homograph
     ? multi.items
     : single.groups.length > 1
       ? single.groups.map((g) => ({ label: g.pos, gloss: g.terms.join(", ") }))
       : [];
   const showLines = lines.length > 1;
-  // One reading: its dictionary terms, which beat the plain translation (Italian
-  // "acqua" plainly translates to "waterfall", but the dictionary has "water, aqua").
-  // Only fall back to the plain gloss when there's no dictionary entry at all.
+  // Dictionary terms beat the plain translation, which alone can be wrong ("acqua" → "waterfall").
   const hero = homograph
     ? (multi.items[0]?.gloss ?? "")
     : single.groups.length === 1
@@ -198,8 +192,7 @@ export default function WordCard({
                     className="tw-flex tw-flex-wrap tw-items-baseline tw-gap-x-2"
                   >
                     {l.label && (
-                      // A casing is source-language text; a part of speech is Google's
-                      // own label, so it comes back in the reader's language.
+                      // A casing is source-language; a POS label comes back in the reader's.
                       <span
                         lang={homograph ? lang : tl}
                         className="tw-body-medium text-muted-aaa"
