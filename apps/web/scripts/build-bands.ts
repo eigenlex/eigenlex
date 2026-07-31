@@ -282,12 +282,18 @@ function buildLang(cfg: LangConfig) {
 
   // Lemma map: inflected form -> base lemma (michmech lists are `lemma<TAB>form`).
   const form2lemma = new Map<string, string>();
+  const isHeadword = new Set<string>();
   for (const line of readFileSync(data(cfg.lemmaFile), "utf8").split(/\r?\n/)) {
     const [lemma, form] = line.replace(/^﻿/, "").split("\t");
     const l = clean(lemma), f = clean(form);
-    if (l && f && !form2lemma.has(f)) form2lemma.set(f, l);
+    if (!l || !f) continue;
+    isHeadword.add(l);
+    if (!form2lemma.has(f)) form2lemma.set(f, l);
   }
-  const lemmaOf = (w: string) => form2lemma.get(w) ?? w;
+  // A word that heads its own entry keeps it. The lists are lemma-sorted, so first-wins
+  // otherwise hands a shared surface form to whichever claimant sorts first — losing the
+  // headword entirely: "governo" vanished into "governare", French "tu" into "il".
+  const lemmaOf = (w: string) => (isHeadword.has(w) ? w : form2lemma.get(w) ?? w);
 
   // Sum frequency per lemma across all its inflections.
   const lines = readFileSync(data(cfg.freq.file), "utf8").split(/\r?\n/);
