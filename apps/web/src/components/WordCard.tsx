@@ -172,10 +172,13 @@ export default function WordCard({
 
   return (
     <section className="WordCard tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-6 tw-py-5">
-      <div className="tw-flex tw-items-start tw-justify-between tw-gap-4">
+      {/* Wraps on the card's own width, not the viewport's — it is also cramped in the
+          two-column layout just past 860px. Alone on a wrapped row, justify-between
+          leaves the controls at the start. */}
+      <div className="tw-flex tw-flex-wrap tw-items-start tw-justify-between tw-gap-4">
         {/* The word is a quiet label — it's already in the search box and word chips;
             its meaning is the card's hero. */}
-        <div className="tw-min-w-0">
+        <div className="tw-min-w-0 tw-grow tw-basis-[17rem]">
           <h2 className="tw-heading-large text-muted-aaa tw-break-words" lang={lang}>
             {info.word}
           </h2>
@@ -217,8 +220,8 @@ export default function WordCard({
             )}
           </div>
         </div>
-        {/* Translation controls, top-right. Both are 44px targets (WCAG 2.5.5). */}
-        <div className="tw-flex tw-shrink-0 tw-flex-col tw-items-end tw-gap-1.5">
+        {/* Translation controls. Both are 44px targets (WCAG 2.5.5). */}
+        <div className="tw-flex tw-shrink-0 tw-flex-col tw-items-stretch tw-gap-1.5">
           <div className="tw-w-44 [&_[role=combobox]]:tw-min-h-[44px]">
             <LanguageSelect value={tl} onChange={onTlChange} />
           </div>
@@ -228,7 +231,7 @@ export default function WordCard({
             // clearing window.name) — accepted, for its pronunciation audio.
             target="_blank"
             rel="noopener noreferrer"
-            className="tw-inline-flex tw-min-h-[44px] tw-items-center tw-gap-1 tw-rounded-full tw-border tw-border-line-subtle tw-px-4 tw-py-1.5 tw-body-large tw-text-secondary tw-no-underline hover:tw-border-line hover:tw-text-primary"
+            className="tw-inline-flex tw-min-h-[44px] tw-items-center tw-justify-center tw-gap-1 tw-rounded-full tw-border tw-border-line-subtle tw-px-4 tw-py-1.5 tw-body-large tw-text-secondary tw-no-underline hover:tw-border-line hover:tw-text-primary"
           >
             Google Translate ↗
           </a>
