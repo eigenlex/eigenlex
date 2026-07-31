@@ -93,6 +93,12 @@ const LANGS: Record<string, LangConfig> = {
     singleLetterOk: new Set(["a", "i"]),
     fragments: new Set(["re", "ll", "ve", "em", "im", "n", "st", "nd", "rd", "th"]),
     spotChecks: ["the", "be", "water", "government", "philosophy", "entropy", "photosynthesis"],
+    casingFile: "casing-en.txt",
+    determiners: new Set([
+      "the", "a", "an", "this", "that", "these", "those",
+      "my", "your", "his", "her", "its", "our", "their",
+      "some", "any", "no", "every", "each", "another",
+    ]),
   },
   es: {
     code: "es",
@@ -101,6 +107,12 @@ const LANGS: Record<string, LangConfig> = {
     singleLetterOk: new Set(["a", "y", "o", "e", "u"]),
     fragments: new Set(),
     spotChecks: ["de", "ser", "agua", "gobierno", "filosofía", "entropía"],
+    casingFile: "casing-es.txt",
+    determiners: new Set([
+      "el", "la", "los", "las", "lo", "un", "una", "unos", "unas",
+      "del", "al", "este", "esta", "estos", "estas", "ese", "esa", "esos", "esas",
+      "mi", "tu", "su", "mis", "tus", "sus", "nuestro", "nuestra", "cada", "otro", "otra",
+    ]),
   },
   fr: {
     code: "fr",
@@ -109,6 +121,14 @@ const LANGS: Record<string, LangConfig> = {
     singleLetterOk: new Set(["à", "a", "y"]),
     fragments: new Set(),
     spotChecks: ["de", "être", "eau", "gouvernement", "philosophie", "entropie"],
+    casingFile: "casing-fr.txt",
+    // Elided forms ("l'eau") tokenize as one word, so they can't precede — the
+    // non-elided determiners carry the test.
+    determiners: new Set([
+      "le", "la", "les", "un", "une", "des", "du", "au", "aux",
+      "ce", "cet", "cette", "ces", "mon", "ma", "mes", "ton", "ta", "tes",
+      "son", "sa", "ses", "notre", "votre", "leur", "leurs", "chaque", "autre",
+    ]),
   },
   de: {
     code: "de",
@@ -133,6 +153,13 @@ const LANGS: Record<string, LangConfig> = {
     singleLetterOk: new Set(["a", "o", "e", "é", "à", "á"]),
     fragments: new Set(),
     spotChecks: ["que", "ser", "água", "governo", "filosofia", "entropia"],
+    casingFile: "casing-pt.txt",
+    determiners: new Set([
+      "o", "a", "os", "as", "um", "uma", "uns", "umas",
+      "do", "da", "dos", "das", "no", "na", "nos", "nas", "ao", "à",
+      "este", "esta", "esse", "essa", "aquele", "aquela",
+      "meu", "minha", "seu", "sua", "nosso", "nossa", "cada", "outro", "outra",
+    ]),
   },
   it: {
     code: "it",
@@ -141,6 +168,13 @@ const LANGS: Record<string, LangConfig> = {
     singleLetterOk: new Set(["a", "e", "è", "i", "o"]),
     fragments: new Set(),
     spotChecks: ["di", "essere", "acqua", "società", "filosofia", "entropia"],
+    casingFile: "casing-it.txt",
+    determiners: new Set([
+      "il", "lo", "la", "i", "gli", "le", "un", "uno", "una",
+      "del", "dello", "della", "dei", "degli", "delle", "al", "alla", "nel", "nella",
+      "questo", "questa", "questi", "queste", "quel", "quella",
+      "mio", "mia", "tuo", "tua", "suo", "sua", "nostro", "ogni", "altro", "altra",
+    ]),
   },
 };
 
@@ -400,10 +434,10 @@ function buildLang(cfg: LangConfig) {
   if (cased) {
     const capped = keptKeys.filter((w) => cased.casing.has(w)).length;
     const pct = ((capped / keptKeys.length) * 100).toFixed(0);
-    const examples = ["wasser", "regierung", "mädchen", "gefängnis"].map((w) => cased.casing.get(w) ?? w);
+    const examples = keptKeys.filter((w) => cased.casing.has(w)).slice(0, 4).map((w) => cased.casing.get(w)!);
     console.log(`  casing: ${capped.toLocaleString()} capitalized (${pct}%)`, "e.g.", examples.join(" "));
     console.log(`  homographs: ${Object.keys(variants).length}`, "e.g.",
-      ["essen", "morgen", "recht"].map((w) => (variants[w] ?? []).join("/")).filter(Boolean).join(" "));
+      Object.values(variants).slice(0, 3).map((v) => v.join("/")).join(" "));
     const sample = rankedKeys.filter((w, i) => i >= NAME_RANK_FLOOR && isName(w)).slice(0, 6);
     console.log(`  names dropped: ${dropped.toLocaleString()}`, "e.g.", sample.join(" "));
   }

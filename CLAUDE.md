@@ -49,7 +49,10 @@ any language come out capitalized while verbs/pronouns stay lowercase, with no
 per-language rules. The already-present lemma list supplies an authoritative fallback for
 the rare tail. The stored `ranked` words carry display casing; all lookups in `bands.ts`
 key on lowercase, so search/typeahead stay case-insensitive. Languages without a
-`casingFile` stay lowercase. Only German uses this so far.
+`casingFile` stay lowercase. All six languages now have one, and the measurement is
+language-agnostic: Spanish `lunes`/`enero`/`español` and Italian `lunedì`/`gennaio` stay
+lowercase where those languages want it, while `Roma`, `Lisboa`, `London`, `Dios` and the
+German nouns capitalize — no per-language rules anywhere.
 
 **Personal names** ("Ahmed", "Moretti", "Kendra") crowd subtitle corpora without being
 vocabulary. A word is dropped when it is in the shared gazetteer `data/names.txt`
@@ -60,8 +63,15 @@ capitalized mid-sentence, and rarely preceded by a determiner (`determiners` in 
 ("in", "von", "man"), and the determiner test spares ordinary nouns michmech simply
 lacks ("Kuss", "Fass", "Geduld", "Sheriff") — which surname lists are full of. The top
 `NAME_RANK_FLOOR` (1,000) is exempt, where a hit is likelier a loanword noun than a
-name. Requires a casing corpus, so today this is German only (−2,185 words); the other
-languages are untouched until they get a `casingFile`.
+name. Active for all six (en −1,126, es −2,495, fr −2,790, de −2,185, pt −1,737,
+it −2,316); a language without a `casingFile` is skipped entirely, since the gazetteer
+alone would eat "que", "por", "he", "she".
+
+*Known wart:* a few country names sit in the surname list and go with them — `england`,
+`france`, `africa`, `canada`, `india` (en), `francia`/`italia` (es), `italia`/
+`inghilterra` (it). The determiner test rescues the rest (fr and pt lose none), but
+English never articles a country ("the France" is ungrammatical) so it can't fire there.
+The result is arbitrary-looking: `germany` stays, `france` goes.
 
 **Case-homographs** (German "Essen" the noun vs "essen" the verb) merge into one source
 entry but keep both casings. The build flags an entry when both casings are genuinely

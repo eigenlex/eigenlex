@@ -22,14 +22,15 @@ learning order than any dictionary-structure metric, so the ranking rests on it 
   labels are learner-familiar while coverage stays the full vocabulary. The calibration
   is English-derived and reused for every language as a first-order heuristic. No
   external dictionary is required at runtime.
-- **Display casing** (German only, so far) is measured from the
+- **Display casing** is measured from the
   [Leipzig Corpora](https://wortschatz.uni-leipzig.de/en/download) sentence collection:
-  how often each word is capitalized mid-sentence decides whether it's shown capitalized,
-  so German nouns and proper nouns come out right with no per-language rules.
+  how often each word is capitalized mid-sentence decides whether it's shown capitalized.
+  One rule serves every language — German nouns, and proper nouns anywhere, come out
+  capitalized, while Spanish `lunes` and Italian `gennaio` correctly stay lowercase.
 - **Personal names** are filtered out — subtitle corpora are full of character names, which
   aren't vocabulary. A word is dropped only when a [names gazetteer](https://github.com/smashew/NameDatabases),
-  the lemma list, mid-sentence casing, and how often it follows a determiner all agree it's
-  a name. Needs the casing corpus, so this is German-only so far.
+  the lemma list, mid-sentence casing, and how often it follows a determiner *all* agree
+  it's a name; each guard rescues words the others would wrongly take.
 - **Translations** — the per-word gloss in the word card — are fetched live from
   [Google Translate](https://translate.google.com/) (its public `gtx` endpoint) in the
   reader's chosen language, and cached. This is the only source consulted at runtime;
@@ -63,8 +64,8 @@ pnpm typecheck   # type-check everything
 The `word-bands.<code>.json` artifacts are committed, so the app runs without a build
 step. To regenerate them, place each language's gitignored inputs in `apps/web/data/`
 — English `subtlex.csv` + `lemma-en.txt`; each other language `freq-<code>.txt` +
-`lemma-<code>.txt`. A language that also filters names needs `casing-<code>.txt` (a
-Leipzig sentences file) and the shared `names.txt` gazetteer. Then run:
+`lemma-<code>.txt`. Casing and the name filter additionally need `casing-<code>.txt` (a
+Leipzig sentences file) per language, plus the shared `names.txt` gazetteer. Then run:
 
 ```sh
 pnpm --filter @eigenlex/web build:bands        # all languages
