@@ -82,11 +82,13 @@ export default function Providers({
 
   return (
     <ThemeToggleContext.Provider value={{ preference, resolvedTheme: resolved, setPreference }}>
-      <ThemeProvider
-        theme={resolved}
-        className="Providers tw-min-h-screen tw-bg-surface-dim tw-text-primary"
-      >
-        {children}
+      {/* Layout classes go on an inner wrapper, not on ThemeProvider: Fondue re-renders
+          it with the same props inside every tooltip portal, so a full-height class
+          there appends a second viewport-tall block to <body>. */}
+      <ThemeProvider theme={resolved}>
+        <div className="Providers tw-min-h-screen tw-bg-surface-dim tw-text-primary">
+          {children}
+        </div>
       </ThemeProvider>
     </ThemeToggleContext.Provider>
   );

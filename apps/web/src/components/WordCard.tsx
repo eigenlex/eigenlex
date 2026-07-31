@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Badge, Select } from "@frontify/fondue/components";
+import { Badge, Select, Tooltip } from "@frontify/fondue/components";
 import type { WordBands } from "@/lib/types";
 import { baseLang, type SenseGroup } from "@/lib/translate";
 
@@ -123,13 +123,35 @@ function LanguageSelect({ value, onChange }: { value: string; onChange: (l: stri
   );
 }
 
-/** A labelled metric in the card's stat row: small caption over its value. */
+// A metric in the card's stat row. The caption costs more room than it earns, so it
+// rides in a tooltip instead — Fondue's opens on hover and focus, and the click handler
+// adds tap, which it doesn't cover. The label is also in the accessible name, so it is
+// never hover-only. Padding makes a 44px target (WCAG 2.5.5) that negative margin keeps
+// out of the layout, so the row stays one badge tall.
 function Stat({ label, children }: { label: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  // Escape must dismiss it (WCAG 1.4.13) — controlling `open` ourselves means Radix's
+  // own handler no longer fires, and hover-opened tooltips never hold focus.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
   return (
-    <div>
-      <span className="tw-mb-1 tw-block tw-body-x-small text-muted-aaa">{label}</span>
-      {children}
-    </div>
+    <Tooltip.Root open={open} onOpenChange={setOpen} enterDelay={200}>
+      <Tooltip.Trigger asChild>
+        <span
+          tabIndex={0}
+          onClick={() => setOpen((o) => !o)}
+          className="tw--my-[10px] tw--mx-1 tw-inline-flex tw-min-h-[44px] tw-min-w-[44px] tw-cursor-help tw-items-center tw-justify-center tw-rounded-[8px] tw-px-1"
+        >
+          <span className="visually-hidden">{label}: </span>
+          {children}
+        </span>
+      </Tooltip.Trigger>
+      <Tooltip.Content>{label}</Tooltip.Content>
+    </Tooltip.Root>
   );
 }
 
@@ -238,7 +260,7 @@ export default function WordCard({
         </div>
       </div>
 
-      <div className="tw-mt-5 tw-flex tw-flex-wrap tw-items-start tw-gap-x-10 tw-gap-y-4 tw-border-t tw-border-line-subtle tw-pt-4">
+      <div className="tw-mt-4 tw-flex tw-flex-wrap tw-items-center tw-gap-x-5 tw-gap-y-3 tw-border-t tw-border-line-subtle tw-pt-3">
         <Stat label="Frequency rank">
           <span className="tw-body-large tw-font-medium tw-tabular-nums tw-text-primary">
             #{info.rank.toLocaleString()}
