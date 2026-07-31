@@ -200,7 +200,7 @@ export default function WordCard({
                         {l.label}
                       </span>
                     )}
-                    <span lang={tl} className="tw-heading-medium-strong tw-text-primary">
+                    <span lang={tl} className="tw-body-large tw-text-primary">
                       {l.gloss}
                     </span>
                   </li>
@@ -208,7 +208,7 @@ export default function WordCard({
               </ul>
             )}
             {translate && status === "done" && !showLines && hero && (
-              <span lang={tl} className="tw-heading-large-strong tw-text-primary">
+              <span lang={tl} className="tw-body-large tw-text-primary">
                 {hero}
               </span>
             )}
