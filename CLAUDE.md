@@ -51,6 +51,18 @@ the rare tail. The stored `ranked` words carry display casing; all lookups in `b
 key on lowercase, so search/typeahead stay case-insensitive. Languages without a
 `casingFile` stay lowercase. Only German uses this so far.
 
+**Personal names** ("Ahmed", "Moretti", "Kendra") crowd subtitle corpora without being
+vocabulary. A word is dropped when it is in the shared gazetteer `data/names.txt`
+(michmech-style plain list, gitignored), *absent* from the language's lemma list,
+capitalized mid-sentence, and rarely preceded by a determiner (`determiners` in the
+`LANGS` table). All four are needed: the dictionary spares surnames that are also words
+("Koch", "Berg"), casing spares lowercase function words that collide with short names
+("in", "von", "man"), and the determiner test spares ordinary nouns michmech simply
+lacks ("Kuss", "Fass", "Geduld", "Sheriff") — which surname lists are full of. The top
+`NAME_RANK_FLOOR` (1,000) is exempt, where a hit is likelier a loanword noun than a
+name. Requires a casing corpus, so today this is German only (−2,185 words); the other
+languages are untouched until they get a `casingFile`.
+
 **Case-homographs** (German "Essen" the noun vs "essen" the verb) merge into one source
 entry but keep both casings. The build flags an entry when both casings are genuinely
 used mid-sentence *and* the lemma list has a capitalized (noun) spelling — filtering

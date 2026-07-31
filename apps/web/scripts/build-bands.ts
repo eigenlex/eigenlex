@@ -81,6 +81,8 @@ interface LangConfig {
    * per-language rules. Absent = output stays lowercase.
    */
   casingFile?: string;
+  /** Determiners, for the name filter: a common noun follows one, a personal name rarely does. */
+  determiners?: Set<string>;
 }
 
 const LANGS: Record<string, LangConfig> = {
@@ -116,6 +118,13 @@ const LANGS: Record<string, LangConfig> = {
     fragments: new Set(),
     spotChecks: ["ich", "sein", "wasser", "regierung", "philosophie", "entropie"],
     casingFile: "casing-de.txt",
+    determiners: new Set([
+      "der", "die", "das", "den", "dem", "des",
+      "ein", "eine", "einen", "einem", "einer", "eines",
+      "kein", "keine", "keinen", "keinem", "keiner",
+      "mein", "dein", "sein", "ihr", "unser", "euer",
+      "diese", "dieser", "dieses", "diesem", "diesen",
+    ]),
   },
   pt: {
     code: "pt",
@@ -183,6 +192,30 @@ const CASING_TOKEN = /[^\W\d_]+(?:['’-][^\W\d_]+)*/gu;
 const HOMOGRAPH_MIN_COUNT = 100;
 const HOMOGRAPH_MIN_SHARE = 0.1;
 
+// Personal names crowd subtitle corpora ("Ahmed", "Moretti", "Kendra") without being
+// vocabulary. All three signals are needed: the dictionary spares surnames that are also
+// words ("Koch", "Berg"), and mid-sentence casing spares lowercase function words that
+// collide with short names ("in", "von", "man"). Only languages with a casing corpus can
+// be filtered — without it the gazetteer would eat "que", "por", "he".
+const NAMES_FILE = "names.txt";
+// Above this rank a hit is far likelier to be a loanword noun missing from the lemma
+// list ("Boss", "Sheriff") than a name, so leave the head alone.
+const NAME_RANK_FLOOR = 1000;
+const NAME_CAP_SHARE = 0.9;
+const NAME_MIN_OBS = 5;
+// Rescue: michmech misses plenty of ordinary nouns ("Kuss", "Fass", "Geduld"), and many
+// are surnames too. Taking a determiner this often marks a common noun, not a name.
+const NAME_DET_SHARE = 0.1;
+
+let namesCache: Set<string> | null = null;
+const loadNames = () =>
+  (namesCache ??= new Set(
+    readFileSync(data(NAMES_FILE), "utf8")
+      .split(/\r?\n/)
+      .map((l) => l.replace(/^﻿/, "").trim().toLowerCase())
+      .filter(Boolean),
+  ));
+
 const isAllCaps = (w: string) => w.length > 1 && w === w.toUpperCase() && w !== w.toLowerCase();
 const isCapped = (w: string) => w[0] !== w[0]!.toLowerCase();
 const topKey = (counts: Map<string, number>) =>
@@ -191,11 +224,13 @@ const topKey = (counts: Map<string, number>) =>
 interface CorpusStat {
   tot: number;
   cap: number;
+  /** occurrences directly after a determiner — a common noun takes them, a name doesn't */
+  det: number;
   /** capitalized spelling -> count, to pick the dominant display form */
   forms: Map<string, number>;
 }
 
-function corpusCasing(file: string): Map<string, CorpusStat> {
+function corpusCasing(file: string, determiners: Set<string>): Map<string, CorpusStat> {
   const stat = new Map<string, CorpusStat>();
   for (const line of readFileSync(data(file), "utf8").split(/\r?\n/)) {
     const tab = line.indexOf("\t");
@@ -206,8 +241,9 @@ function corpusCasing(file: string): Map<string, CorpusStat> {
       const w = toks[i]!;
       const key = w.toLowerCase();
       let s = stat.get(key);
-      if (!s) stat.set(key, (s = { tot: 0, cap: 0, forms: new Map() }));
+      if (!s) stat.set(key, (s = { tot: 0, cap: 0, det: 0, forms: new Map() }));
       s.tot++;
+      if (determiners.has(toks[i - 1]!.toLowerCase())) s.det++;
       if (isCapped(w) && !isAllCaps(w)) {
         s.cap++;
         s.forms.set(w, (s.forms.get(w) ?? 0) + 1);
@@ -246,8 +282,11 @@ function dictCasing(spellings: Map<string, Set<string>>): Map<string, string> {
 function buildCasing(cfg: LangConfig): {
   casing: Map<string, string>;
   variants: Map<string, string[]>;
+  corpus: Map<string, CorpusStat>;
 } {
-  const corpus = cfg.casingFile ? corpusCasing(cfg.casingFile) : new Map<string, CorpusStat>();
+  const corpus = cfg.casingFile
+    ? corpusCasing(cfg.casingFile, cfg.determiners ?? new Set())
+    : new Map<string, CorpusStat>();
   const spellings = lemmaSpellings(cfg.lemmaFile);
   const dict = dictCasing(spellings);
   const casing = new Map<string, string>();
@@ -274,7 +313,7 @@ function buildCasing(cfg: LangConfig): {
     const capForm = topKey(c.forms);
     variants.set(key, c.cap >= low ? [capForm, key] : [key, capForm]);
   }
-  return { casing, variants };
+  return { casing, variants, corpus };
 }
 
 function buildLang(cfg: LangConfig) {
@@ -325,11 +364,24 @@ function buildLang(cfg: LangConfig) {
     .map(([w]) => w);
 
   const cased = cfg.casingFile ? buildCasing(cfg) : null;
-  const ranked = cased ? rankedKeys.map((w) => cased.casing.get(w) ?? w) : rankedKeys;
+
+  // Drop personal names (see NAMES_FILE above); needs the casing corpus, so this is a
+  // no-op for languages without one.
+  const names = cased ? loadNames() : null;
+  const isName = (w: string) => {
+    if (!names || !cased || isHeadword.has(w) || form2lemma.has(w) || !names.has(w)) return false;
+    const s = cased.corpus.get(w);
+    if (!s || s.tot < NAME_MIN_OBS || s.cap / s.tot < NAME_CAP_SHARE) return false;
+    return s.det / s.tot < NAME_DET_SHARE;
+  };
+  const keptKeys = rankedKeys.filter((w, i) => i < NAME_RANK_FLOOR || !isName(w));
+  const dropped = rankedKeys.length - keptKeys.length;
+
+  const ranked = cased ? keptKeys.map((w) => cased.casing.get(w) ?? w) : keptKeys;
 
   // Case-homographs among the ranked words: lowercase key -> both casings to translate.
   const variants: Record<string, string[]> = {};
-  if (cased) for (const w of rankedKeys) if (cased.variants.has(w)) variants[w] = cased.variants.get(w)!;
+  if (cased) for (const w of keptKeys) if (cased.variants.has(w)) variants[w] = cased.variants.get(w)!;
 
   const outPath = data(`word-bands.${cfg.code}.json`);
   writeFileSync(
@@ -338,7 +390,7 @@ function buildLang(cfg: LangConfig) {
   );
 
   // --- Report ---
-  const rankOf = new Map(rankedKeys.map((w, i) => [w, i + 1]));
+  const rankOf = new Map(keptKeys.map((w, i) => [w, i + 1]));
   const bandCount = (d: BandDef) =>
     (d.max === null ? ranked.length : Math.min(d.max, ranked.length)) - d.min + 1;
   console.log(`\n[${cfg.code}] ranked ${ranked.length.toLocaleString()} lemmas -> ${outPath}`);
@@ -346,12 +398,14 @@ function buildLang(cfg: LangConfig) {
   console.log("  CEFR:", CEFR_BANDS.map((d) => `${d.key}=${bandCount(d).toLocaleString()}`).join("  "));
   console.log("  spot-checks:", cfg.spotChecks.map((w) => `${w}→${(rankOf.get(w) ?? "—").toLocaleString()}`).join("  "));
   if (cased) {
-    const capped = rankedKeys.filter((w) => cased.casing.has(w)).length;
-    const pct = ((capped / rankedKeys.length) * 100).toFixed(0);
+    const capped = keptKeys.filter((w) => cased.casing.has(w)).length;
+    const pct = ((capped / keptKeys.length) * 100).toFixed(0);
     const examples = ["wasser", "regierung", "mädchen", "gefängnis"].map((w) => cased.casing.get(w) ?? w);
     console.log(`  casing: ${capped.toLocaleString()} capitalized (${pct}%)`, "e.g.", examples.join(" "));
     console.log(`  homographs: ${Object.keys(variants).length}`, "e.g.",
       ["essen", "morgen", "recht"].map((w) => (variants[w] ?? []).join("/")).filter(Boolean).join(" "));
+    const sample = rankedKeys.filter((w, i) => i >= NAME_RANK_FLOOR && isName(w)).slice(0, 6);
+    console.log(`  names dropped: ${dropped.toLocaleString()}`, "e.g.", sample.join(" "));
   }
 }
 

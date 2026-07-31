@@ -26,6 +26,10 @@ learning order than any dictionary-structure metric, so the ranking rests on it 
   [Leipzig Corpora](https://wortschatz.uni-leipzig.de/en/download) sentence collection:
   how often each word is capitalized mid-sentence decides whether it's shown capitalized,
   so German nouns and proper nouns come out right with no per-language rules.
+- **Personal names** are filtered out — subtitle corpora are full of character names, which
+  aren't vocabulary. A word is dropped only when a [names gazetteer](https://github.com/smashew/NameDatabases),
+  the lemma list, mid-sentence casing, and how often it follows a determiner all agree it's
+  a name. Needs the casing corpus, so this is German-only so far.
 - **Translations** — the per-word gloss in the word card — are fetched live from
   [Google Translate](https://translate.google.com/) (its public `gtx` endpoint) in the
   reader's chosen language, and cached. This is the only source consulted at runtime;
@@ -59,7 +63,8 @@ pnpm typecheck   # type-check everything
 The `word-bands.<code>.json` artifacts are committed, so the app runs without a build
 step. To regenerate them, place each language's gitignored inputs in `apps/web/data/`
 — English `subtlex.csv` + `lemma-en.txt`; each other language `freq-<code>.txt` +
-`lemma-<code>.txt` — and run:
+`lemma-<code>.txt`. A language that also filters names needs `casing-<code>.txt` (a
+Leipzig sentences file) and the shared `names.txt` gazetteer. Then run:
 
 ```sh
 pnpm --filter @eigenlex/web build:bands        # all languages
