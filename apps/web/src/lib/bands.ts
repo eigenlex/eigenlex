@@ -8,6 +8,7 @@ import es from "../../data/word-bands.es.json";
 import fr from "../../data/word-bands.fr.json";
 import de from "../../data/word-bands.de.json";
 import pt from "../../data/word-bands.pt.json";
+import it from "../../data/word-bands.it.json";
 
 export { isSourceLang } from "@/lib/languages";
 
@@ -53,6 +54,7 @@ const REGISTRY: Record<SourceLang, LangData> = {
   fr: load(fr),
   de: load(de),
   pt: load(pt),
+  it: load(it),
 };
 
 const defsFor = (d: LangData, view: BandView) => (view === "cefr" ? d.cefrBands : d.freqBands);

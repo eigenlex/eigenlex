@@ -2,7 +2,7 @@
 // from. Distinct from the reader's *target* language (the gloss language chosen in
 // the word card). Shared by the server (lib/bands) and the client UI.
 
-export const SOURCE_LANGS = ["en", "es", "fr", "de", "pt"] as const;
+export const SOURCE_LANGS = ["en", "es", "fr", "de", "pt", "it"] as const;
 export type SourceLang = (typeof SOURCE_LANGS)[number];
 
 export const DEFAULT_SOURCE: SourceLang = "en";
@@ -36,4 +36,5 @@ export const SOURCE_LANG_META: Record<SourceLang, SourceLangMeta> = {
   fr: { name: "Français", defaultWord: "eau", source: opensubs("fr") },
   de: { name: "Deutsch", defaultWord: "wasser", source: opensubs("de") },
   pt: { name: "Português", defaultWord: "água", source: opensubs("pt") },
+  it: { name: "Italiano", defaultWord: "acqua", source: opensubs("it") },
 };

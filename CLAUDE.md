@@ -19,7 +19,7 @@ client-only (`WorkspaceLazy`, `ssr:false`), so this is all client-side.
 ## Data
 
 The tool is multi-**source-language**: a learner picks the language they're studying
-(en/es/fr/de/pt). This is separate from the reader's *target* language (the gloss
+(en/es/fr/de/pt/it). This is separate from the reader's *target* language (the gloss
 language chosen in the word card). Source-language metadata lives in
 `apps/web/src/lib/languages.ts`; the server registry is `apps/web/src/lib/bands.ts`.
 
@@ -27,7 +27,7 @@ The app reads one committed artifact per language, `apps/web/data/word-bands.<co
 (a pure-frequency, lemma-merged word ranking + the band definitions). They're built by
 `apps/web/scripts/build-bands.ts` from gitignored inputs in `apps/web/data/`: a
 frequency list + a lemmatization list per language. English uses `subtlex.csv`
-(SUBTLEX-US); es/fr/de/pt use `freq-<code>.txt` (OpenSubtitles frequency lists from
+(SUBTLEX-US); es/fr/de/pt/it use `freq-<code>.txt` (OpenSubtitles frequency lists from
 hermitdave/FrequencyWords). Lemmas are `lemma-<code>.txt` (michmech/lemmatization-lists).
 Rebuild all with `pnpm --filter @eigenlex/web build:bands`, or one with
 `… build:bands <code>`. To add a language, drop its two inputs in `data/`, add an entry

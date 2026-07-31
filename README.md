@@ -1,9 +1,9 @@
 # eigenlex
 
 A vocabulary learning tool: **which words to learn first** — in English, Spanish,
-French, German, or Portuguese. Pick the language you're studying; every word is placed
-on a learning band — by raw **frequency**, or by **CEFR level** — so you can look a word
-up to see where it lands, or browse the whole vocabulary in order.
+French, German, Portuguese, or Italian. Pick the language you're studying; every word
+is placed on a learning band — by raw **frequency**, or by **CEFR level** — so you can
+look a word up to see where it lands, or browse the whole vocabulary in order.
 
 ## How it works
 

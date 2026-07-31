@@ -125,6 +125,14 @@ const LANGS: Record<string, LangConfig> = {
     fragments: new Set(),
     spotChecks: ["que", "ser", "água", "governo", "filosofia", "entropia"],
   },
+  it: {
+    code: "it",
+    freq: { file: "freq-it.txt", format: "list", wordCol: 0, freqCol: 1 },
+    lemmaFile: "lemma-it.txt",
+    singleLetterOk: new Set(["a", "e", "è", "i", "o"]),
+    fragments: new Set(),
+    spotChecks: ["di", "essere", "acqua", "società", "filosofia", "entropia"],
+  },
 };
 
 // A token must start and end with a letter (any script), allowing internal
