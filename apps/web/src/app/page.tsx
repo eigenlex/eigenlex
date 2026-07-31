@@ -2,9 +2,10 @@ import ThemeToggle from "@/components/ThemeToggle";
 import Workspace from "@/components/WorkspaceLazy";
 
 export default function Home() {
+  // The word card and chip grid need more room than 1100px gave them.
   return (
     <main
-      className="Home tw-mx-auto tw-max-w-[1100px] tw-px-6 tw-pb-16 tw-pt-10"
+      className="Home tw-mx-auto tw-max-w-[1400px] tw-px-6 min-[900px]:tw-px-10 tw-pb-16 tw-pt-10"
       id="main"
       tabIndex={-1}
     >
