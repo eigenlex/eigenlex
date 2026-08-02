@@ -66,9 +66,10 @@ describe("Workspace", () => {
   });
 
   // The bands still steer the browser below; the card just doesn't restate them.
-  it("shows the looked-up word without its band metadata", async () => {
+  // The card carries no visible word either, so it is found by its region label.
+  it("renders a card for the looked-up word, without band metadata", async () => {
     render(<Workspace />);
-    expect(await screen.findByRole("heading", { name: "water" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: /meaning of water/i })).toBeInTheDocument();
     expect(screen.queryByText("Top 1,000")).not.toBeInTheDocument();
     expect(screen.queryByText("A1 · Beginner")).not.toBeInTheDocument();
   });
@@ -76,10 +77,10 @@ describe("Workspace", () => {
   it("switches source language and looks its default word up in that dictionary", async () => {
     const user = userEvent.setup();
     render(<Workspace />);
-    await screen.findByRole("heading", { name: "water" }); // English default settled
+    await screen.findByRole("region", { name: /meaning of water/i }); // English default settled
     await user.click(screen.getByRole("combobox", { name: /source language/i }));
     await user.click(await screen.findByRole("option", { name: /Español/ }));
-    expect(await screen.findByRole("heading", { name: "agua" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: /meaning of agua/i })).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/agua?lang=es"));
   });
 
@@ -117,13 +118,13 @@ describe("Workspace", () => {
   it("restores the source language and word from the URL", async () => {
     window.history.replaceState(null, "", "/?lang=es&word=agua");
     render(<Workspace />);
-    expect(await screen.findByRole("heading", { name: "agua" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: /meaning of agua/i })).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/agua?lang=es"));
   });
 
   it("reflects the looked-up word and language in the URL", async () => {
     render(<Workspace />);
-    await screen.findByRole("heading", { name: "water" });
+    await screen.findByRole("region", { name: /meaning of water/i });
     await waitFor(() => {
       const p = new URLSearchParams(window.location.search);
       expect(p.get("lang")).toBe("en");

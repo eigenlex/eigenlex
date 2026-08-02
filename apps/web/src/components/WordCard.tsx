@@ -169,19 +169,25 @@ export default function WordCard({
   const missing = status === "error" || (status === "done" && !showLines && !hero);
 
   return (
-    <section className="WordCard tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-6 tw-py-5">
+    // Named for AT: without the heading the card is an unlabelled box, and its live
+    // region would announce a gloss with no subject.
+    <section
+      aria-label={`Meaning of ${info.word}`}
+      className="WordCard tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-6 tw-py-5"
+    >
+      {/* Above the gloss, since it decides what the gloss says. */}
+      <div className="tw-mb-4 tw-w-44 [&_[role=combobox]]:tw-min-h-[44px]">
+        <LanguageSelect value={tl} onChange={onTlChange} />
+      </div>
       {/* Wraps on the card's own width, not the viewport's — it is also cramped in the
           two-column layout just past 860px. Alone on a wrapped row, justify-between
-          leaves the controls at the start. */}
+          leaves the link at the start. */}
       <div className="tw-flex tw-flex-wrap tw-items-start tw-justify-between tw-gap-4">
-        {/* The word is a quiet label — it's already in the search box and word chips;
-            its meaning is the card's hero. */}
+        {/* The card is only the meaning now — the word itself is in the search box
+            and spotlighted in the cloud, so printing it a third time said nothing. */}
         <div className="tw-min-w-0 tw-grow tw-basis-[17rem]">
-          <h2 className="tw-heading-x-large text-muted-aaa tw-break-words" lang={lang}>
-            {info.word}
-          </h2>
           {/* Announce translation state changes to assistive tech (WCAG 4.1.3). */}
-          <div aria-live="polite" className="tw-mt-1">
+          <div aria-live="polite">
             {translate && status === "loading" && (
               <span className="tw-body-small text-muted-aaa">translating…</span>
             )}
@@ -218,24 +224,18 @@ export default function WordCard({
             )}
           </div>
         </div>
-        {/* Translation controls. Both are 44px targets (WCAG 2.5.5). */}
-        <div className="tw-flex tw-shrink-0 tw-flex-col tw-items-stretch tw-gap-1.5">
-          <div className="tw-w-44 [&_[role=combobox]]:tw-min-h-[44px]">
-            <LanguageSelect value={tl} onChange={onTlChange} />
-          </div>
-          <a
-            href={translateHref(info.word, lang, tl)}
-            // Opens a fresh tab every time (named-tab reuse can't survive Google
-            // clearing window.name) — accepted, for its pronunciation audio.
-            target="_blank"
-            rel="noopener noreferrer"
-            className="tw-inline-flex tw-min-h-[44px] tw-items-center tw-justify-center tw-gap-1 tw-rounded-full tw-border tw-border-line-subtle tw-px-4 tw-py-1.5 tw-body-large tw-text-secondary tw-no-underline hover:tw-border-line hover:tw-text-primary"
-          >
-            Google Translate ↗
-          </a>
-        </div>
+        {/* 44px target (WCAG 2.5.5). */}
+        <a
+          href={translateHref(info.word, lang, tl)}
+          // Opens a fresh tab every time (named-tab reuse can't survive Google
+          // clearing window.name) — accepted, for its pronunciation audio.
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tw-inline-flex tw-min-h-[44px] tw-shrink-0 tw-items-center tw-justify-center tw-gap-1 tw-rounded-full tw-border tw-border-line-subtle tw-px-4 tw-py-1.5 tw-body-large tw-text-secondary tw-no-underline hover:tw-border-line hover:tw-text-primary"
+        >
+          Google Translate ↗
+        </a>
       </div>
-
     </section>
   );
 }
