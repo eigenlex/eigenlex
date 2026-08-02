@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { SegmentedControl, Tooltip } from "@frontify/fondue/components";
+import { SegmentedControl, Select, Tooltip } from "@frontify/fondue/components";
 import BandBrowser from "@/components/BandBrowser";
 import WordCard from "@/components/WordCard";
 import WordSearchBox from "@/components/WordSearchBox";
@@ -73,16 +73,24 @@ function storedTarget(): string | null {
   return null;
 }
 
+// A dropdown, not a segmented control: the language is picked once and then left
+// alone, so it doesn't deserve a row of six always-visible buttons.
 function SourceSelect({ lang, onChange }: { lang: SourceLang; onChange: (l: SourceLang) => void }) {
   return (
-    <div className="tw-mb-4">
-      <SegmentedControl.Root aria-label="Source language" value={lang} onValueChange={(v) => onChange(v as SourceLang)} hugWidth={false}>
+    // Sized to match the word card's translation-language select.
+    <div className="tw-mb-4 tw-w-44 [&_[role=combobox]]:tw-min-h-[44px]">
+      <Select
+        aria-label="Source language"
+        value={lang}
+        onSelect={(v) => v && onChange(v as SourceLang)}
+        showStringValue
+      >
         {SOURCE_LANGS.map((code) => (
-          <SegmentedControl.Item key={code} value={code}>
+          <Select.Item key={code} value={code} label={SOURCE_LANG_META[code].name}>
             <span lang={code}>{SOURCE_LANG_META[code].name}</span>
-          </SegmentedControl.Item>
+          </Select.Item>
         ))}
-      </SegmentedControl.Root>
+      </Select>
     </div>
   );
 }

@@ -57,7 +57,7 @@ describe("Workspace", () => {
     expect(screen.getByRole("search")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /look up a word/i })).toBeInTheDocument();
     // one shared search box, not one per view
-    expect(screen.getAllByRole("combobox")).toHaveLength(1);
+    expect(screen.getAllByRole("combobox", { name: /look up a word/i })).toHaveLength(1);
   });
 
   it("renders the band browser beneath the search box", () => {
@@ -76,9 +76,8 @@ describe("Workspace", () => {
     const user = userEvent.setup();
     render(<Workspace />);
     await screen.findByRole("heading", { name: "water" }); // English default settled
-    // The Fondue SegmentedControl renders radios whose label is duplicated for the
-    // active/inactive states, so match the name loosely.
-    await user.click(screen.getByRole("radio", { name: /Español/ }));
+    await user.click(screen.getByRole("combobox", { name: /source language/i }));
+    await user.click(await screen.findByRole("option", { name: /Español/ }));
     expect(await screen.findByRole("heading", { name: "agua" })).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/agua?lang=es"));
   });
