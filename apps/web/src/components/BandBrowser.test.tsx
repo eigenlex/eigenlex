@@ -69,6 +69,16 @@ describe("BandBrowser", () => {
     expect(await screen.findByRole("button", { name: "engine" })).toBeInTheDocument();
   });
 
+  // The narrow-viewport dropdown. Both it and the tablist are always in the DOM —
+  // a media query picks one — so jsdom, which applies no CSS, can drive either.
+  it("switches bands from the band dropdown too", async () => {
+    render(<BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+    await screen.findByRole("button", { name: "water" });
+    await userEvent.click(screen.getByRole("combobox", { name: /frequency bands/i }));
+    await userEvent.click(await screen.findByRole("option", { name: /1,001/ }));
+    expect(await screen.findByRole("button", { name: "engine" })).toBeInTheDocument();
+  });
+
   it("reloads the summary and words when the view changes", async () => {
     const { rerender } = render(
       <BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />,

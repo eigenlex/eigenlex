@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Select } from "@frontify/fondue/components";
 import Loading from "@/components/Loading";
 import WordChips from "@/components/WordChips";
 import type { Band, BandSummary, BandView } from "@/lib/types";
@@ -106,17 +107,40 @@ export default function BandBrowser({
 
   // Spotlight the anchor only in the band it actually belongs to.
   const anchorInBand = band && band.key === anchorBandKey ? anchorWord : null;
+  const bandsLabel = view === "cefr" ? "CEFR levels" : "Frequency bands";
 
   return (
     <div className="BandBrowser tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface">
       {/* Controls header: the view switch over a horizontal row of band tabs. */}
       <div className="tw-flex tw-flex-col tw-gap-3 tw-border-b tw-border-line-subtle tw-p-3 min-[700px]:tw-p-4">
         {viewControl}
+        {/* Phones get a dropdown: a dozen band tabs wrap into a wall several rows deep
+            that pushes the words themselves off-screen. Only one of the two renders. */}
+        <div className="[&_[role=combobox]]:tw-min-h-[44px] min-[700px]:tw-hidden">
+          <Select
+            aria-label={bandsLabel}
+            value={selectedKey ?? ""}
+            onSelect={(v) => v && pickBand(v)}
+            placeholder="Loading bands…"
+            showStringValue
+          >
+            {(summary ?? []).map((b) => (
+              <Select.Item key={b.key} value={b.key} label={b.label}>
+                <span className="tw-flex tw-items-baseline tw-gap-2">
+                  <span>{b.label}</span>
+                  <span className="tw-tabular-nums tw-body-x-small text-muted-aaa">
+                    {b.count.toLocaleString()} words
+                  </span>
+                </span>
+              </Select.Item>
+            ))}
+          </Select>
+        </div>
         <div
           role="tablist"
-          aria-label={view === "cefr" ? "CEFR levels" : "Frequency bands"}
+          aria-label={bandsLabel}
           aria-orientation="horizontal"
-          className="tw-flex tw-flex-row tw-flex-wrap tw-gap-1.5"
+          className="tw-hidden tw-flex-row tw-flex-wrap tw-gap-1.5 min-[700px]:tw-flex"
         >
           {(summary ?? []).map((b) => {
             const active = b.key === selectedKey;
