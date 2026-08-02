@@ -307,7 +307,7 @@ export default function Workspace() {
       </div>
 
       <section aria-labelledby="browse-heading">
-        <h2 id="browse-heading" className="tw-mb-4 tw-heading-medium-strong">
+        <h2 id="browse-heading" className="visually-hidden">
           Browse the vocabulary
         </h2>
         <BandBrowser
