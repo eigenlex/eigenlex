@@ -123,6 +123,14 @@ function LanguageSelect({ value, onChange }: { value: string; onChange: (l: stri
   );
 }
 
+// x-large, the next step up the type scale, but at body weight — Fondue has no
+// body-x-large, and its typography utilities are emitted last, so a class can't
+// override them. Line height comes along or 20px text sits in a 20px box.
+const GLOSS_TYPE = {
+  fontSize: "var(--typography-font-size-x-large)",
+  lineHeight: "var(--typography-line-height-loose)",
+};
+
 // A metric in the card's stat row. The caption costs more room than it earns, so it
 // rides in a tooltip instead — Fondue's opens on hover and focus, and the click handler
 // adds tap, which it doesn't cover. The label is also in the accessible name, so it is
@@ -201,7 +209,7 @@ export default function WordCard({
         {/* The word is a quiet label — it's already in the search box and word chips;
             its meaning is the card's hero. */}
         <div className="tw-min-w-0 tw-grow tw-basis-[17rem]">
-          <h2 className="tw-heading-large text-muted-aaa tw-break-words" lang={lang}>
+          <h2 className="tw-heading-x-large text-muted-aaa tw-break-words" lang={lang}>
             {info.word}
           </h2>
           {/* Announce translation state changes to assistive tech (WCAG 4.1.3). */}
@@ -225,7 +233,7 @@ export default function WordCard({
                         {l.label}
                       </span>
                     )}
-                    <span lang={tl} className="tw-body-large tw-text-primary">
+                    <span lang={tl} className="tw-body-large tw-text-primary" style={GLOSS_TYPE}>
                       {l.gloss}
                     </span>
                   </li>
@@ -233,7 +241,7 @@ export default function WordCard({
               </ul>
             )}
             {translate && status === "done" && !showLines && hero && (
-              <span lang={tl} className="tw-body-large tw-text-primary">
+              <span lang={tl} className="tw-body-large tw-text-primary" style={GLOSS_TYPE}>
                 {hero}
               </span>
             )}
