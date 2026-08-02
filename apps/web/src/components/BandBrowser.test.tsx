@@ -79,6 +79,38 @@ describe("BandBrowser", () => {
     expect(await screen.findByRole("button", { name: "engine" })).toBeInTheDocument();
   });
 
+  // Mobile-only prev/next. Like the dropdown, always in the DOM — CSS alone hides it.
+  it("steps to the word either side of the current one", async () => {
+    const onSelect = vi.fn();
+    render(
+      <BandBrowser view="freq" lang="en" anchorWord="be" anchorBandKey="1" onSelect={onSelect} />,
+    );
+    await screen.findByRole("button", { name: "water" }); // words: the, be, water
+    await userEvent.click(screen.getByRole("button", { name: /next word/i }));
+    expect(onSelect).toHaveBeenCalledWith("water");
+    await userEvent.click(screen.getByRole("button", { name: /previous word/i }));
+    expect(onSelect).toHaveBeenCalledWith("the");
+  });
+
+  it("disables the step past each end of the band", async () => {
+    render(
+      <BandBrowser view="freq" lang="en" anchorWord="the" anchorBandKey="1" onSelect={() => {}} />,
+    );
+    await screen.findByRole("button", { name: "water" }); // "the" is the band's first word
+    expect(screen.getByRole("button", { name: /previous word/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /next word/i })).toBeEnabled();
+  });
+
+  // A hand-picked band holds no anchor, so there is nothing to step back from.
+  it("enters at the first word when the band holds no current word", async () => {
+    const onSelect = vi.fn();
+    render(<BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={onSelect} />);
+    await screen.findByRole("button", { name: "water" });
+    expect(screen.getByRole("button", { name: /previous word/i })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: /next word/i }));
+    expect(onSelect).toHaveBeenCalledWith("the");
+  });
+
   it("reloads the summary and words when the view changes", async () => {
     const { rerender } = render(
       <BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />,

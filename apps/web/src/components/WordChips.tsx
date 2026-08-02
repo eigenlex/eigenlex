@@ -15,6 +15,12 @@ const GAP = 8; // tw-gap-2, in px — the space between chips, horizontally and 
 const OVERSCAN = 4; // extra rows kept mounted above and below the viewport
 const SELECT_DEBOUNCE = 300; // ms to settle on a chip before keyboard nav looks it up
 
+// Half height on a phone, where a 30rem cloud buries the card above it. The
+// virtualizer follows via its ResizeObserver, so fewer rows simply render.
+const CLOUD =
+  "WordChips tw-relative tw-max-h-[15rem] tw-overflow-y-auto tw-overflow-x-hidden " +
+  "min-[700px]:tw-max-h-[30rem]";
+
 /**
  * Greedy line-break: pack chips into rows that fit `containerWidth`, always at
  * least one per row. Returns each row's start index; row r spans
@@ -349,7 +355,7 @@ export default function WordChips({
       ref={scrollRef}
       onScroll={onScroll}
       onKeyDown={onKeyDown}
-      className="WordChips tw-relative tw-max-h-[30rem] tw-overflow-y-auto tw-overflow-x-hidden"
+      className={CLOUD}
       role="group"
       aria-label={label}
       lang={lang}

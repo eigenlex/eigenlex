@@ -19,6 +19,55 @@ const CHIP_ANCHOR =
   `${CHIP_BASE} tw-border-[color:var(--accent-focus)] tw-bg-[color:var(--accent-focus)] ` +
   "tw-font-medium tw-text-[#0b1220]";
 
+const STEP =
+  "tw-flex tw-min-h-[44px] tw-flex-1 tw-items-center tw-justify-center tw-gap-1 tw-rounded-full " +
+  "tw-border tw-border-line-subtle tw-px-4 tw-body-large tw-text-secondary tw-transition-colors " +
+  "hover:tw-border-line hover:tw-text-primary disabled:tw-opacity-40 disabled:hover:tw-border-line-subtle";
+
+/**
+ * Walk the band one word at a time, for phones — where reaching the next word
+ * otherwise means hunting for its chip in the cloud. Mobile-only; on a desktop
+ * the cloud is fully visible and the chips are the faster route.
+ *
+ * With no current word (the band was picked by hand, so it holds no anchor),
+ * Next enters at the band's first word.
+ */
+function StepButtons({
+  words,
+  current,
+  onSelect,
+}: {
+  words: string[];
+  current: string | null;
+  onSelect: (word: string) => void;
+}) {
+  const i = current ? words.indexOf(current) : -1;
+  const prev = i > 0 ? words[i - 1] : undefined;
+  const next = i < words.length - 1 ? words[i + 1] : undefined;
+  return (
+    <div className="tw-mb-3 tw-flex tw-gap-2 min-[700px]:tw-hidden">
+      <button
+        type="button"
+        className={STEP}
+        disabled={!prev}
+        onClick={() => prev && onSelect(prev)}
+        aria-label="Previous word in this band"
+      >
+        <span aria-hidden="true">←</span> Previous
+      </button>
+      <button
+        type="button"
+        className={STEP}
+        disabled={!next}
+        onClick={() => next && onSelect(next)}
+        aria-label="Next word in this band"
+      >
+        Next <span aria-hidden="true">→</span>
+      </button>
+    </div>
+  );
+}
+
 /**
  * Browse the whole vocabulary split into bands for the active view. The band
  * holding the looked-up word (`anchorBandKey`) opens automatically and spotlights
@@ -176,6 +225,7 @@ export default function BandBrowser({
             <p className="tw-mb-3 tw-body-small text-muted-aaa">
               {band.label} · most frequent first
             </p>
+            <StepButtons words={band.words} current={anchorInBand} onSelect={onSelect} />
             <WordChips
               words={band.words}
               anchor={anchorInBand}
