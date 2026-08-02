@@ -1,0 +1,16 @@
+{
+  // The Tailwind config lives in the app, not at the workspace root.
+  "tailwindCSS.experimental.configFile": {
+    "apps/web/tailwind.config.ts": "apps/web/src/**"
+  },
+  // className values are string literals; without this no completion pops up.
+  "editor.quickSuggestions": {
+    "strings": "on"
+  },
+  "editor.inlineSuggest.enabled": true,
+  "css.lint.unknownAtRules": "ignore",
+  // Tailwind IntelliSense only knows Tailwind-generated classes; html-css indexes
+  // the hand-written ones (visually-hidden, text-muted-aaa, skip-link).
+  // Its companion `css.enabledLanguages` is application-scoped — user settings only.
+  "css.styleSheets": ["apps/web/src/app/globals.css"]
+}
