@@ -65,11 +65,12 @@ describe("Workspace", () => {
     expect(screen.getByText("band browser")).toBeInTheDocument();
   });
 
-  it("shows the looked-up word's frequency and CEFR bands", async () => {
+  // The bands still steer the browser below; the card just doesn't restate them.
+  it("shows the looked-up word without its band metadata", async () => {
     render(<Workspace />);
     expect(await screen.findByRole("heading", { name: "water" })).toBeInTheDocument();
-    expect(screen.getByText("Top 1,000")).toBeInTheDocument();
-    expect(screen.getByText("A1 · Beginner")).toBeInTheDocument();
+    expect(screen.queryByText("Top 1,000")).not.toBeInTheDocument();
+    expect(screen.queryByText("A1 · Beginner")).not.toBeInTheDocument();
   });
 
   it("switches source language and looks its default word up in that dictionary", async () => {

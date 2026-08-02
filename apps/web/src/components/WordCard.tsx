@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { Badge, Select, Tooltip } from "@frontify/fondue/components";
+import { useEffect, useState } from "react";
+import { Select } from "@frontify/fondue/components";
 import type { WordBands } from "@/lib/types";
 import { baseLang, type SenseGroup } from "@/lib/translate";
 
@@ -131,39 +131,7 @@ const GLOSS_TYPE = {
   lineHeight: "var(--typography-line-height-loose)",
 };
 
-// A metric in the card's stat row. The caption costs more room than it earns, so it
-// rides in a tooltip instead — Fondue's opens on hover and focus, and the click handler
-// adds tap, which it doesn't cover. The label is also in the accessible name, so it is
-// never hover-only. Padding makes a 44px target (WCAG 2.5.5) that negative margin keeps
-// out of the layout, so the row stays one badge tall.
-function Stat({ label, children }: { label: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  // Escape must dismiss it (WCAG 1.4.13) — controlling `open` ourselves means Radix's
-  // own handler no longer fires, and hover-opened tooltips never hold focus.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
-  return (
-    <Tooltip.Root open={open} onOpenChange={setOpen} enterDelay={200}>
-      <Tooltip.Trigger asChild>
-        <span
-          tabIndex={0}
-          onClick={() => setOpen((o) => !o)}
-          className="tw--my-[10px] tw--mx-1 tw-inline-flex tw-min-h-[44px] tw-min-w-[44px] tw-cursor-help tw-items-center tw-justify-center tw-rounded-[8px] tw-px-1"
-        >
-          <span className="visually-hidden">{label}: </span>
-          {children}
-        </span>
-      </Tooltip.Trigger>
-      <Tooltip.Content>{label}</Tooltip.Content>
-    </Tooltip.Root>
-  );
-}
-
-/** The looked-up word, its translation, and where it sits — both band labelings. */
+/** The looked-up word and its translation. */
 export default function WordCard({
   info,
   lang,
@@ -268,19 +236,6 @@ export default function WordCard({
         </div>
       </div>
 
-      <div className="tw-mt-4 tw-flex tw-flex-wrap tw-items-center tw-gap-x-5 tw-gap-y-3 tw-border-t tw-border-line-subtle tw-pt-3">
-        <Stat label="Frequency rank">
-          <span className="tw-body-large tw-font-medium tw-tabular-nums tw-text-primary">
-            #{info.rank.toLocaleString()}
-          </span>
-        </Stat>
-        <Stat label="Frequency band">
-          <Badge emphasis="weak">{info.freq.label}</Badge>
-        </Stat>
-        <Stat label="CEFR level">
-          <Badge emphasis="weak">{info.cefr.label}</Badge>
-        </Stat>
-      </div>
     </section>
   );
 }
