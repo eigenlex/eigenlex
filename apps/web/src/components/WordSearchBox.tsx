@@ -148,8 +148,9 @@ export default function WordSearchBox({
         commit(value);
       }}
     >
-      {/* Match the word card's headword, and stay clear of the ≥16px that keeps iOS
-          from zooming on focus — Fondue's body-small (~13px) would trigger it. */}
+      {/* Stay clear of the ≥16px that keeps iOS from zooming on focus — Fondue's
+          body-small (~13px) would trigger it. The placeholder is a separate element,
+          sized in globals.css. */}
       <div className="tw-relative tw-w-fit [&_input]:tw-text-x-large">
         <TextInput.Root
           // TextInput.Root forwards unknown props to its <input> but omits the

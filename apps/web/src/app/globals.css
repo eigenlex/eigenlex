@@ -26,6 +26,13 @@ form[role="search"] [data-test-id="fondue-text-input"] {
   min-height: 44px;
 }
 
+/* Fondue paints its own placeholder in a sibling div and leaves the native
+   ::placeholder transparent, so sizing the input alone leaves it at 14px.
+   Matched by structure — its CSS-module class is a build hash. */
+form[role="search"] div:has(> input) > div:first-child {
+  font-size: var(--typography-font-size-x-large);
+}
+
 /* Visually hidden but exposed to assistive tech — for section headings (2.4.10)
    and the search help text (3.3.5). */
 .visually-hidden {
