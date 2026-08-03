@@ -264,7 +264,8 @@ export default function Workspace() {
     <div className="Workspace">
       {/* Hero: pick a language and look a word up on the left; the result card fills
           the right on wide screens, so a query and its answer sit side by side. */}
-      <div className="tw-mb-12 tw-grid tw-grid-cols-1 tw-items-start tw-gap-x-8 tw-gap-y-6 min-[860px]:tw-grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      {/* Tighter above and below the card on a phone, where it is stacked, not beside. */}
+      <div className="tw-mb-6 tw-grid tw-grid-cols-1 tw-items-start tw-gap-x-8 tw-gap-y-3 min-[700px]:tw-mb-12 min-[700px]:tw-gap-y-6 min-[860px]:tw-grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <div>
           {/* Section headings (WCAG 2.4.10) — visually hidden, structural for AT. */}
           <section aria-labelledby="lang-heading">

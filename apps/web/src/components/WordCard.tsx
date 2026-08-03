@@ -173,16 +173,16 @@ export default function WordCard({
     // region would announce a gloss with no subject.
     <section
       aria-label={`Meaning of ${info.word}`}
-      className="WordCard tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-6 tw-py-5"
+      className="WordCard tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-4 tw-py-4 min-[700px]:tw-px-6 min-[700px]:tw-py-5"
     >
       {/* Above the gloss, since it decides what the gloss says. */}
-      <div className="tw-mb-4 tw-w-44 [&_[role=combobox]]:tw-min-h-[44px]">
+      <div className="tw-mb-2 tw-w-44 [&_[role=combobox]]:tw-min-h-[44px] min-[700px]:tw-mb-4">
         <LanguageSelect value={tl} onChange={onTlChange} />
       </div>
       {/* Wraps on the card's own width, not the viewport's — it is also cramped in the
           two-column layout just past 860px. Alone on a wrapped row, justify-between
           leaves the link at the start. */}
-      <div className="tw-flex tw-flex-wrap tw-items-start tw-justify-between tw-gap-4">
+      <div className="tw-flex tw-flex-wrap tw-items-start tw-justify-between tw-gap-2 min-[700px]:tw-gap-4">
         {/* The card is only the meaning now — the word itself is in the search box
             and spotlighted in the cloud, so printing it a third time said nothing. */}
         <div className="tw-min-w-0 tw-grow tw-basis-[17rem]">
