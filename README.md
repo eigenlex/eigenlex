@@ -65,7 +65,11 @@ The `word-bands.<code>.json` artifacts are committed, so the app runs without a 
 step. To regenerate them, place each language's gitignored inputs in `apps/web/data/`
 — English `subtlex.csv` + `lemma-en.txt`; each other language `freq-<code>.txt` +
 `lemma-<code>.txt`. Casing and the name filter additionally need `casing-<code>.txt` (a
-Leipzig sentences file) per language, plus the shared `names.txt` gazetteer. Then run:
+Leipzig sentences file) per language, plus the shared `names.txt` gazetteer.
+
+`freq-<code>.txt` is FrequencyWords' **`<code>_full.txt`**, not the `_50k` variant — the
+build applies its own floor (`minCount` in the `LANGS` table) so the cut is recorded in
+code rather than in whichever file was downloaded. Then run:
 
 ```sh
 pnpm --filter @eigenlex/web build:bands        # all languages

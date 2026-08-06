@@ -29,6 +29,20 @@ The app reads one committed artifact per language, `apps/web/data/word-bands.<co
 frequency list + a lemmatization list per language. English uses `subtlex.csv`
 (SUBTLEX-US); es/fr/de/pt/it use `freq-<code>.txt` (OpenSubtitles frequency lists from
 hermitdave/FrequencyWords). Lemmas are `lemma-<code>.txt` (michmech/lemmatization-lists).
+
+Take hermitdave's **`<code>_full.txt`**, not `<code>_50k.txt`: the cut belongs in code,
+where it's version-controlled, not in whichever file someone happened to download.
+`minCount` in the `LANGS` table applies it — 10 raw occurrences, below which the
+OpenSubtitles tail is mostly hapax noise. It's stated in occurrences rather than rank so
+it means the same thing in every language, and it's omitted for English, whose SUBTLEX
+column is per-million rather than a raw count.
+
+*Known wart:* the tail past ~30k is thin vocabulary. Only 9% of pt's 60k–115k range is
+known to its lemma dictionary (vs 51% of the first 30k), 27% of pt's added words are
+clitic-attached verb forms (`confiar-lhes`, `perdoamos-te`) and 14% of fr's are, ~9% of
+every language's are in the names gazetteer, and OCR debris survives (`lnternet` for
+"Internet", `construçao`). Raising `minCount` or teaching the build about clitics would
+each cut a real slice of it.
 A surface word that **heads its own entry** in the lemma list keeps it, rather than being
 merged into whichever lemma claims it. The lists are lemma-sorted, so plain first-wins
 silently hands a shared form to the alphabetically-first claimant — which used to delete

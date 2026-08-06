@@ -59,6 +59,14 @@ interface FreqSource {
   format: "csv" | "list";
   wordCol: string | number;
   freqCol: string | number;
+  /**
+   * Drop surface forms occurring fewer than this many times, before lemma-merging.
+   * The OpenSubtitles lists run to ~800k entries of which nearly half are hapax —
+   * OCR debris, typos and foreign fragments — so the tail needs a floor. Set it in
+   * raw occurrences, not rank, so the cut means the same thing in every language.
+   * Omit where the column isn't a raw count (SUBTLEX's SUBTLWF is per-million).
+   */
+  minCount?: number;
 }
 
 interface LangConfig {
@@ -102,7 +110,7 @@ const LANGS: Record<string, LangConfig> = {
   },
   es: {
     code: "es",
-    freq: { file: "freq-es.txt", format: "list", wordCol: 0, freqCol: 1 },
+    freq: { file: "freq-es.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
     lemmaFile: "lemma-es.txt",
     singleLetterOk: new Set(["a", "y", "o", "e", "u"]),
     fragments: new Set(),
@@ -116,7 +124,7 @@ const LANGS: Record<string, LangConfig> = {
   },
   fr: {
     code: "fr",
-    freq: { file: "freq-fr.txt", format: "list", wordCol: 0, freqCol: 1 },
+    freq: { file: "freq-fr.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
     lemmaFile: "lemma-fr.txt",
     singleLetterOk: new Set(["à", "a", "y"]),
     fragments: new Set(),
@@ -132,7 +140,7 @@ const LANGS: Record<string, LangConfig> = {
   },
   de: {
     code: "de",
-    freq: { file: "freq-de.txt", format: "list", wordCol: 0, freqCol: 1 },
+    freq: { file: "freq-de.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
     lemmaFile: "lemma-de.txt",
     singleLetterOk: new Set(),
     fragments: new Set(),
@@ -148,7 +156,7 @@ const LANGS: Record<string, LangConfig> = {
   },
   pt: {
     code: "pt",
-    freq: { file: "freq-pt.txt", format: "list", wordCol: 0, freqCol: 1 },
+    freq: { file: "freq-pt.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
     lemmaFile: "lemma-pt.txt",
     singleLetterOk: new Set(["a", "o", "e", "é", "à", "á"]),
     fragments: new Set(),
@@ -163,7 +171,7 @@ const LANGS: Record<string, LangConfig> = {
   },
   it: {
     code: "it",
-    freq: { file: "freq-it.txt", format: "list", wordCol: 0, freqCol: 1 },
+    freq: { file: "freq-it.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
     lemmaFile: "lemma-it.txt",
     singleLetterOk: new Set(["a", "e", "è", "i", "o"]),
     fragments: new Set(),
@@ -386,6 +394,7 @@ function buildLang(cfg: LangConfig) {
     const r = split(lines[i]);
     const w = clean(r[wCol]); const wf = Number(r[fCol]);
     if (!w || !(wf > 0)) continue;
+    if (cfg.freq.minCount !== undefined && wf < cfg.freq.minCount) continue;
     const L = lemmaOf(w);
     freq.set(L, (freq.get(L) ?? 0) + wf);
   }
