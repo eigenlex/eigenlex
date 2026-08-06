@@ -28,6 +28,8 @@ interface LangData {
   rankOf: Map<string, number>;
   /** lowercased key -> both casings of a case-homograph ("essen" -> ["Essen","essen"]). */
   variants: Record<string, string[]>;
+  /** lowercased 1- and 2-char prefix -> `ranked` indices, frequency order. */
+  byPrefix: Map<string, number[]>;
 }
 
 // `ranked` may carry display casing (e.g. German "Wasser"); lookups key on lowercase.
@@ -38,13 +40,26 @@ function load(data: {
   cefrBands: BandDef[];
 }): LangData {
   const rankOf = new Map<string, number>();
-  data.ranked.forEach((w, i) => rankOf.set(w.toLowerCase(), i + 1));
+  const byPrefix = new Map<string, number[]>();
+  const bucket = (key: string, i: number) => {
+    const b = byPrefix.get(key);
+    if (b) b.push(i);
+    else byPrefix.set(key, [i]);
+  };
+  data.ranked.forEach((w, i) => {
+    const l = w.toLowerCase();
+    rankOf.set(l, i + 1);
+    // Filled in frequency order, so a bucket already ranks its own candidates.
+    bucket(l.slice(0, 1), i);
+    if (l.length > 1) bucket(l.slice(0, 2), i);
+  });
   return {
     ranked: data.ranked,
     freqBands: data.freqBands,
     cefrBands: data.cefrBands,
     rankOf,
     variants: data.variants ?? {},
+    byPrefix,
   };
 }
 
@@ -107,9 +122,14 @@ export function getBand(lang: SourceLang, view: BandView, key: string): Band | n
 export function getSuggestions(lang: SourceLang, prefix: string, limit = 8): string[] {
   const p = prefix.trim().toLowerCase();
   if (!p) return [];
+  const d = REGISTRY[lang];
+  // Every candidate shares the query's first two characters, so one bucket holds them
+  // all: a miss costs a failed lookup, and a hit never walks the rest of the list.
+  const candidates = d.byPrefix.get(p.slice(0, 2));
+  if (!candidates) return [];
   const out: string[] = [];
-  // `ranked` is frequency-descending, so the first matches are the most useful.
-  for (const word of REGISTRY[lang].ranked) {
+  for (const i of candidates) {
+    const word = d.ranked[i]!;
     if (word.toLowerCase().startsWith(p)) {
       out.push(word);
       if (out.length >= limit) break;

@@ -36,3 +36,25 @@ describe("case-homographs", () => {
     expect(getWord("en", "the")?.forms).toEqual(["the"]);
   });
 });
+
+// Suggestions come from a prefix index bucketed on the first one or two characters;
+// queries shorter than the bucket key still have to reach the right bucket.
+describe("typeahead", () => {
+  it("suggests on a single character, most frequent first", () => {
+    const hits = getSuggestions("en", "a");
+    expect(hits.every((w) => w.startsWith("a"))).toBe(true);
+    expect(hits).toHaveLength(8);
+    expect(hits[0]).toBe("a");
+  });
+
+  it("returns nothing for a prefix no word starts with", () => {
+    expect(getSuggestions("en", "zzq")).toEqual([]);
+    expect(getSuggestions("en", "qx")).toEqual([]);
+  });
+
+  it("honours the limit and keeps frequency order", () => {
+    const hits = getSuggestions("en", "th", 3);
+    expect(hits).toHaveLength(3);
+    expect(hits[0]).toBe("the");
+  });
+});
