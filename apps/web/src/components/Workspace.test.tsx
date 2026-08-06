@@ -7,11 +7,27 @@ import Workspace from "./Workspace";
 
 // Isolate the search box + lookup wiring from the data-fetching band browser, but
 // still render the view toggle it hosts (Workspace owns it, via the viewControl slot).
+// The "pick word" button stands in for the browser's chips and prev/next steppers.
 vi.mock("./BandBrowser", () => ({
-  default: ({ viewControl }: { viewControl?: ReactNode }) => (
-    <div>band browser{viewControl}</div>
+  default: ({
+    viewControl,
+    onSelect,
+  }: {
+    viewControl?: ReactNode;
+    onSelect: (word: string) => void;
+  }) => (
+    <div>
+      band browser{viewControl}
+      <button type="button" onClick={() => onSelect("Plädoyer")}>
+        pick word
+      </button>
+    </div>
   ),
 }));
+
+// Words the corpus stores capitalized — the API answers with that casing, not the
+// lowercased lookup key.
+const DISPLAY: Record<string, string> = { plädoyer: "Plädoyer" };
 
 function mockFetch() {
   return vi.fn(async (url: string | URL) => {
@@ -20,10 +36,11 @@ function mockFetch() {
       const path = new URL(u, "http://localhost").pathname;
       const word = decodeURIComponent(path.split("/api/word/")[1]!);
       if (word === "missing") return new Response("no", { status: 404 });
+      const display = DISPLAY[word] ?? word;
       return new Response(
         JSON.stringify({
-          word,
-          forms: [word],
+          word: display,
+          forms: [display],
           rank: 1,
           freq: { key: "1", label: "Top 1,000" },
           cefr: { key: "A1", label: "A1 · Beginner" },
@@ -113,6 +130,18 @@ describe("Workspace", () => {
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/care")),
     );
+  });
+
+  it("puts the browsed word in the search box with its display casing", async () => {
+    const user = userEvent.setup();
+    render(<Workspace />);
+    await screen.findByRole("button", { name: "look up" }); // initial lookup settled
+
+    await user.click(screen.getByRole("button", { name: "pick word" }));
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/pl%C3%A4doyer")),
+    );
+    expect(screen.getByRole("combobox", { name: /look up a word/i })).toHaveValue("Plädoyer");
   });
 
   it("restores the source language and word from the URL", async () => {

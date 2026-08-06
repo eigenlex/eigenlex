@@ -217,8 +217,10 @@ export default function Workspace() {
           return;
         }
         setError(null);
-        setInfo((await res.json()) as WordBands);
-        setQuery(term);
+        const found = (await res.json()) as WordBands;
+        setInfo(found);
+        // Echo the corpus's display casing ("Plädoyer"), not the lowercased lookup key.
+        setQuery(found.word);
         setBand(bandOverride);
       } finally {
         setLoading(false);
