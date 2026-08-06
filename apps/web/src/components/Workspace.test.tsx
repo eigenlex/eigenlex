@@ -144,15 +144,13 @@ describe("Workspace", () => {
     expect(screen.getByRole("combobox", { name: /look up a word/i })).toHaveValue("Plädoyer");
   });
 
-  // The card used to render only once the lookup landed, popping in and shoving the
-  // browser below it down — 198px on a phone.
+  // The frame follows `loading`, so the hero row never resizes under the browser.
   it("holds the card's frame from the first paint, before the lookup lands", () => {
     render(<Workspace />);
     expect(screen.getByRole("region", { name: /meaning of water/i })).toBeInTheDocument();
   });
 
-  // A blank word is not a wait — it used to leave `loading` true for good, which
-  // now that the frame follows it would mean a card spinning forever.
+  // A blank word is not a wait, or the card would spin for good.
   it("stops waiting when the deeplink carries nothing to look up", async () => {
     window.history.replaceState(null, "", "/?lang=en&word=%20");
     render(<Workspace />);
@@ -169,7 +167,7 @@ describe("Workspace", () => {
     expect(screen.queryByRole("region", { name: /meaning of/i })).not.toBeInTheDocument();
   });
 
-  // Swapping the label for a "…" resized the button on every lookup.
+  // The label is what fixes the button's width, so it has to survive the wait.
   it("keeps the submit button's label while a lookup is in flight", async () => {
     render(<Workspace />);
     expect(screen.getByRole("button", { name: "look up" })).toBeDisabled();

@@ -194,8 +194,7 @@ describe("WordCard multi-sense words", () => {
     expect(await screen.findByText("Milan")).toBeInTheDocument();
   });
 
-  // The spinner row is shorter than the gloss, so without a reserved line box the card
-  // shrinks the moment a translation lands and jolts everything below it.
+  // The spinner row is shorter than the gloss it stands in for.
   it("reserves the gloss's line box while translating", async () => {
     vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["sky"] }], "sky"));
     render(

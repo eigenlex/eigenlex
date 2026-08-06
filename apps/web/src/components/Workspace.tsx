@@ -311,10 +311,8 @@ export default function Workspace() {
           )}
         </div>
 
-        {/* Rendered from the first paint, pending, so the hero row is already its
-            settled height — the card used to pop in and shove the browser below it
-            down (198px on a phone). A failed lookup leaves `info` null and stops
-            loading, which drops the frame again and leaves the error alert. */}
+        {/* Pending from the first paint, so the hero row is already its settled
+            height; a failed lookup drops the frame and leaves the error alert. */}
         {(info || loading) && (
           <WordCard
             word={info?.word ?? query}

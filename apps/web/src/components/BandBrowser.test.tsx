@@ -52,8 +52,7 @@ describe("BandBrowser", () => {
     expect(await screen.findByRole("button", { name: "water" })).toBeInTheDocument();
   });
 
-  // Both controls used to handle this themselves: the dropdown said "Loading bands…"
-  // in its placeholder, the tablist just rendered empty.
+  // Neither control announces its own wait; the spinner covers both.
   it("stands one spinner in for both band controls until they load", async () => {
     render(<BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
     expect(screen.getByText("Loading bands…")).toBeInTheDocument();

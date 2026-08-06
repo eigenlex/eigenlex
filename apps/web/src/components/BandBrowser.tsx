@@ -163,10 +163,8 @@ export default function BandBrowser({
       {/* Controls header: the view switch over a horizontal row of band tabs. */}
       <div className="tw-flex tw-flex-col tw-gap-3 tw-border-b tw-border-line-subtle tw-p-3 min-[700px]:tw-p-4">
         {viewControl}
-        {/* Until the bands arrive, one spinner stands in for both controls — the
-            dropdown used to say "Loading bands…" while the tablist just sat empty.
-            It reserves whichever they'll be: the dropdown is 44px, a band tab 46
-            (two lines over py-1.5, plus the gap), so nothing moves when they land. */}
+        {/* One spinner for both controls, reserving whichever will replace it: the
+            dropdown is 44px, a band tab 46 (two lines over py-1.5, plus the gap). */}
         {summary === null ? (
           <Loading
             size="x-small"
