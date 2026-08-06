@@ -121,7 +121,7 @@ describe("Workspace", () => {
   it("offers a debounced typeahead that looks up the picked word", async () => {
     const user = userEvent.setup();
     render(<Workspace />);
-    await screen.findByRole("button", { name: "look up" }); // initial lookup settled
+    await screen.findByRole("region", { name: /meaning of water/i }); // initial lookup settled
 
     const input = screen.getByRole("combobox", { name: /look up a word/i });
     await user.clear(input);
@@ -135,13 +135,21 @@ describe("Workspace", () => {
   it("puts the browsed word in the search box with its display casing", async () => {
     const user = userEvent.setup();
     render(<Workspace />);
-    await screen.findByRole("button", { name: "look up" }); // initial lookup settled
+    await screen.findByRole("region", { name: /meaning of water/i }); // initial lookup settled
 
     await user.click(screen.getByRole("button", { name: "pick word" }));
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/pl%C3%A4doyer")),
     );
     expect(screen.getByRole("combobox", { name: /look up a word/i })).toHaveValue("Plädoyer");
+  });
+
+  // Swapping the label for a "…" resized the button on every lookup.
+  it("keeps the submit button's label while a lookup is in flight", async () => {
+    render(<Workspace />);
+    expect(screen.getByRole("button", { name: "look up" })).toBeDisabled();
+    await screen.findByRole("region", { name: /meaning of water/i });
+    expect(screen.getByRole("button", { name: "look up" })).toBeEnabled();
   });
 
   it("restores the source language and word from the URL", async () => {
@@ -165,7 +173,7 @@ describe("Workspace", () => {
   it("announces an unknown word through an alert", async () => {
     const user = userEvent.setup();
     render(<Workspace />);
-    await screen.findByRole("button", { name: "look up" }); // initial lookup settled
+    await screen.findByRole("region", { name: /meaning of water/i }); // initial lookup settled
 
     const input = screen.getByRole("combobox", { name: /look up a word/i });
     await user.clear(input);

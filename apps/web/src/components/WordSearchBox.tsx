@@ -32,7 +32,7 @@ export default function WordSearchBox({
   describedBy,
   placeholder,
   submitLabel,
-  submitDisabled = false,
+  busy = false,
 }: {
   value: string;
   onValueChange: (value: string) => void;
@@ -43,7 +43,8 @@ export default function WordSearchBox({
   describedBy?: string;
   placeholder: string;
   submitLabel: ReactNode;
-  submitDisabled?: boolean;
+  /** Lookup in flight: disables the button and marks it working. */
+  busy?: boolean;
 }) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
@@ -212,8 +213,19 @@ export default function WordSearchBox({
           </ul>
         )}
       </div>
-      <Button type="submit" disabled={submitDisabled}>
-        {submitLabel}
+      <Button type="submit" disabled={busy}>
+        {/* Stacked on the label, not swapped for it, so the button keeps one width —
+            and opacity, not visibility, so it keeps its accessible name too. */}
+        <span className="tw-grid tw-items-center tw-justify-items-center">
+          <span className={`tw-col-start-1 tw-row-start-1 ${busy ? "tw-opacity-0" : ""}`}>
+            {submitLabel}
+          </span>
+          {busy && (
+            <span className="tw-col-start-1 tw-row-start-1" aria-hidden="true">
+              …
+            </span>
+          )}
+        </span>
       </Button>
     </form>
   );

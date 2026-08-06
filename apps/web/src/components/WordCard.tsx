@@ -126,10 +126,15 @@ function LanguageSelect({ value, onChange }: { value: string; onChange: (l: stri
 // x-large, the next step up the type scale, but at body weight — Fondue has no
 // body-x-large, and its typography utilities are emitted last, so a class can't
 // override them. Line height comes along or 20px text sits in a 20px box.
+// `block` pins the line to its own line-height; inline, it unions with the parent strut.
 const GLOSS_TYPE = {
+  display: "block",
   fontSize: "var(--typography-font-size-x-large)",
   lineHeight: "var(--typography-line-height-loose)",
 };
+
+// Smaller type, but the gloss's line box — else each translation resizes the card.
+const STATUS_TYPE = { display: GLOSS_TYPE.display, lineHeight: GLOSS_TYPE.lineHeight };
 
 /** The looked-up word and its translation. */
 export default function WordCard({
@@ -189,7 +194,9 @@ export default function WordCard({
           {/* Announce translation state changes to assistive tech (WCAG 4.1.3). */}
           <div aria-live="polite">
             {translate && status === "loading" && (
-              <span className="tw-body-small text-muted-aaa">translating…</span>
+              <span className="tw-body-small text-muted-aaa" style={STATUS_TYPE}>
+                translating…
+              </span>
             )}
             {translate && status === "done" && showLines && (
               <ul className="tw-flex tw-flex-col tw-gap-1.5">
@@ -220,7 +227,9 @@ export default function WordCard({
               </span>
             )}
             {translate && missing && (
-              <span className="tw-body-small text-muted-aaa">no translation</span>
+              <span className="tw-body-small text-muted-aaa" style={STATUS_TYPE}>
+                no translation
+              </span>
             )}
           </div>
         </div>

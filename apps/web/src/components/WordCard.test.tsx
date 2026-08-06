@@ -200,6 +200,19 @@ describe("WordCard multi-sense words", () => {
     expect(await screen.findByText("Milan")).toBeInTheDocument();
   });
 
+  // The placeholder is smaller type than the gloss, so without a shared line box the
+  // card shrinks the moment a translation lands and jolts everything below it.
+  it("gives the loading placeholder the same line box as the gloss", async () => {
+    vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["sky"] }], "sky"));
+    render(
+      <WordCard info={{ ...solo, word: "cielo", forms: ["cielo"] }} lang="it" tl="en" onTlChange={() => {}} />,
+    );
+    const box = (el: HTMLElement) => `${el.style.display}/${el.style.lineHeight}`;
+    const placeholder = screen.getByText("translating…");
+    expect(box(placeholder)).toBe("block/var(--typography-line-height-loose)");
+    expect(box(placeholder)).toBe(box(await screen.findByText("sky")));
+  });
+
   it("asks for the dictionary block, which is what carries the readings", async () => {
     vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["need"] }], "need"));
     // A word no other test looks up — the gloss cache is module-level, by design.

@@ -289,8 +289,8 @@ export default function Workspace() {
               ariaLabel="Look up a word"
               describedBy="search-help"
               placeholder="look up a word…"
-              submitLabel={loading ? "…" : "look up"}
-              submitDisabled={loading}
+              submitLabel="look up"
+              busy={loading}
             />
             {/* Context-sensitive help for the field (WCAG 3.3.5). */}
             <p id="search-help" className="visually-hidden">
