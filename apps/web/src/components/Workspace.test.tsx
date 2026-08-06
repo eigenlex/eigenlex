@@ -144,6 +144,31 @@ describe("Workspace", () => {
     expect(screen.getByRole("combobox", { name: /look up a word/i })).toHaveValue("Plädoyer");
   });
 
+  // The card used to render only once the lookup landed, popping in and shoving the
+  // browser below it down — 198px on a phone.
+  it("holds the card's frame from the first paint, before the lookup lands", () => {
+    render(<Workspace />);
+    expect(screen.getByRole("region", { name: /meaning of water/i })).toBeInTheDocument();
+  });
+
+  // A blank word is not a wait — it used to leave `loading` true for good, which
+  // now that the frame follows it would mean a card spinning forever.
+  it("stops waiting when the deeplink carries nothing to look up", async () => {
+    window.history.replaceState(null, "", "/?lang=en&word=%20");
+    render(<Workspace />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "look up" })).toBeEnabled());
+    expect(screen.queryByRole("region", { name: /meaning of/i })).not.toBeInTheDocument();
+  });
+
+  it("drops the frame again when the word turns out not to exist", async () => {
+    window.history.replaceState(null, "", "/?lang=en&word=missing");
+    render(<Workspace />);
+    expect(screen.getByRole("region", { name: /meaning of missing/i })).toBeInTheDocument();
+
+    await screen.findByRole("alert");
+    expect(screen.queryByRole("region", { name: /meaning of/i })).not.toBeInTheDocument();
+  });
+
   // Swapping the label for a "…" resized the button on every lookup.
   it("keeps the submit button's label while a lookup is in flight", async () => {
     render(<Workspace />);

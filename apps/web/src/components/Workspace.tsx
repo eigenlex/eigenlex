@@ -208,7 +208,12 @@ export default function Workspace() {
   const lookup = useCallback(
     async (raw: string, l: SourceLang, bandOverride: string | null = null) => {
       const term = raw.trim().toLowerCase();
-      if (!term) return;
+      // Nothing to look up is not a wait: `?word=%20` would otherwise leave the
+      // card pending and the button disabled for good.
+      if (!term) {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         const res = await fetch(`/api/word/${encodeURIComponent(term)}?lang=${l}`);
@@ -306,7 +311,19 @@ export default function Workspace() {
           )}
         </div>
 
-        {info && <WordCard info={info} lang={lang} tl={tl} onTlChange={setTl} />}
+        {/* Rendered from the first paint, pending, so the hero row is already its
+            settled height — the card used to pop in and shove the browser below it
+            down (198px on a phone). A failed lookup leaves `info` null and stops
+            loading, which drops the frame again and leaves the error alert. */}
+        {(info || loading) && (
+          <WordCard
+            word={info?.word ?? query}
+            forms={info?.forms ?? null}
+            lang={lang}
+            tl={tl}
+            onTlChange={setTl}
+          />
+        )}
       </div>
 
       <section aria-labelledby="browse-heading">

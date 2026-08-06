@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { Select } from "@frontify/fondue/components";
 import Loading from "@/components/Loading";
-import type { WordBands } from "@/lib/types";
 import { baseLang, type SenseGroup } from "@/lib/translate";
 
 // Offered in the picker; the reader's browser language and current pick are merged in.
@@ -139,12 +138,19 @@ const STATUS_TYPE = { display: GLOSS_TYPE.display, lineHeight: GLOSS_TYPE.lineHe
 
 /** The looked-up word and its translation. */
 export default function WordCard({
-  info,
+  word,
+  forms,
   lang,
   tl,
   onTlChange,
 }: {
-  info: WordBands;
+  word: string;
+  /**
+   * The word's casings, or null while the lookup is still in flight — which
+   * renders this exact frame with the gloss pending, so the card is already its
+   * settled height on first paint and the page below it never jumps.
+   */
+  forms: string[] | null;
   lang: string;
   /** Target/gloss language, owned by the workspace so it can ride in the URL. */
   tl: string;
@@ -152,12 +158,14 @@ export default function WordCard({
 }) {
   // No point translating a word into its own language.
   const translate = tl !== lang;
+  const pending = forms === null;
   // A case-homograph translates each casing separately; everything else is one gloss.
-  const forms = info.forms ?? [info.word];
-  const homograph = forms.length > 1;
-  const single = useGloss(info.word, lang, tl, translate && !homograph);
-  const multi = useForms(forms, lang, tl, translate && homograph);
+  const casings = forms ?? [word];
+  const homograph = casings.length > 1;
+  const single = useGloss(word, lang, tl, translate && !homograph && !pending);
+  const multi = useForms(casings, lang, tl, translate && homograph && !pending);
 
+  // Both hooks park on "loading" until enabled, which is the pending frame's state.
   const status = homograph ? multi.status : single.status;
   // Separate readings get a line each: per casing for a homograph, else per part of speech.
   const lines: GlossLine[] = homograph
@@ -178,7 +186,7 @@ export default function WordCard({
     // Named for AT: without the heading the card is an unlabelled box, and its live
     // region would announce a gloss with no subject.
     <section
-      aria-label={`Meaning of ${info.word}`}
+      aria-label={`Meaning of ${word}`}
       className="WordCard tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-4 tw-py-4 min-[700px]:tw-px-6 min-[700px]:tw-py-5"
     >
       {/* Above the gloss, since it decides what the gloss says. */}
@@ -241,7 +249,7 @@ export default function WordCard({
         </div>
         {/* 44px target (WCAG 2.5.5). */}
         <a
-          href={translateHref(info.word, lang, tl)}
+          href={translateHref(word, lang, tl)}
           // Opens a fresh tab every time (named-tab reuse can't survive Google
           // clearing window.name) — accepted, for its pronunciation audio.
           target="_blank"

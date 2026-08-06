@@ -4,22 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import WordCard from "./WordCard";
-import type { WordBands } from "@/lib/types";
 
 // The workspace owns the target language now; a tiny stateful host stands in for it so
 // picking a language in the card re-renders with the new value, as it does in the app.
-function Host({ info, lang, tl: initial }: { info: WordBands; lang: string; tl: string }) {
+function Host({ word, lang, tl: initial }: { word: string; lang: string; tl: string }) {
   const [tl, setTl] = useState(initial);
-  return <WordCard info={info} lang={lang} tl={tl} onTlChange={setTl} />;
+  return <WordCard word={word} forms={[word]} lang={lang} tl={tl} onTlChange={setTl} />;
 }
-
-const info: WordBands = {
-  word: "water",
-  forms: ["water"],
-  rank: 384,
-  freq: { key: "1", label: "Top 1,000" },
-  cefr: { key: "A1", label: "A1 · Beginner" },
-};
 
 // Translate stub: returns a per-language gloss so we can assert re-translation.
 const GLOSS: Record<string, string> = { es: "agua", fr: "eau" };
@@ -47,27 +38,27 @@ afterEach(() => {
 
 describe("WordCard language selector", () => {
   it("shows the target language and skips translating a word into its own language", () => {
-    render(<WordCard info={info} lang="en" tl="en" onTlChange={() => {}} />);
+    render(<WordCard word="water" forms={["water"]} lang="en" tl="en" onTlChange={() => {}} />);
     // Fondue's Select shows the picked language's endonym in its trigger, not a value.
     expect(selector()).toHaveTextContent("English");
     expect(fetch).not.toHaveBeenCalled();
   });
 
   it("always offers a Google Translate link opening in a new tab, even for English", () => {
-    render(<WordCard info={info} lang="en" tl="en" onTlChange={() => {}} />);
+    render(<WordCard word="water" forms={["water"]} lang="en" tl="en" onTlChange={() => {}} />);
     const link = screen.getByRole("link", { name: /google translate/i });
     expect(link).toHaveAttribute("target", "_blank");
     expect(link.getAttribute("href")).toContain("translate.google.com");
   });
 
   it("translates the word into the target language", async () => {
-    render(<WordCard info={info} lang="en" tl="es" onTlChange={() => {}} />);
+    render(<WordCard word="water" forms={["water"]} lang="en" tl="es" onTlChange={() => {}} />);
     expect(selector()).toHaveTextContent(/español/i);
     expect(await screen.findByText("agua")).toBeInTheDocument();
   });
 
   it("translates from a non-English source language, tagging the request with sl", async () => {
-    render(<WordCard info={info} lang="es" tl="fr" onTlChange={() => {}} />);
+    render(<WordCard word="water" forms={["water"]} lang="es" tl="fr" onTlChange={() => {}} />);
     expect(await screen.findByText("eau")).toBeInTheDocument();
     const call = (fetch as unknown as { mock: { calls: [string][] } }).mock.calls.find(([u]) =>
       String(u).includes("/api/translate/"),
@@ -77,7 +68,7 @@ describe("WordCard language selector", () => {
 
   it("re-translates and reports the pick when the language changes", async () => {
     const onTlChange = vi.fn();
-    render(<WordCard info={info} lang="en" tl="es" onTlChange={onTlChange} />);
+    render(<WordCard word="water" forms={["water"]} lang="en" tl="es" onTlChange={onTlChange} />);
     await screen.findByText("agua");
 
     // Open the Fondue Select and pick French from the listbox.
@@ -88,7 +79,7 @@ describe("WordCard language selector", () => {
   });
 
   it("re-translates through a stateful host when the language changes", async () => {
-    render(<Host info={info} lang="en" tl="es" />);
+    render(<Host word="water" lang="en" tl="es" />);
     await screen.findByText("agua");
 
     await userEvent.click(selector());
@@ -108,18 +99,29 @@ function mockDict(senses: Record<string, string[]>) {
   });
 }
 
-describe("WordCard case-homographs", () => {
-  const homo = (word: string, forms: string[]): WordBands => ({
-    word,
-    forms,
-    rank: 500,
-    freq: { key: "2", label: "1,001–2,000" },
-    cefr: { key: "A2", label: "A2 · Elementary" },
-  });
+// The workspace renders this frame before the lookup lands, so the hero row is
+// already its settled height and the browser below it never gets shoved down.
+describe("WordCard pending", () => {
+  it("holds the whole frame, glossing nothing, until the forms arrive", () => {
+    const { rerender } = render(
+      <WordCard word="water" forms={null} lang="es" tl="en" onTlChange={() => {}} />,
+    );
+    expect(screen.getByRole("region", { name: /meaning of water/i })).toBeInTheDocument();
+    expect(selector()).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /google translate/i })).toBeInTheDocument();
+    expect(screen.getByText("Translating…")).toBeInTheDocument();
+    // Nothing is known to be translatable yet — the word may not even be a word.
+    expect(fetch).not.toHaveBeenCalled();
 
+    rerender(<WordCard word="water" forms={["water"]} lang="es" tl="en" onTlChange={() => {}} />);
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/translate/water"), expect.anything());
+  });
+});
+
+describe("WordCard case-homographs", () => {
   it("shows a distinct gloss for each casing", async () => {
     vi.stubGlobal("fetch", mockDict({ Essen: ["food", "meal"], essen: ["to eat", "dine"] }));
-    render(<WordCard info={homo("Essen", ["Essen", "essen"])} lang="de" tl="en" onTlChange={() => {}} />);
+    render(<WordCard word="Essen" forms={["Essen", "essen"]} lang="de" tl="en" onTlChange={() => {}} />);
     // Both glosses and the lowercase casing label appear (the noun label doubles the hero).
     expect(await screen.findByText("food, meal")).toBeInTheDocument();
     expect(await screen.findByText("to eat, dine")).toBeInTheDocument();
@@ -129,7 +131,7 @@ describe("WordCard case-homographs", () => {
   it("collapses to one gloss when the casings mean the same thing", async () => {
     // "wer"/"Wer" both gloss to "who" — no distinct sense, so only one line shows.
     vi.stubGlobal("fetch", mockDict({ Wer: ["who"], wer: ["who"] }));
-    render(<WordCard info={homo("Wer", ["Wer", "wer"])} lang="de" tl="en" onTlChange={() => {}} />);
+    render(<WordCard word="Wer" forms={["Wer", "wer"]} lang="de" tl="en" onTlChange={() => {}} />);
     expect(await screen.findByText("who")).toBeInTheDocument();
     expect(screen.getAllByText("who")).toHaveLength(1);
     expect(screen.queryByText("wer")).not.toBeInTheDocument();
@@ -147,14 +149,6 @@ function mockGroups(groups: { pos: string; terms: string[] }[], translation: str
 
 describe("WordCard multi-sense words", () => {
   // Italian "solo": adjective "only/alone" and adverb "just" — one word, two readings.
-  const solo: WordBands = {
-    word: "solo",
-    forms: ["solo"],
-    rank: 47,
-    freq: { key: "1", label: "Top 1,000" },
-    cefr: { key: "A1", label: "A1 · Beginner" },
-  };
-
   it("lists a gloss per part of speech when a word reads as more than one", async () => {
     vi.stubGlobal(
       "fetch",
@@ -166,7 +160,7 @@ describe("WordCard multi-sense words", () => {
         "Alone",
       ),
     );
-    render(<WordCard info={solo} lang="it" tl="en" onTlChange={() => {}} />);
+    render(<WordCard word="solo" forms={["solo"]} lang="it" tl="en" onTlChange={() => {}} />);
     expect(await screen.findByText("only, alone")).toBeInTheDocument();
     expect(screen.getByText("just")).toBeInTheDocument();
     expect(screen.getByText("adjective")).toBeInTheDocument();
@@ -176,7 +170,7 @@ describe("WordCard multi-sense words", () => {
   it("keeps a single reading as one unlabelled gloss", async () => {
     vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["water"] }], "water"));
     render(
-      <WordCard info={{ ...solo, word: "acqua", forms: ["acqua"] }} lang="it" tl="en" onTlChange={() => {}} />,
+      <WordCard word="acqua" forms={["acqua"]} lang="it" tl="en" onTlChange={() => {}} />,
     );
     expect(await screen.findByText("water")).toBeInTheDocument();
     expect(screen.queryByText("noun")).not.toBeInTheDocument();
@@ -186,7 +180,7 @@ describe("WordCard multi-sense words", () => {
     // Real case: "acqua" plainly translates to "waterfall", but the dictionary is right.
     vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["water", "aqua"] }], "waterfall"));
     render(
-      <WordCard info={{ ...solo, word: "acquario", forms: ["acquario"] }} lang="it" tl="en" onTlChange={() => {}} />,
+      <WordCard word="acquario" forms={["acquario"]} lang="it" tl="en" onTlChange={() => {}} />,
     );
     expect(await screen.findByText("water, aqua")).toBeInTheDocument();
     expect(screen.queryByText("waterfall")).not.toBeInTheDocument();
@@ -195,7 +189,7 @@ describe("WordCard multi-sense words", () => {
   it("falls back to the plain gloss when there is no dictionary entry", async () => {
     vi.stubGlobal("fetch", mockGroups([], "Milan"));
     render(
-      <WordCard info={{ ...solo, word: "Milano", forms: ["Milano"] }} lang="it" tl="en" onTlChange={() => {}} />,
+      <WordCard word="Milano" forms={["Milano"]} lang="it" tl="en" onTlChange={() => {}} />,
     );
     expect(await screen.findByText("Milan")).toBeInTheDocument();
   });
@@ -205,7 +199,7 @@ describe("WordCard multi-sense words", () => {
   it("reserves the gloss's line box while translating", async () => {
     vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["sky"] }], "sky"));
     render(
-      <WordCard info={{ ...solo, word: "cielo", forms: ["cielo"] }} lang="it" tl="en" onTlChange={() => {}} />,
+      <WordCard word="cielo" forms={["cielo"]} lang="it" tl="en" onTlChange={() => {}} />,
     );
     const spinner = screen.getByText("Translating…").closest("div.Loading");
     expect(spinner).toHaveClass("tw-min-h-[var(--typography-line-height-loose)]");
@@ -220,7 +214,7 @@ describe("WordCard multi-sense words", () => {
     vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["need"] }], "need"));
     // A word no other test looks up — the gloss cache is module-level, by design.
     render(
-      <WordCard info={{ ...solo, word: "bisogno", forms: ["bisogno"] }} lang="it" tl="en" onTlChange={() => {}} />,
+      <WordCard word="bisogno" forms={["bisogno"]} lang="it" tl="en" onTlChange={() => {}} />,
     );
     await screen.findByText("need");
     const call = (fetch as unknown as { mock: { calls: [string][] } }).mock.calls[0]!;
