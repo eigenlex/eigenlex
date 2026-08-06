@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Select } from "@frontify/fondue/components";
 import Loading from "@/components/Loading";
+import { PANEL, PANEL_LANG } from "@/components/panel";
 import { baseLang, type SenseGroup } from "@/lib/translate";
 
 // Offered in the picker; the reader's browser language and current pick are merged in.
@@ -116,7 +117,7 @@ function LanguageSelect({ value, onChange }: { value: string; onChange: (l: stri
     >
       {options.map((code) => (
         <Select.Item key={code} value={code} label={endonym(code)}>
-          <span lang={code}>{endonym(code)}</span>
+          <span lang={code} className="tw-text-large">{endonym(code)}</span>
         </Select.Item>
       ))}
     </Select>
@@ -187,10 +188,10 @@ export default function WordCard({
     // region would announce a gloss with no subject.
     <section
       aria-label={`Meaning of ${word}`}
-      className="WordCard tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-4 tw-py-4 min-[700px]:tw-px-6 min-[700px]:tw-py-5"
+      className={`WordCard ${PANEL}`}
     >
       {/* Above the gloss, since it decides what the gloss says. */}
-      <div className="tw-mb-2 tw-w-44 [&_[role=combobox]]:tw-min-h-[44px] min-[700px]:tw-mb-4">
+      <div className={PANEL_LANG}>
         <LanguageSelect value={tl} onChange={onTlChange} />
       </div>
       {/* Wraps on the card's own width, not the viewport's — it is also cramped in the
@@ -199,7 +200,9 @@ export default function WordCard({
       <div className="tw-flex tw-flex-wrap tw-items-start tw-justify-between tw-gap-2 min-[700px]:tw-gap-4">
         {/* The card is only the meaning now — the word itself is in the search box
             and spotlighted in the cloud, so printing it a third time said nothing. */}
-        <div className="tw-min-w-0 tw-grow tw-basis-[17rem]">
+        {/* 44px, centred: the gloss sits on the same line as the search field facing
+            it, and level with the link beside it. */}
+        <div className="tw-flex tw-min-h-[44px] tw-min-w-0 tw-grow tw-basis-[17rem] tw-items-center">
           {/* Announce translation state changes to assistive tech (WCAG 4.1.3). */}
           <div aria-live="polite">
             {translate && status === "loading" && (

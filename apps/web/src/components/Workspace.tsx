@@ -15,6 +15,7 @@ import {
 } from "@/lib/languages";
 import { baseLang } from "@/lib/translate";
 import { readScenario, writeScenario } from "@/lib/scenario";
+import { PANEL, PANEL_LANG } from "@/components/panel";
 
 // Expanded forms for the abbreviations we show (WCAG 3.1.4).
 const CEFR_TITLE = "Common European Framework of Reference for Languages";
@@ -77,21 +78,18 @@ function storedTarget(): string | null {
 // alone, so it doesn't deserve a row of six always-visible buttons.
 function SourceSelect({ lang, onChange }: { lang: SourceLang; onChange: (l: SourceLang) => void }) {
   return (
-    // Sized to match the word card's translation-language select.
-    <div className="tw-mb-4 tw-w-44 [&_[role=combobox]]:tw-min-h-[44px]">
-      <Select
-        aria-label="Source language"
-        value={lang}
-        onSelect={(v) => v && onChange(v as SourceLang)}
-        showStringValue
-      >
-        {SOURCE_LANGS.map((code) => (
-          <Select.Item key={code} value={code} label={SOURCE_LANG_META[code].name}>
-            <span lang={code}>{SOURCE_LANG_META[code].name}</span>
-          </Select.Item>
-        ))}
-      </Select>
-    </div>
+    <Select
+      aria-label="Source language"
+      value={lang}
+      onSelect={(v) => v && onChange(v as SourceLang)}
+      showStringValue
+    >
+      {SOURCE_LANGS.map((code) => (
+        <Select.Item key={code} value={code} label={SOURCE_LANG_META[code].name}>
+          <span lang={code} className="tw-text-large">{SOURCE_LANG_META[code].name}</span>
+        </Select.Item>
+      ))}
+    </Select>
   );
 }
 
@@ -269,17 +267,20 @@ export default function Workspace() {
 
   return (
     <div className="Workspace">
-      {/* Hero: pick a language and look a word up on the left; the result card fills
-          the right on wide screens, so a query and its answer sit side by side. */}
+      {/* Hero: the word you ask for on the left, what it means on the right — two
+          matching panels, each opening with its language. Stretched, not start-aligned,
+          so the pair squares off. */}
       {/* Tighter above and below the card on a phone, where it is stacked, not beside. */}
-      <div className="tw-mb-6 tw-grid tw-grid-cols-1 tw-items-start tw-gap-x-8 tw-gap-y-3 min-[700px]:tw-mb-12 min-[700px]:tw-gap-y-6 min-[860px]:tw-grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-        <div>
+      <div className="tw-mb-6 tw-grid tw-grid-cols-1 tw-gap-x-8 tw-gap-y-3 min-[700px]:tw-mb-12 min-[700px]:tw-gap-y-6 min-[860px]:tw-grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        <div className={PANEL}>
           {/* Section headings (WCAG 2.4.10) — visually hidden, structural for AT. */}
           <section aria-labelledby="lang-heading">
             <h2 id="lang-heading" className="visually-hidden">
               Choose a language to study
             </h2>
-            <SourceSelect lang={lang} onChange={chooseLang} />
+            <div className={PANEL_LANG}>
+              <SourceSelect lang={lang} onChange={chooseLang} />
+            </div>
           </section>
 
           <section aria-labelledby="search-heading">
@@ -305,7 +306,7 @@ export default function Workspace() {
           </section>
 
           {error && (
-            <p className="tw-body-medium tw-text-error" role="alert">
+            <p className="tw-mt-3 tw-body-medium tw-text-error" role="alert">
               {error}
             </p>
           )}

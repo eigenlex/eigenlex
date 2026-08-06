@@ -142,7 +142,7 @@ export default function WordSearchBox({
 
   return (
     <form
-      className="tw-mb-4 tw-flex tw-gap-2"
+      className="tw-flex tw-gap-2"
       role="search"
       onSubmit={(e) => {
         e.preventDefault();
