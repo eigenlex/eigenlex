@@ -91,6 +91,18 @@ interface LangConfig {
   casingFile?: string;
   /** Determiners, for the name filter: a common noun follows one, a personal name rarely does. */
   determiners?: Set<string>;
+  /**
+   * Pronouns this language hyphenates onto a verb ("diz-me", "donne-moi"). Every
+   * verb x pronoun pair spells a distinct surface form, none of which is vocabulary —
+   * pt spends 24% of its list on them — so they merge back into the verb. Matched a
+   * whole segment at a time, which is what spares real compounds: "guarda-chuva" ends
+   * in "chuva", not in "a". Absent = the language doesn't do this.
+   */
+  clitics?: Set<string>;
+  /** Verb endings that follow a mesoclitic pronoun ("contar-te-ia" = contar + te + ia). */
+  mesoEndings?: Set<string>;
+  /** Compounds ending in something spelled like a clitic, kept whole. */
+  cliticExceptions?: Set<string>;
 }
 
 const LANGS: Record<string, LangConfig> = {
@@ -137,6 +149,14 @@ const LANGS: Record<string, LangConfig> = {
       "ce", "cet", "cette", "ces", "mon", "ma", "mes", "ton", "ta", "tes",
       "son", "sa", "ses", "notre", "votre", "leur", "leurs", "chaque", "autre",
     ]),
+    clitics: new Set([
+      // Inverted subjects ("est-ce", "avez-vous"), with the euphonic t of "a-t-il".
+      "je", "tu", "il", "elle", "on", "nous", "vous", "ils", "elles", "ce", "t",
+      // Imperative objects ("donne-moi", "vas-y").
+      "moi", "toi", "lui", "leur", "le", "la", "les", "en", "y",
+    ]),
+    // "là" and "ci" are deliberately absent: "celui-là" and "là-bas" are vocabulary.
+    cliticExceptions: new Set(["rendez-vous", "garde-à-vous"]),
   },
   de: {
     code: "de",
@@ -167,6 +187,17 @@ const LANGS: Record<string, LangConfig> = {
       "do", "da", "dos", "das", "no", "na", "nos", "nas", "ao", "à",
       "este", "esta", "esse", "essa", "aquele", "aquela",
       "meu", "minha", "seu", "sua", "nosso", "nossa", "cada", "outro", "outra",
+    ]),
+    clitics: new Set([
+      "me", "te", "se", "lhe", "lhes", "nos", "vos",
+      // Direct objects, plus the -lo/-no allomorphs taken after -r and after a nasal.
+      "o", "a", "os", "as", "lo", "la", "los", "las", "no", "na", "nas",
+      // Contracted indirect+direct pairs ("dá-mo" = dá + me + o).
+      "mo", "ma", "mos", "mas", "to", "ta", "tos", "tas", "lho", "lha", "lhos", "lhas",
+    ]),
+    mesoEndings: new Set([
+      "ei", "ás", "á", "emos", "eis", "ão",
+      "ia", "ias", "íamos", "íeis", "iam",
     ]),
   },
   it: {
@@ -200,6 +231,25 @@ function makeClean(cfg: LangConfig) {
     return w;
   };
 }
+
+/**
+ * Strip hyphen-attached pronouns off a verb: "diz-me" -> "diz", "parte-se-me" -> "parte",
+ * "a-t-il" -> "a". Portuguese mesoclisis wraps the pronoun inside the verb
+ * ("contar-te-ia"), so a known verb ending trailing a clitic is stripped with it.
+ * Returns null when there is nothing to strip — including every ordinary compound.
+ */
+function declitic(w: string, cfg: LangConfig): string | null {
+  if (!cfg.clitics || !w.includes("-") || cfg.cliticExceptions?.has(w)) return null;
+  const p = w.split("-");
+  let end = p.length;
+  if (end === 3 && cfg.clitics.has(p[1]!) && cfg.mesoEndings?.has(p[2]!)) end = 1;
+  else while (end > 1 && cfg.clitics.has(p[end - 1]!)) end--;
+  return end === p.length ? null : p.slice(0, end).join("-");
+}
+
+// Portuguese drops the infinitive's -r before -lo/-la and accents the vowel
+// ("fazer" + "o" -> "fazê-lo"), so the bare stem needs it back to be a word again.
+const STEM_REPAIR: [RegExp, string][] = [[/á$/, "ar"], [/ê$/, "er"], [/ô$/, "or"]];
 
 // --- Casing: lowercase key -> its capitalized display form (absent = stays lowercase).
 //
@@ -374,6 +424,18 @@ function buildLang(cfg: LangConfig) {
   // A word heading its own entry keeps it — else first-wins silently swallows it.
   const lemmaOf = (w: string) => (isHeadword.has(w) ? w : form2lemma.get(w) ?? w);
 
+  // The verb a clitic form belongs to, or null when we can't name it — in which case
+  // the form is dropped rather than kept, since "perguntares-me" is not a word either.
+  const known = (s: string) => isHeadword.has(s) || form2lemma.has(s);
+  const stemOf = (s: string) => {
+    if (known(s)) return s;
+    for (const [re, sub] of STEM_REPAIR) {
+      const t = s.replace(re, sub);
+      if (t !== s && known(t)) return t;
+    }
+    return null;
+  };
+
   // Sum frequency per lemma across all its inflections.
   const lines = readFileSync(data(cfg.freq.file), "utf8").split(/\r?\n/);
   let wCol: number, fCol: number, start: number;
@@ -390,12 +452,21 @@ function buildLang(cfg: LangConfig) {
   const split = (line: string) => (cfg.freq.format === "csv" ? line.split(",") : line.split(/\s+/));
 
   const freq = new Map<string, number>();
+  let declitMerged = 0, declitDropped = 0;
   for (let i = start; i < lines.length; i++) {
     const r = split(lines[i]);
     const w = clean(r[wCol]); const wf = Number(r[fCol]);
     if (!w || !(wf > 0)) continue;
     if (cfg.freq.minCount !== undefined && wf < cfg.freq.minCount) continue;
-    const L = lemmaOf(w);
+    const stem = declitic(w, cfg);
+    let base = w;
+    if (stem !== null) {
+      const s = stemOf(stem);
+      if (s === null) { declitDropped++; continue; }
+      base = s;
+      declitMerged++;
+    }
+    const L = lemmaOf(base);
     freq.set(L, (freq.get(L) ?? 0) + wf);
   }
 
@@ -449,6 +520,10 @@ function buildLang(cfg: LangConfig) {
       Object.values(variants).slice(0, 3).map((v) => v.join("/")).join(" "));
     const sample = rankedKeys.filter((w, i) => i >= NAME_RANK_FLOOR && isName(w)).slice(0, 6);
     console.log(`  names dropped: ${dropped.toLocaleString()}`, "e.g.", sample.join(" "));
+  }
+  if (cfg.clitics) {
+    console.log(`  clitics: ${declitMerged.toLocaleString()} forms merged into their verb,`,
+      `${declitDropped.toLocaleString()} dropped as unattributable`);
   }
 }
 

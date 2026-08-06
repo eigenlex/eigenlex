@@ -37,12 +37,27 @@ OpenSubtitles tail is mostly hapax noise. It's stated in occurrences rather than
 it means the same thing in every language, and it's omitted for English, whose SUBTLEX
 column is per-million rather than a raw count.
 
-*Known wart:* the tail past ~30k is thin vocabulary. Only 9% of pt's 60k–115k range is
-known to its lemma dictionary (vs 51% of the first 30k), 27% of pt's added words are
-clitic-attached verb forms (`confiar-lhes`, `perdoamos-te`) and 14% of fr's are, ~9% of
-every language's are in the names gazetteer, and OCR debris survives (`lnternet` for
-"Internet", `construçao`). Raising `minCount` or teaching the build about clitics would
-each cut a real slice of it.
+**Clitics.** Portuguese and French hyphenate pronouns onto verbs, so every verb ×
+pronoun pair spells its own surface form — `deixa-me`, `fazê-lo`, `donne-moi`, `a-t-il`.
+None is vocabulary, and they were 24% of pt's list and 12% of fr's. `clitics` in the
+`LANGS` table strips them and merges the frequency back into the verb, which is where it
+belongs: pt `lembrar` 333 → 177, fr `excuser` 761 → 297. Portuguese mesoclisis puts the
+pronoun *inside* the verb (`contar-te-ia`), so `mesoEndings` strips a trailing future /
+conditional ending along with it, and `STEM_REPAIR` restores the infinitive's `-r` that
+pt drops before `-lo`/`-la` (`fazer` + `o` → `fazê-lo`). A stem that resolves to no known
+word is dropped rather than kept — 346 forms in pt, 400 in fr.
+
+Segments are matched **whole**, which is the load-bearing detail: it's what keeps
+`guarda-chuva` (ends in "chuva", not "a") and `arc-en-ciel` (ends in "ciel", not "en").
+Neither lemma list contains a single hyphenated entry, so the dictionary can't referee
+this and rank can't either — `peut-être` and `rendez-vous` sit among `avez-vous` and
+`dis-moi`. `là`/`ci` are deliberately not clitics, since `celui-là` and `là-bas` are
+vocabulary; `cliticExceptions` covers the rest (`rendez-vous`, `garde-à-vous`).
+
+*Known wart:* the tail past ~30k is still thin vocabulary. Only ~9% of pt's deepest
+range is known to its lemma dictionary (vs 51% of the first 30k), ~9% of every
+language's added words are in the names gazetteer, and OCR debris survives (`lnternet`
+for "Internet", `construçao`). Raising `minCount` would cut a slice of it.
 A surface word that **heads its own entry** in the lemma list keeps it, rather than being
 merged into whichever lemma claims it. The lists are lemma-sorted, so plain first-wins
 silently hands a shared form to the alphabetically-first claimant — which used to delete
