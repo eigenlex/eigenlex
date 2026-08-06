@@ -48,6 +48,15 @@ function mockFetch() {
         { status: 200 },
       );
     }
+    // The card's gloss; its leading term is what a language swap carries over.
+    if (u.includes("/api/translate/")) {
+      return new Response(
+        JSON.stringify({
+          translation: "water",
+          groups: [{ pos: "noun", terms: ["water", "aqua"] }],
+        }),
+      );
+    }
     if (u.includes("/api/suggest")) {
       const q = new URL(u, "http://localhost").searchParams.get("q") ?? "";
       const matches = ["care", "cat", "carbon"].filter((w) => w.startsWith(q.toLowerCase()));
@@ -173,6 +182,38 @@ describe("Workspace", () => {
     expect(screen.getByRole("button", { name: "look up" })).toBeDisabled();
     await screen.findByRole("region", { name: /meaning of water/i });
     expect(screen.getByRole("button", { name: "look up" })).toBeEnabled();
+  });
+
+  const swapButton = () => screen.getByRole("button", { name: /swap the study and translation/i });
+
+  it("swaps the pair and carries the word over as its own translation", async () => {
+    window.history.replaceState(null, "", "/?lang=de&word=wasser&tl=en");
+    const user = userEvent.setup();
+    render(<Workspace />);
+    await screen.findByText("water, aqua"); // the gloss the swap will land on
+
+    await user.click(swapButton());
+
+    await waitFor(() => {
+      const p = new URLSearchParams(window.location.search);
+      expect(p.get("lang")).toBe("en");
+      expect(p.get("tl")).toBe("de");
+      expect(p.get("word")).toBe("water");
+    });
+  });
+
+  // Only the six indexed languages have a word list to browse.
+  it("refuses to swap into a language that cannot be studied", async () => {
+    window.history.replaceState(null, "", "/?lang=de&word=wasser&tl=ja");
+    const user = userEvent.setup();
+    render(<Workspace />);
+    await screen.findByRole("region", { name: /meaning of wasser/i });
+
+    expect(swapButton()).toHaveAttribute("aria-disabled", "true");
+    await user.click(swapButton());
+    await waitFor(() => {
+      expect(new URLSearchParams(window.location.search).get("lang")).toBe("de");
+    });
   });
 
   it("restores the source language and word from the URL", async () => {

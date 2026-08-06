@@ -93,6 +93,46 @@ function SourceSelect({ lang, onChange }: { lang: SourceLang; onChange: (l: Sour
   );
 }
 
+// Sits between the two panels: a vertical divider control on a wide screen, a
+// horizontal one where they stack — hence the arrow turning with the breakpoint.
+const SWAP =
+  "tw-flex tw-h-11 tw-w-11 tw-items-center tw-justify-center tw-rounded-full tw-border " +
+  "tw-border-line-subtle tw-bg-surface tw-text-large tw-text-secondary tw-transition-colors " +
+  "hover:tw-border-line hover:tw-text-primary " +
+  "aria-disabled:tw-cursor-not-allowed aria-disabled:tw-opacity-40 " +
+  "aria-disabled:hover:tw-border-line-subtle aria-disabled:hover:tw-text-secondary";
+
+const STUDYABLE = SOURCE_LANGS.map((c) => SOURCE_LANG_META[c].name).join(", ");
+
+/**
+ * Study what you were glossing to. Only the six indexed languages can be studied,
+ * so a gloss language outside them leaves this inert rather than absent — a control
+ * that vanishes as the target changes is harder to understand than one that explains.
+ */
+function SwapButton({ enabled, onSwap }: { enabled: boolean; onSwap: () => void }) {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        {/* aria-disabled, not disabled: it stays focusable, so the reason is reachable. */}
+        <button
+          type="button"
+          aria-disabled={!enabled}
+          aria-label="Swap the study and translation languages"
+          className={SWAP}
+          onClick={() => enabled && onSwap()}
+        >
+          <span aria-hidden="true" className="tw-rotate-90 min-[860px]:tw-rotate-0">
+            ⇄
+          </span>
+        </button>
+      </Tooltip.Trigger>
+      <Tooltip.Content>
+        {enabled ? "Swap languages" : `Only ${STUDYABLE} can be studied`}
+      </Tooltip.Content>
+    </Tooltip.Root>
+  );
+}
+
 function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView) => void }) {
   return (
     <div>
@@ -257,6 +297,35 @@ export default function Workspace() {
     void lookup(word, l);
   };
 
+  // The gloss's leading term, reported by the card — what a swap lands on.
+  const [glossTerm, setGlossTerm] = useState<string | null>(null);
+  const canSwap = isSourceLang(tl) && tl !== lang;
+
+  // Study the gloss language, glossing back to the one just left. The word carries
+  // over as its own translation where that is a word in the new language — a gloss
+  // can be a phrase ("to eat"), and phrases are not in the dictionary.
+  const swap = async () => {
+    if (!canSwap || !isSourceLang(tl)) return;
+    const to = tl;
+    const from = lang;
+    setLoading(true);
+    let word = SOURCE_LANG_META[to].defaultWord;
+    const seed = glossTerm?.trim().toLowerCase();
+    if (seed && !seed.includes(" ")) {
+      try {
+        const res = await fetch(`/api/word/${encodeURIComponent(seed)}?lang=${to}`);
+        if (res.ok) word = seed;
+      } catch {
+        /* offline: the default word still gives a valid landing place */
+      }
+    }
+    // Swapped together with the word, so no render shows a word beside the wrong pair.
+    setLang(to);
+    setTl(from);
+    setQuery(word);
+    await lookup(word, to);
+  };
+
   // Switching view shows the word's band in the new view — drop any pinned tab.
   const chooseView = (v: BandView) => {
     setView(v);
@@ -271,7 +340,7 @@ export default function Workspace() {
           matching panels, each opening with its language. Stretched, not start-aligned,
           so the pair squares off. */}
       {/* Tighter above and below the card on a phone, where it is stacked, not beside. */}
-      <div className="tw-mb-6 tw-grid tw-grid-cols-1 tw-gap-x-8 tw-gap-y-3 min-[700px]:tw-mb-12 min-[700px]:tw-gap-y-6 min-[860px]:tw-grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      <div className="tw-mb-6 tw-grid tw-grid-cols-1 tw-gap-x-4 tw-gap-y-3 min-[700px]:tw-mb-12 min-[700px]:tw-gap-y-4 min-[860px]:tw-grid-cols-[minmax(0,1fr)_auto_minmax(0,1.1fr)]">
         <div className={PANEL}>
           {/* Section headings (WCAG 2.4.10) — visually hidden, structural for AT. */}
           <section aria-labelledby="lang-heading">
@@ -312,6 +381,10 @@ export default function Workspace() {
           )}
         </div>
 
+        <div className="tw-self-center tw-justify-self-center">
+          <SwapButton enabled={canSwap} onSwap={() => void swap()} />
+        </div>
+
         {/* Pending from the first paint, so the hero row is already its settled
             height; a failed lookup drops the frame and leaves the error alert. */}
         {(info || loading) && (
@@ -321,6 +394,7 @@ export default function Workspace() {
             lang={lang}
             tl={tl}
             onTlChange={setTl}
+            onGloss={setGlossTerm}
           />
         )}
       </div>

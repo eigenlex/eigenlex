@@ -144,6 +144,7 @@ export default function WordCard({
   lang,
   tl,
   onTlChange,
+  onGloss,
 }: {
   word: string;
   /**
@@ -156,6 +157,8 @@ export default function WordCard({
   /** Target/gloss language, owned by the workspace so it can ride in the URL. */
   tl: string;
   onTlChange: (l: string) => void;
+  /** The gloss's leading term, so a language swap can land on it. */
+  onGloss?: (term: string) => void;
 }) {
   // No point translating a word into its own language.
   const translate = tl !== lang;
@@ -182,6 +185,11 @@ export default function WordCard({
       ? single.groups[0]!.terms.join(", ")
       : single.text;
   const missing = status === "error" || (status === "done" && !showLines && !hero);
+
+  // "water, aqua" -> "water": the term a swap into this language would look up.
+  useEffect(() => {
+    if (status === "done" && hero) onGloss?.(hero.split(",")[0]!.trim());
+  }, [status, hero, onGloss]);
 
   return (
     // Named for AT: without the heading the card is an unlabelled box, and its live
