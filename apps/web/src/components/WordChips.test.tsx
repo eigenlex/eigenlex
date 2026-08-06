@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import WordChips, { packRows } from "./WordChips";
+import WordChips, { anchorOffscreen, packRows } from "./WordChips";
 
 describe("packRows", () => {
   it("packs as many chips per row as fit the width", () => {
@@ -22,6 +22,31 @@ describe("packRows", () => {
   it("accounts for the inter-chip gap when deciding a break", () => {
     // Two 48-wide chips: 48 + 4 + 48 = 100 fits exactly; a third breaks.
     expect(packRows([48, 48, 48], 100, 4)).toEqual([0, 2]);
+  });
+});
+
+// Decides whether the cloud offers a way back to the selected word. Rows are 40px
+// tall (stride) in a 200px viewport, so rows 0–4 are the ones on screen at the top.
+describe("anchorOffscreen", () => {
+  it("says nothing while the anchor's row is in view", () => {
+    expect(anchorOffscreen(0, 40, 0, 200)).toBeNull();
+    expect(anchorOffscreen(160, 40, 0, 200)).toBeNull(); // last fully visible row
+  });
+
+  it("counts a row as in view while any part of it shows", () => {
+    expect(anchorOffscreen(180, 40, 0, 200)).toBeNull(); // half below the fold
+    expect(anchorOffscreen(160, 40, 180, 400)).toBeNull(); // half above it
+  });
+
+  it("reports which way the anchor went once it is fully out", () => {
+    expect(anchorOffscreen(0, 40, 40, 200)).toBe("above");
+    expect(anchorOffscreen(400, 40, 0, 200)).toBe("below");
+  });
+
+  it("offers nothing without an anchor, or before the cloud is measured", () => {
+    expect(anchorOffscreen(null, 40, 500, 200)).toBeNull();
+    expect(anchorOffscreen(400, 0, 0, 200)).toBeNull(); // rows not measured yet
+    expect(anchorOffscreen(400, 40, 0, 0)).toBeNull(); // no viewport (SSR/jsdom)
   });
 });
 

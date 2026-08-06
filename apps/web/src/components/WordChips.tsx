@@ -21,6 +21,15 @@ const CLOUD =
   "WordChips tw-relative tw-max-h-[15rem] tw-overflow-y-auto tw-overflow-x-hidden " +
   "min-[700px]:tw-max-h-[30rem]";
 
+// Floats over the cloud's bottom-right, clear of the scrollbar. A full border and
+// the big shadow, not the dropdown's subtler pair: this one sits over the chips
+// themselves, and on dark surface-default is *darker* than a chip. 44px target
+// (WCAG 2.5.5).
+const JUMP =
+  "tw-absolute tw-bottom-3 tw-right-4 tw-z-10 tw-inline-flex tw-min-h-[44px] tw-max-w-[calc(100%-2rem)] " +
+  "tw-items-center tw-gap-1.5 tw-rounded-full tw-border tw-border-line tw-bg-surface tw-px-4 " +
+  "tw-body-small tw-text-secondary tw-shadow-big tw-transition-colors hover:tw-bg-surface-hover hover:tw-text-primary";
+
 /**
  * Greedy line-break: pack chips into rows that fit `containerWidth`, always at
  * least one per row. Returns each row's start index; row r spans
@@ -44,6 +53,22 @@ function range(start: number, end: number): number[] {
   const out: number[] = [];
   for (let i = start; i < end; i++) out.push(i);
   return out;
+}
+
+/**
+ * Which way the anchor's row lies outside the scrolled viewport, or null when it
+ * is in view (and so nothing needs offering). `anchorTop` is the row's offset.
+ */
+export function anchorOffscreen(
+  anchorTop: number | null,
+  stride: number,
+  scrollTop: number,
+  viewport: number,
+): "above" | "below" | null {
+  if (anchorTop === null || stride <= 0 || viewport <= 0) return null;
+  if (anchorTop + stride <= scrollTop) return "above";
+  if (anchorTop >= scrollTop + viewport) return "below";
+  return null;
 }
 
 // The row holding word `idx`: the last row whose start index is <= idx.
@@ -192,24 +217,31 @@ export default function WordChips({
     setActive(anchorIndex >= 0 ? anchorIndex : 0);
   }, [anchorIndex, words]);
 
-  // Spotlight: scroll the anchored word's row to the middle of the viewport.
-  useEffect(() => {
+  // Scroll the anchored word's row to the middle of the viewport.
+  const centerOnAnchor = useCallback(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    if (!el || anchorIndex < 0) return;
     if (mode === "fallback") {
-      if (anchor) anchorRef.current?.scrollIntoView?.({ block: "nearest" });
+      anchorRef.current?.scrollIntoView?.({ block: "nearest" });
       return;
     }
     if (!rows || stride <= 0) return;
-    if (anchorIndex < 0) {
+    const row = rowOfIndex(rows, anchorIndex);
+    el.scrollTop = Math.max(0, row * stride - Math.max(0, (el.clientHeight - stride) / 2));
+    setScrollTop(el.scrollTop);
+  }, [anchorIndex, mode, rows, stride]);
+
+  // Spotlight: re-centre whenever the anchored word changes.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (mode !== "fallback" && rows && stride > 0 && anchorIndex < 0) {
       el.scrollTop = 0;
       setScrollTop(0);
       return;
     }
-    const row = rowOfIndex(rows, anchorIndex);
-    el.scrollTop = Math.max(0, row * stride - Math.max(0, (el.clientHeight - stride) / 2));
-    setScrollTop(el.scrollTop);
-  }, [anchor, anchorIndex, rows, stride, mode]);
+    centerOnAnchor();
+  }, [anchor, anchorIndex, rows, stride, mode, centerOnAnchor]);
 
   const onScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -286,6 +318,16 @@ export default function WordChips({
     [words.length, active, mode, rows, stride, moveActive],
   );
 
+  // Re-centre the anchored word and put focus on it. Focus matters twice over: it
+  // answers "where was I", and this button unmounts the moment the word is back in
+  // view — leaving focus on the body if we didn't move it first.
+  const jumpToAnchor = useCallback(() => {
+    if (anchorIndex < 0) return;
+    focusPendingRef.current = true;
+    setActive(anchorIndex); // its row is always mounted, so the focus below lands
+    centerOnAnchor();
+  }, [anchorIndex, centerOnAnchor]);
+
   // After a keyboard move re-renders (target row now mounted), take focus.
   useLayoutEffect(() => {
     if (focusPendingRef.current && activeBtnRef.current) {
@@ -350,33 +392,54 @@ export default function WordChips({
     content = <div className="tw-min-h-[2rem]" aria-hidden="true" />;
   }
 
+  // Offered only while the anchored word is scrolled out of sight: a band runs to
+  // hundreds of rows, so once it is off-screen there is no finding it by hand.
+  const lost = anchorOffscreen(
+    rows && anchorIndex >= 0 ? rowOfIndex(rows, anchorIndex) * stride : null,
+    stride,
+    scrollTop,
+    viewport,
+  );
+
   return (
-    <div
-      ref={scrollRef}
-      onScroll={onScroll}
-      onKeyDown={onKeyDown}
-      className={CLOUD}
-      role="group"
-      aria-label={label}
-      lang={lang}
-    >
-      {/* Hidden probe: the source of truth for chip font and height. */}
-      <span
-        ref={probeRef}
-        className={chipClass}
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          visibility: "hidden",
-          pointerEvents: "none",
-          whiteSpace: "nowrap",
-        }}
+    <div className="tw-relative">
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        onKeyDown={onKeyDown}
+        className={CLOUD}
+        role="group"
+        aria-label={label}
+        lang={lang}
       >
-        x
-      </span>
-      {content}
+        {/* Hidden probe: the source of truth for chip font and height. */}
+        <span
+          ref={probeRef}
+          className={chipClass}
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            visibility: "hidden",
+            pointerEvents: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          x
+        </span>
+        {content}
+      </div>
+      {/* Outside the scroller, so it neither scrolls away nor sits inside the
+          cloud's composite tab stop — it is its own control. */}
+      {lost && anchor && (
+        <button type="button" className={JUMP} onClick={jumpToAnchor}>
+          <span aria-hidden="true">{lost === "above" ? "↑" : "↓"}</span>
+          <span className="tw-truncate">
+            Back to <span lang={lang}>{anchor}</span>
+          </span>
+        </button>
+      )}
     </div>
   );
 }
