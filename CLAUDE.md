@@ -84,20 +84,37 @@ as `forms`. The word card glosses each casing via the translate API's `dict=1` m
 to one when the meanings don't actually differ.
 
 **Parts of speech.** The same `dt=bd` block groups its senses by part of speech, which
-`parseSenseGroups` keeps (`parseSenses` flattens them, for the per-casing lines above).
+`parseSenseGroups` keeps (`flattenSenses` collapses them, for the per-casing lines above).
 A word reading as more than one — Italian "solo" adj. "only" / adv. "just", Spanish
 "nada" pron./noun/adv. — gets a labelled line each; a single reading stays one gloss.
 That gloss is the dictionary terms, not the plain translation, which for a lone word is
 sometimes just wrong ("acqua" → "waterfall"). So every word card fetches `dict=1` now.
 
-*But only where Google actually has a dictionary*, which is pairs involving English —
-marked by a **confidence score** on each entry. Other pairs return an empty block, except
-es→de and de→es, which return an unscored reverse lookup that routinely omits the primary
-sense: es→de "agua" gives Gänsewein/Urin/Neigung and no "Wasser", "libro" gives only
-"Blättermagen". Unranked there is no way to tell a good sense from a marginal one, so
-`parseSenseGroups` drops a wholly unscored response and the plain translation glosses the
-word alone. The test is response-level, not per entry — en→fr/it/pt score most entries but
-not quite all, and those tail senses are fine.
+Each entry carries a **confidence score**, and Google's senses trail off into noise —
+en→de "dog" runs Hund .51, Rüde .0018, then "Schreckschraube" (battle-axe) at 3e-6. So
+senses are cut *relative* to their group's best (`MIN_RELATIVE_SCORE`) rather than at a
+fixed rank. An unscored entry counts as no-confidence and goes the same way.
+
+**English is Google's hub**, and only pairs touching it have a dictionary at all. The rest
+return an empty block — except es→de and de→es, which return an unscored reverse lookup
+that routinely omits the primary sense (es→de "agua" gives Gänsewein/Urin/Neigung and no
+"Wasser"; "libro" gives only "Blättermagen"). A wholly unscored response is therefore not
+a dictionary and `parseSenseGroups` drops it.
+
+That leaves those pairs on the plain translation, which is weak for a bare word: it gets
+the number wrong (es→de "mujer" → "Frauen"), the case wrong ("feliz" → "Glücklich"), or
+the sense wrong ("noche" → "Abend", "casa" → "heim"). So when neither side is English
+(`needsPivot`) the route **pivots through English**: `pivotTerm` takes the best-scoring
+sense of the source→en dictionary, then en→target is looked up and `alignGroup` keeps the
+group matching the source word's part of speech. The two independent fetches run together,
+so a pivot costs one extra round trip (~150ms cold, then a day in the data cache).
+
+Three details are load-bearing. The pivot follows Google's **group order**, not the top
+score across groups: "verde" scores adjective "green" and noun "green" identically, and
+the noun glosses it as a lawn (Grün/Rasen/Wiese). It needs `MIN_PIVOT_SCORE` confidence —
+Google's "amigo" entry tops out at .004 with no "friend" in it, and there the plain
+translation ("Freund") is the better gloss. And a part-of-speech miss yields nothing
+rather than a gloss for a different word, since "escuela" is never the verb "to school".
 
 ## Verifying a build while the web dev server is running
 

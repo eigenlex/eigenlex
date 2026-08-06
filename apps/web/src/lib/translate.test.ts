@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { baseLang, gtxUrl, parseGtx, parseSenseGroups, parseSenses } from "./translate";
+import {
+  alignGroup,
+  baseLang,
+  flattenSenses,
+  gtxUrl,
+  needsPivot,
+  parseGtx,
+  parseSenseGroups,
+  pivotTerm,
+} from "./translate";
 
 describe("baseLang", () => {
   it("strips region and lowercases, defaulting to en", () => {
@@ -31,7 +40,7 @@ describe("gtxUrl", () => {
   });
 });
 
-describe("parseSenses", () => {
+describe("flattenSenses", () => {
   // Shape of a dt=bd response:
   // [ [translation…], [ [pos, [terms…], [[term, [reverse…], null, score],…]], … ] ].
   const essen = [
@@ -46,18 +55,20 @@ describe("parseSenses", () => {
   ];
 
   it("flattens dictionary terms, de-duplicated and capped", () => {
-    expect(parseSenses(essen)).toEqual(["food", "meal"]);
-    expect(parseSenses(essen, 1)).toEqual(["food"]);
+    expect(flattenSenses(parseSenseGroups(essen))).toEqual(["food", "meal"]);
+    expect(flattenSenses(parseSenseGroups(essen), 1)).toEqual(["food"]);
   });
 
   it("returns [] when there is no dictionary block", () => {
-    expect(parseSenses([[["who"]]])).toEqual([]);
-    expect(parseSenses(null)).toEqual([]);
-    expect(parseSenses([[["x"]], null])).toEqual([]);
+    expect(flattenSenses(parseSenseGroups([[["who"]]]))).toEqual([]);
+    expect(flattenSenses(parseSenseGroups(null))).toEqual([]);
+    expect(flattenSenses(parseSenseGroups([[["x"]], null]))).toEqual([]);
   });
 
   it("flattens across parts of speech, so a casing gloss stays one line", () => {
-    expect(parseSenses(nada)).toEqual(["nothing", "none", "nothingness", "nil"]);
+    expect(flattenSenses(parseSenseGroups(nada))).toEqual([
+      "nothing", "none", "nothingness", "nil",
+    ]);
   });
 });
 
@@ -114,15 +125,76 @@ describe("parseSenseGroups", () => {
   // Otherwise the card glosses "agua" as "Gänsewein, Urin" and drops "Wasser" entirely.
   it("discards a wholly unscored block, which is a reverse lookup, not a dictionary", () => {
     expect(parseSenseGroups(agua)).toEqual([]);
-    expect(parseSenses(agua)).toEqual([]);
+    expect(flattenSenses(parseSenseGroups(agua))).toEqual([]);
   });
 
-  it("keeps a block that scores only some of its entries, as en→fr and en→pt do", () => {
+  // "dog" runs Hund .51, Rüde .0018, Schreckschraube 3e-6 — a rank cap keeps the noise.
+  it("drops senses scoring far under the group's best", () => {
+    const dog = [
+      [["Hund", "dog"]],
+      [[
+        "noun",
+        ["Hund"],
+        [["Hund", [], null, 0.51], ["Rüde", [], null, 0.0018], ["Schreckschraube", [], null, 3e-6]],
+      ]],
+    ];
+    expect(parseSenseGroups(dog)).toEqual([{ pos: "noun", terms: ["Hund"] }]);
+  });
+
+  it("treats an unscored entry in a scored block as no-confidence", () => {
     const mixed = [
       [["eau", "water"]],
       [["noun", ["eau", "mer"], [["eau", [], null, 0.9], ["mer", []]]]],
     ];
-    expect(parseSenseGroups(mixed)).toEqual([{ pos: "noun", terms: ["eau", "mer"] }]);
+    expect(parseSenseGroups(mixed)).toEqual([{ pos: "noun", terms: ["eau"] }]);
+  });
+});
+
+describe("needsPivot", () => {
+  it("is true only when Google has neither side in English", () => {
+    expect(needsPivot("es", "de")).toBe(true);
+    expect(needsPivot("es", "en")).toBe(false);
+    expect(needsPivot("en", "de")).toBe(false);
+  });
+});
+
+describe("pivotTerm", () => {
+  // "verde" scores adjective "green" and noun "green" alike; the noun reading glosses it
+  // as a lawn, so the pivot follows Google's group order rather than the score.
+  const verde = [
+    [["Grün", "verde"]],
+    [
+      ["adjective", ["green"], [["green", [], null, 0.645], ["verdant", [], null, 0.0015]]],
+      ["noun", ["green"], [["green", [], null, 0.645]]],
+    ],
+  ];
+
+  it("takes the best sense of the first group, with its part of speech", () => {
+    expect(pivotTerm(verde)).toEqual({ term: "green", pos: "adjective" });
+  });
+
+  // Google's "amigo" block tops out at .004 and has no "friend" — nothing worth pivoting on.
+  it("declines when Google is not confident it has the word", () => {
+    const amigo = [[["friend", "amigo"]], [["noun", ["buddy"], [["buddy", [], null, 0.004]]]]];
+    expect(pivotTerm(amigo)).toBeNull();
+    expect(pivotTerm([[["x"]]])).toBeNull();
+    expect(pivotTerm(null)).toBeNull();
+  });
+});
+
+describe("alignGroup", () => {
+  const groups = [
+    { pos: "noun", terms: ["Schule"] },
+    { pos: "verb", terms: ["schulen"] },
+  ];
+
+  it("keeps the reading the source word had", () => {
+    expect(alignGroup(groups, "noun")).toEqual([{ pos: "noun", terms: ["Schule"] }]);
+  });
+
+  // "escuela" is never the verb "to school", so glossing it as one would be worse than nothing.
+  it("yields nothing when the English word's readings don't include it", () => {
+    expect(alignGroup(groups, "adjective")).toEqual([]);
   });
 });
 
