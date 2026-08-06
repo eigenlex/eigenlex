@@ -90,6 +90,15 @@ A word reading as more than one — Italian "solo" adj. "only" / adv. "just", Sp
 That gloss is the dictionary terms, not the plain translation, which for a lone word is
 sometimes just wrong ("acqua" → "waterfall"). So every word card fetches `dict=1` now.
 
+*But only where Google actually has a dictionary*, which is pairs involving English —
+marked by a **confidence score** on each entry. Other pairs return an empty block, except
+es→de and de→es, which return an unscored reverse lookup that routinely omits the primary
+sense: es→de "agua" gives Gänsewein/Urin/Neigung and no "Wasser", "libro" gives only
+"Blättermagen". Unranked there is no way to tell a good sense from a marginal one, so
+`parseSenseGroups` drops a wholly unscored response and the plain translation glosses the
+word alone. The test is response-level, not per entry — en→fr/it/pt score most entries but
+not quite all, and those tail senses are fine.
+
 ## Verifying a build while the web dev server is running
 
 `next dev` and `next build` both default to `apps/web/.next`. Running `pnpm build`

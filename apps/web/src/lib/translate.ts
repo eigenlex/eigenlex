@@ -40,25 +40,36 @@ export interface SenseGroup {
 
 /**
  * Dictionary senses from a `dt=bd` response — second element, shaped
- * `[[<pos>, [<terms>…], [[<term>, …], …]], …]` — keeping the part-of-speech grouping.
- * Empty groups are dropped; [] when there's no dictionary block.
+ * `[[<pos>, [<terms>…], [[<term>, [<reverse>…], null, <score>], …]], …]` — keeping the
+ * part-of-speech grouping. Empty groups are dropped; [] when there's no dictionary block.
+ *
+ * Google only ranks the dictionary for pairs involving English, and marks that by scoring
+ * the entries. Other pairs come back empty, or — es→de, de→es — as an unscored reverse
+ * lookup that routinely omits the primary sense ("agua" yields Gänsewein/Urin/Neigung, no
+ * Wasser; "libro" yields only Blättermagen). Unranked we can't tell a good sense from a
+ * marginal one, so we drop the block and leave the plain translation to gloss the word.
  */
 export function parseSenseGroups(data: unknown, limit = 4): SenseGroup[] {
   const groups = Array.isArray(data) ? (data as unknown[])[1] : undefined;
   if (!Array.isArray(groups)) return [];
   const out: SenseGroup[] = [];
+  // Response-level: en→fr/it/pt score most entries but not every one, and those tail
+  // senses are still good — it's a wholly unscored response that means "not a dictionary".
+  let ranked = false;
   for (const g of groups) {
     if (!Array.isArray(g)) continue;
     const entries = Array.isArray(g[2]) ? g[2] : undefined;
     if (!entries) continue;
     const terms: string[] = [];
     for (const e of entries) {
-      const term = Array.isArray(e) && typeof e[0] === "string" ? e[0].trim() : "";
+      if (!Array.isArray(e)) continue;
+      if (typeof e[3] === "number") ranked = true;
+      const term = typeof e[0] === "string" ? e[0].trim() : "";
       if (term && !terms.includes(term)) terms.push(term);
     }
     if (terms.length) out.push({ pos: typeof g[0] === "string" ? g[0].trim() : "", terms: terms.slice(0, limit) });
   }
-  return out;
+  return ranked ? out : [];
 }
 
 /** The same senses flattened across groups — a compact gloss, "food, meal, dinner". */

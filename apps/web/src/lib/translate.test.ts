@@ -32,10 +32,17 @@ describe("gtxUrl", () => {
 });
 
 describe("parseSenses", () => {
-  // Shape of a dt=bd response: [ [translation…], [ [pos, [terms…], [[term,…],…]], … ] ].
+  // Shape of a dt=bd response:
+  // [ [translation…], [ [pos, [terms…], [[term, [reverse…], null, score],…]], … ] ].
   const essen = [
     [["Eat", "Essen"]],
-    [["noun", ["food", "meal"], [["food", [], 0.9], ["meal", [], 0.5], ["food", [], 0.1]]]],
+    [
+      [
+        "noun",
+        ["food", "meal"],
+        [["food", [], null, 0.9], ["meal", [], null, 0.5], ["food", [], null, 0.1]],
+      ],
+    ],
   ];
 
   it("flattens dictionary terms, de-duplicated and capped", () => {
@@ -58,9 +65,22 @@ describe("parseSenses", () => {
 const nada = [
   [["nothing", "nada"]],
   [
-    ["pronoun", ["nothing"], [["nothing", [], 0.9], ["none", [], 0.4]]],
-    ["noun", ["nothingness"], [["nothingness", [], 0.5], ["nil", [], 0.2]]],
-    ["adverb", ["not at all"], [["not at all", [], 0.3]]],
+    ["pronoun", ["nothing"], [["nothing", [], null, 0.9], ["none", [], null, 0.4]]],
+    ["noun", ["nothingness"], [["nothingness", [], null, 0.5], ["nil", [], null, 0.2]]],
+    ["adverb", ["not at all"], [["not at all", [], null, 0.3]]],
+  ],
+];
+
+// es→de "agua": an unscored block, carrying gender where the score would be — and no
+// "Wasser", which only the plain translation has.
+const agua = [
+  [["Wasser", "agua", null, null, 10]],
+  [
+    [
+      "noun",
+      ["Gänsewein", "Urin"],
+      [["Gänsewein", ["agua"], null, null, "der"], ["Urin", ["orina", "agua"], null, null, "der"]],
+    ],
   ],
 ];
 
@@ -82,13 +102,27 @@ describe("parseSenseGroups", () => {
   });
 
   it("drops groups carrying no terms, and tolerates a missing pos label", () => {
-    const odd = [[["x"]], [["verb", ["y"], []], [null, ["z"], [["z", [], 0.5]]]]];
+    const odd = [[["x"]], [["verb", ["y"], []], [null, ["z"], [["z", [], null, 0.5]]]]];
     expect(parseSenseGroups(odd)).toEqual([{ pos: "", terms: ["z"] }]);
   });
 
   it("returns [] when there is no dictionary block", () => {
     expect(parseSenseGroups([[["who"]]])).toEqual([]);
     expect(parseSenseGroups(null)).toEqual([]);
+  });
+
+  // Otherwise the card glosses "agua" as "Gänsewein, Urin" and drops "Wasser" entirely.
+  it("discards a wholly unscored block, which is a reverse lookup, not a dictionary", () => {
+    expect(parseSenseGroups(agua)).toEqual([]);
+    expect(parseSenses(agua)).toEqual([]);
+  });
+
+  it("keeps a block that scores only some of its entries, as en→fr and en→pt do", () => {
+    const mixed = [
+      [["eau", "water"]],
+      [["noun", ["eau", "mer"], [["eau", [], null, 0.9], ["mer", []]]]],
+    ];
+    expect(parseSenseGroups(mixed)).toEqual([{ pos: "noun", terms: ["eau", "mer"] }]);
   });
 });
 
