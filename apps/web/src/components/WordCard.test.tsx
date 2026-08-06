@@ -200,17 +200,20 @@ describe("WordCard multi-sense words", () => {
     expect(await screen.findByText("Milan")).toBeInTheDocument();
   });
 
-  // The placeholder is smaller type than the gloss, so without a shared line box the
-  // card shrinks the moment a translation lands and jolts everything below it.
-  it("gives the loading placeholder the same line box as the gloss", async () => {
+  // The spinner row is shorter than the gloss, so without a reserved line box the card
+  // shrinks the moment a translation lands and jolts everything below it.
+  it("reserves the gloss's line box while translating", async () => {
     vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["sky"] }], "sky"));
     render(
       <WordCard info={{ ...solo, word: "cielo", forms: ["cielo"] }} lang="it" tl="en" onTlChange={() => {}} />,
     );
-    const box = (el: HTMLElement) => `${el.style.display}/${el.style.lineHeight}`;
-    const placeholder = screen.getByText("translating…");
-    expect(box(placeholder)).toBe("block/var(--typography-line-height-loose)");
-    expect(box(placeholder)).toBe(box(await screen.findByText("sky")));
+    const spinner = screen.getByText("Translating…").closest("div.Loading");
+    expect(spinner).toHaveClass("tw-min-h-[var(--typography-line-height-loose)]");
+    // Not a nested live region: the card's own wrapper announces this already.
+    expect(spinner).not.toHaveAttribute("role");
+    expect((await screen.findByText("sky")).style.lineHeight).toBe(
+      "var(--typography-line-height-loose)",
+    );
   });
 
   it("asks for the dictionary block, which is what carries the readings", async () => {

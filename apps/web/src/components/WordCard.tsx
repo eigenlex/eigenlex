@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Select } from "@frontify/fondue/components";
+import Loading from "@/components/Loading";
 import type { WordBands } from "@/lib/types";
 import { baseLang, type SenseGroup } from "@/lib/translate";
 
@@ -194,9 +195,14 @@ export default function WordCard({
           {/* Announce translation state changes to assistive tech (WCAG 4.1.3). */}
           <div aria-live="polite">
             {translate && status === "loading" && (
-              <span className="tw-body-small text-muted-aaa" style={STATUS_TYPE}>
-                translating…
-              </span>
+              // Reserves the gloss's line box, so the card doesn't resize when it lands.
+              // The wrapper is already the live region, so don't nest another.
+              <Loading
+                size="x-small"
+                announce={false}
+                label="Translating…"
+                className="tw-min-h-[var(--typography-line-height-loose)]"
+              />
             )}
             {translate && status === "done" && showLines && (
               <ul className="tw-flex tw-flex-col tw-gap-1.5">

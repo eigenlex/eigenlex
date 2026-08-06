@@ -52,6 +52,19 @@ describe("BandBrowser", () => {
     expect(await screen.findByRole("button", { name: "water" })).toBeInTheDocument();
   });
 
+  // Both controls used to handle this themselves: the dropdown said "Loading bands…"
+  // in its placeholder, the tablist just rendered empty.
+  it("stands one spinner in for both band controls until they load", async () => {
+    render(<BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+    expect(screen.getByText("Loading bands…")).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+
+    await screen.findByRole("tab", { name: /Top 1,000/ });
+    expect(screen.getByRole("combobox", { name: /frequency bands/i })).toBeInTheDocument();
+    expect(screen.queryByText("Loading bands…")).not.toBeInTheDocument();
+  });
+
   it("opens the anchor's band and looks a chip up when picked", async () => {
     const onSelect = vi.fn();
     render(

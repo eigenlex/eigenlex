@@ -221,8 +221,10 @@ export default function WordSearchBox({
             {submitLabel}
           </span>
           {busy && (
-            <span className="tw-col-start-1 tw-row-start-1" aria-hidden="true">
-              …
+            // The same spinner every other waiting state uses; `disabled` is what
+            // carries the state to assistive tech, so it stays decorative here.
+            <span className="tw-col-start-1 tw-row-start-1 tw-flex" aria-hidden="true">
+              <LoadingCircle size="x-small" />
             </span>
           )}
         </span>

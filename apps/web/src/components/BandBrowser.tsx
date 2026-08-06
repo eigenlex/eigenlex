@@ -163,60 +163,74 @@ export default function BandBrowser({
       {/* Controls header: the view switch over a horizontal row of band tabs. */}
       <div className="tw-flex tw-flex-col tw-gap-3 tw-border-b tw-border-line-subtle tw-p-3 min-[700px]:tw-p-4">
         {viewControl}
-        {/* Phones get a dropdown: a dozen band tabs wrap into a wall several rows deep
-            that pushes the words themselves off-screen. Only one of the two renders. */}
-        <div className="[&_[role=combobox]]:tw-min-h-[44px] min-[700px]:tw-hidden">
-          <Select
-            aria-label={bandsLabel}
-            value={selectedKey ?? ""}
-            onSelect={(v) => v && pickBand(v)}
-            placeholder="Loading bands…"
-            showStringValue
-          >
-            {(summary ?? []).map((b) => (
-              <Select.Item key={b.key} value={b.key} label={b.label}>
-                <span className="tw-flex tw-items-baseline tw-gap-2">
-                  <span>{b.label}</span>
-                  <span className="tw-tabular-nums tw-body-x-small text-muted-aaa">
-                    {b.count.toLocaleString()} words
-                  </span>
-                </span>
-              </Select.Item>
-            ))}
-          </Select>
-        </div>
-        <div
-          role="tablist"
-          aria-label={bandsLabel}
-          aria-orientation="horizontal"
-          className="tw-hidden tw-flex-row tw-flex-wrap tw-gap-1.5 min-[700px]:tw-flex"
-        >
-          {(summary ?? []).map((b) => {
-            const active = b.key === selectedKey;
-            return (
-              <button
-                key={b.key}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => pickBand(b.key)}
-                className={
-                  "tw-flex tw-min-h-[44px] tw-flex-col tw-items-start tw-justify-center tw-gap-0.5 tw-rounded-[8px] tw-px-3 tw-py-1.5 tw-text-left tw-transition-colors " +
-                  (active
-                    ? "tw-bg-surface-hover tw-text-primary"
-                    : "text-muted-aaa hover:tw-bg-surface-hover hover:tw-text-primary")
-                }
+        {/* Until the bands arrive, one spinner stands in for both controls — the
+            dropdown used to say "Loading bands…" while the tablist just sat empty.
+            It reserves whichever they'll be: the dropdown is 44px, a band tab 46
+            (two lines over py-1.5, plus the gap), so nothing moves when they land. */}
+        {summary === null ? (
+          <Loading
+            size="x-small"
+            label="Loading bands…"
+            className="tw-min-h-[44px] min-[700px]:tw-min-h-[46px]"
+          />
+        ) : (
+          <>
+            {/* Phones get a dropdown: a dozen band tabs wrap into a wall several rows deep
+                that pushes the words themselves off-screen. Only one of the two renders. */}
+            <div className="[&_[role=combobox]]:tw-min-h-[44px] min-[700px]:tw-hidden">
+              <Select
+                aria-label={bandsLabel}
+                value={selectedKey ?? ""}
+                onSelect={(v) => v && pickBand(v)}
+                placeholder={bandsLabel}
+                showStringValue
               >
-                <span className="tw-body-small tw-whitespace-nowrap">{b.label}</span>
-                {/* Count inherits the tab's text color so it stays ≥7:1 in every
-                    state, active or not (WCAG 1.4.6). */}
-                <span className="tw-tabular-nums tw-body-x-small tw-opacity-90">
-                  {b.count.toLocaleString()} words
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                {summary.map((b) => (
+                  <Select.Item key={b.key} value={b.key} label={b.label}>
+                    <span className="tw-flex tw-items-baseline tw-gap-2">
+                      <span>{b.label}</span>
+                      <span className="tw-tabular-nums tw-body-x-small text-muted-aaa">
+                        {b.count.toLocaleString()} words
+                      </span>
+                    </span>
+                  </Select.Item>
+                ))}
+              </Select>
+            </div>
+            <div
+              role="tablist"
+              aria-label={bandsLabel}
+              aria-orientation="horizontal"
+              className="tw-hidden tw-flex-row tw-flex-wrap tw-gap-1.5 min-[700px]:tw-flex"
+            >
+              {summary.map((b) => {
+                const active = b.key === selectedKey;
+                return (
+                  <button
+                    key={b.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => pickBand(b.key)}
+                    className={
+                      "tw-flex tw-min-h-[44px] tw-flex-col tw-items-start tw-justify-center tw-gap-0.5 tw-rounded-[8px] tw-px-3 tw-py-1.5 tw-text-left tw-transition-colors " +
+                      (active
+                        ? "tw-bg-surface-hover tw-text-primary"
+                        : "text-muted-aaa hover:tw-bg-surface-hover hover:tw-text-primary")
+                    }
+                  >
+                    <span className="tw-body-small tw-whitespace-nowrap">{b.label}</span>
+                    {/* Count inherits the tab's text color so it stays ≥7:1 in every
+                        state, active or not (WCAG 1.4.6). */}
+                    <span className="tw-tabular-nums tw-body-x-small tw-opacity-90">
+                      {b.count.toLocaleString()} words
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="tw-min-w-0 tw-px-3 tw-py-4 min-[700px]:tw-px-5">
@@ -237,7 +251,7 @@ export default function BandBrowser({
             />
           </>
         ) : (
-          <Loading className="tw-min-h-[200px]" label="Loading band…" />
+          <Loading className="tw-min-h-[200px] tw-justify-center" label="Loading band…" />
         )}
       </div>
     </div>
