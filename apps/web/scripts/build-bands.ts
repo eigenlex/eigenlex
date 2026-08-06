@@ -139,7 +139,7 @@ const LANGS: Record<string, LangConfig> = {
     freq: { file: "freq-fr.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
     lemmaFile: "lemma-fr.txt",
     singleLetterOk: new Set(["à", "a", "y"]),
-    fragments: new Set(),
+    fragments: new Set(["sync"]),
     spotChecks: ["de", "être", "eau", "gouvernement", "philosophie", "entropie"],
     casingFile: "casing-fr.txt",
     // Elided forms ("l'eau") tokenize as one word, so they can't precede — the
@@ -179,7 +179,7 @@ const LANGS: Record<string, LangConfig> = {
     freq: { file: "freq-pt.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
     lemmaFile: "lemma-pt.txt",
     singleLetterOk: new Set(["a", "o", "e", "é", "à", "á"]),
-    fragments: new Set(),
+    fragments: new Set(["pt-subs", "pt-pt"]),
     spotChecks: ["que", "ser", "água", "governo", "filosofia", "entropia"],
     casingFile: "casing-pt.txt",
     determiners: new Set([
@@ -205,7 +205,7 @@ const LANGS: Record<string, LangConfig> = {
     freq: { file: "freq-it.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
     lemmaFile: "lemma-it.txt",
     singleLetterOk: new Set(["a", "e", "è", "i", "o"]),
-    fragments: new Set(),
+    fragments: new Set(["srt"]),
     spotChecks: ["di", "essere", "acqua", "società", "filosofia", "entropia"],
     casingFile: "casing-it.txt",
     determiners: new Set([
