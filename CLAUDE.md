@@ -54,10 +54,11 @@ this and rank can't either — `peut-être` and `rendez-vous` sit among `avez-vo
 `dis-moi`. `là`/`ci` are deliberately not clitics, since `celui-là` and `là-bas` are
 vocabulary; `cliticExceptions` covers the rest (`rendez-vous`, `garde-à-vous`).
 
-*Known wart:* the tail past ~30k is still thin vocabulary. Only ~9% of pt's deepest
-range is known to its lemma dictionary (vs 51% of the first 30k), ~9% of every
-language's added words are in the names gazetteer, and OCR debris survives (`lnternet`
-for "Internet", `construçao`). Raising `minCount` would cut a slice of it.
+The tail is thin vocabulary, and the CEFR view now says so rather than filing it under
+C2 — see the `rare` band below. Dictionary-known share by rank, measured across all six:
+~45% at 12k–25k, 26% at 25k–40k, then 6–16% past 50k, where OCR debris (`lnternet` for
+"Internet", `construçao`) and surnames dominate. Raising `minCount` would cut a slice
+of it.
 A surface word that **heads its own entry** in the lemma list keeps it, rather than being
 merged into whichever lemma claims it. The lists are lemma-sorted, so plain first-wins
 silently hands a shared form to the alphabetically-first claimant — which used to delete
@@ -68,6 +69,16 @@ Rebuild all with `pnpm --filter @eigenlex/web build:bands`, or one with
 to the `LANGS` table in the build script and to `SOURCE_LANG_META` (+ the `bands.ts`
 registry import). CEFR bands are frequency-rank thresholds calibrated against CEFR-J
 (English-derived, reused for every language); no graph or external dictionary is involved.
+
+**The CEFR tail.** Band tops roughly double — 1k, 3k, 6k, 12k, 25k, 50k — so C2 ends at
+50k instead of running open-ended to the end of the list, and a seventh band, `rare`
+("Rare · beyond C2"), holds everything past it. CEFR genuinely stops at C2, and so does
+the vocabulary: past 50k only 6–16% of words are known to the language's own lemma
+dictionary, so the band is mostly surnames and OCR debris, which shouldn't carry a CEFR
+level at all. Both band lists are now filtered per language to those that actually
+contain words, so English (SUBTLEX, 39.7k) emits no `rare` band and its tab row still
+ends at C2. `getWord` asserts a band exists at every rank, so the last band must stay
+open-ended — keep `max: null` on whichever band is last.
 
 **Display casing** is optional per language, driven by a third input: `casing-<code>.txt`,
 a Leipzig Corpora *sentences* file (`downloads.wortschatz-leipzig.de`, e.g.

@@ -42,14 +42,23 @@ const FREQ_BANDS: BandDef[] = [
 ];
 
 // CEFR view: rank thresholds calibrated to CEFR-J medians; C1/C2 extrapolate the
-// same frequency trend past CEFR-J's B2 cap, giving full-vocabulary coverage.
+// same frequency trend past CEFR-J's B2 cap. Each top roughly doubles the last
+// (1k, 3k, 6k, 12k, 25k, 50k), so C2 ends where the trend says it ends rather than
+// swallowing the rest of the list.
+//
+// Past 50k the corpus is no longer vocabulary: only 6–16% of those words are known
+// to the language's own lemma dictionary, against 26% at 25k–40k and ~45% at 12k–25k.
+// Calling that "Proficiency" would file OCR debris ("lnternet") under a CEFR level, so
+// it gets a band of its own, outside the scale. `rare` is emitted only for languages
+// whose list reaches it — English (SUBTLEX, 39.7k) has no such tail.
 const CEFR_BANDS: BandDef[] = [
   { key: "A1", label: "A1 · Beginner", min: 1, max: 1000 },
   { key: "A2", label: "A2 · Elementary", min: 1001, max: 3000 },
   { key: "B1", label: "B1 · Intermediate", min: 3001, max: 6000 },
   { key: "B2", label: "B2 · Upper-intermediate", min: 6001, max: 12000 },
   { key: "C1", label: "C1 · Advanced", min: 12001, max: 25000 },
-  { key: "C2", label: "C2 · Proficiency", min: 25001, max: null },
+  { key: "C2", label: "C2 · Proficiency", min: 25001, max: 50000 },
+  { key: "rare", label: "Rare · beyond C2", min: 50001, max: null },
 ];
 
 interface FreqSource {
@@ -497,19 +506,24 @@ function buildLang(cfg: LangConfig) {
   const variants: Record<string, string[]> = {};
   if (cased) for (const w of keptKeys) if (cased.variants.has(w)) variants[w] = cased.variants.get(w)!;
 
+  const bandCount = (d: BandDef) =>
+    Math.max(0, (d.max === null ? ranked.length : Math.min(d.max, ranked.length)) - d.min + 1);
+  // A band the list never reaches would render as an empty tab, so drop it.
+  const reached = (defs: BandDef[]) => defs.filter((d) => bandCount(d) > 0);
+  const freqBands = reached(FREQ_BANDS);
+  const cefrBands = reached(CEFR_BANDS);
+
   const outPath = data(`word-bands.${cfg.code}.json`);
   writeFileSync(
     outPath,
-    JSON.stringify({ lang: cfg.code, ranked, variants, freqBands: FREQ_BANDS, cefrBands: CEFR_BANDS }),
+    JSON.stringify({ lang: cfg.code, ranked, variants, freqBands, cefrBands }),
   );
 
   // --- Report ---
   const rankOf = new Map(keptKeys.map((w, i) => [w, i + 1]));
-  const bandCount = (d: BandDef) =>
-    (d.max === null ? ranked.length : Math.min(d.max, ranked.length)) - d.min + 1;
   console.log(`\n[${cfg.code}] ranked ${ranked.length.toLocaleString()} lemmas -> ${outPath}`);
-  console.log("  freq:", FREQ_BANDS.map((d) => `${d.label}=${bandCount(d).toLocaleString()}`).join("  "));
-  console.log("  CEFR:", CEFR_BANDS.map((d) => `${d.key}=${bandCount(d).toLocaleString()}`).join("  "));
+  console.log("  freq:", freqBands.map((d) => `${d.label}=${bandCount(d).toLocaleString()}`).join("  "));
+  console.log("  CEFR:", cefrBands.map((d) => `${d.key}=${bandCount(d).toLocaleString()}`).join("  "));
   console.log("  spot-checks:", cfg.spotChecks.map((w) => `${w}→${(rankOf.get(w) ?? "—").toLocaleString()}`).join("  "));
   if (cased) {
     const capped = keptKeys.filter((w) => cased.casing.has(w)).length;

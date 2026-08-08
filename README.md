@@ -21,7 +21,9 @@ learning order than any dictionary-structure metric, so the ranking rests on it 
   calibrated against the [CEFR-J](https://www.cefr-j.org/) vocabulary profile — so the
   labels are learner-familiar while coverage stays the full vocabulary. The calibration
   is English-derived and reused for every language as a first-order heuristic. No
-  external dictionary is required at runtime.
+  external dictionary is required at runtime. C2 ends at rank 50,000; rarer words are
+  browsable under a **Rare · beyond C2** band, because the scale stops at C2 and the
+  deep tail of a subtitle corpus is mostly names and OCR noise rather than vocabulary.
 - **Display casing** is measured from the
   [Leipzig Corpora](https://wortschatz.uni-leipzig.de/en/download) sentence collection:
   how often each word is capitalized mid-sentence decides whether it's shown capitalized.

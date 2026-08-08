@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getBand, getSuggestions, getWord } from "@/lib/bands";
+import { getBand, getBandSummary, getSuggestions, getWord } from "@/lib/bands";
 
 // German carries display casing (nouns/names capitalized) while lookups stay
 // case-insensitive; other languages are unaffected. See scripts/build-bands.ts.
@@ -34,6 +34,40 @@ describe("case-homographs", () => {
   it("returns just the single word for a non-homograph", () => {
     expect(getWord("de", "wasser")?.forms).toEqual(["Wasser"]);
     expect(getWord("en", "the")?.forms).toEqual(["the"]);
+  });
+});
+
+// C2 ends at rank 50,000 and the tail past it is its own non-CEFR band, emitted only
+// for languages whose list reaches that far. See CEFR_BANDS in scripts/build-bands.ts.
+describe("CEFR tail", () => {
+  it("bounds C2 instead of letting it swallow the list", () => {
+    const c2 = getBandSummary("es", "cefr").find((b) => b.key === "C2")!;
+    expect(c2.count).toBe(25000);
+  });
+
+  it("files the deep tail under `rare`, outside the CEFR scale", () => {
+    const first = getBand("es", "cefr", "rare")!.words[0]!;
+    const w = getWord("es", first)!;
+    expect(w.rank).toBe(50001);
+    expect(w.cefr.key).toBe("rare");
+    expect(w.cefr.label).toBe("Rare · beyond C2");
+  });
+
+  it("omits the tail band for a language that never reaches it", () => {
+    const keys = getBandSummary("en", "cefr").map((b) => b.key);
+    expect(keys).not.toContain("rare");
+    expect(keys.at(-1)).toBe("C2");
+    expect(getBand("en", "cefr", "rare")).toBeNull();
+  });
+
+  // getWord asserts a band exists at every rank, so a gap would be a crash, not a miss.
+  it("leaves no rank uncovered by a band", () => {
+    const sum = (bs: { count: number }[]) => bs.reduce((n, b) => n + b.count, 0);
+    for (const lang of ["en", "es", "de"] as const) {
+      const cefr = getBandSummary(lang, "cefr");
+      expect(sum(cefr)).toBe(sum(getBandSummary(lang, "freq")));
+      expect(cefr.every((b) => b.count > 0)).toBe(true);
+    }
   });
 });
 
