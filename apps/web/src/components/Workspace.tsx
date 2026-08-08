@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { SegmentedControl, Select, Tooltip } from "@frontify/fondue/components";
+import { SegmentedControl, Tooltip } from "@frontify/fondue/components";
 import BandBrowser from "@/components/BandBrowser";
+import LangSelect from "@/components/LangSelect";
 import WordCard from "@/components/WordCard";
 import WordSearchBox from "@/components/WordSearchBox";
 import type { BandView, WordBands } from "@/lib/types";
@@ -74,22 +75,16 @@ function storedTarget(): string | null {
   return null;
 }
 
+const SOURCE_OPTIONS = SOURCE_LANGS.map((code) => ({
+  code,
+  name: SOURCE_LANG_META[code].name,
+}));
+
 // A dropdown, not a segmented control: the language is picked once and then left
 // alone, so it doesn't deserve a row of six always-visible buttons.
 function SourceSelect({ lang, onChange }: { lang: SourceLang; onChange: (l: SourceLang) => void }) {
   return (
-    <Select
-      aria-label="Source language"
-      value={lang}
-      onSelect={(v) => v && onChange(v as SourceLang)}
-      showStringValue
-    >
-      {SOURCE_LANGS.map((code) => (
-        <Select.Item key={code} value={code} label={SOURCE_LANG_META[code].name}>
-          <span lang={code} className="tw-text-large">{SOURCE_LANG_META[code].name}</span>
-        </Select.Item>
-      ))}
-    </Select>
+    <LangSelect label="Source language" value={lang} options={SOURCE_OPTIONS} onChange={onChange} />
   );
 }
 
@@ -342,37 +337,43 @@ export default function Workspace() {
       {/* Tighter above and below the card on a phone, where it is stacked, not beside. */}
       <div className="tw-mb-6 tw-grid tw-grid-cols-1 tw-gap-x-4 tw-gap-y-3 min-[700px]:tw-mb-12 min-[700px]:tw-gap-y-4 min-[860px]:tw-grid-cols-[minmax(0,1fr)_auto_minmax(0,1.1fr)]">
         <div className={PANEL}>
-          {/* Section headings (WCAG 2.4.10) — visually hidden, structural for AT. */}
-          <section aria-labelledby="lang-heading">
-            <h2 id="lang-heading" className="visually-hidden">
-              Choose a language to study
-            </h2>
-            <div className={PANEL_LANG}>
-              <SourceSelect lang={lang} onChange={chooseLang} />
-            </div>
-          </section>
+          {/* Language and word share a row — the select is only wide enough for a code.
+              It wraps back onto its own line once the field would be squeezed. */}
+          <div className="tw-flex tw-flex-wrap tw-items-start tw-gap-2 min-[700px]:tw-gap-3">
+            {/* Section headings (WCAG 2.4.10) — visually hidden, structural for AT. */}
+            <section aria-labelledby="lang-heading">
+              <h2 id="lang-heading" className="visually-hidden">
+                Choose a language to study
+              </h2>
+              <div className={PANEL_LANG}>
+                <SourceSelect lang={lang} onChange={chooseLang} />
+              </div>
+            </section>
 
-          <section aria-labelledby="search-heading">
-            <h2 id="search-heading" className="visually-hidden">
-              Look up a word
-            </h2>
-            <WordSearchBox
-              value={query}
-              onValueChange={setQuery}
-              onSubmit={(w) => void lookup(w, lang)}
-              lang={lang}
-              ariaLabel="Look up a word"
-              describedBy="search-help"
-              placeholder="look up a word…"
-              submitLabel="look up"
-              busy={loading}
-            />
-            {/* Context-sensitive help for the field (WCAG 3.3.5). */}
-            <p id="search-help" className="visually-hidden">
-              Type a {langName} word, then press Enter or choose a suggestion to see its
-              frequency and CEFR level.
-            </p>
-          </section>
+            {/* Basis is a comfortable ~16 characters of field; below that the row
+                wraps and the field gets the panel to itself. */}
+            <section aria-labelledby="search-heading" className="tw-min-w-0 tw-grow tw-basis-[17rem]">
+              <h2 id="search-heading" className="visually-hidden">
+                Look up a word
+              </h2>
+              <WordSearchBox
+                value={query}
+                onValueChange={setQuery}
+                onSubmit={(w) => void lookup(w, lang)}
+                lang={lang}
+                ariaLabel="Look up a word"
+                describedBy="search-help"
+                placeholder="look up a word…"
+                submitLabel="look up"
+                busy={loading}
+              />
+              {/* Context-sensitive help for the field (WCAG 3.3.5). */}
+              <p id="search-help" className="visually-hidden">
+                Type a {langName} word, then press Enter or choose a suggestion to see its
+                frequency and CEFR level.
+              </p>
+            </section>
+          </div>
 
           {error && (
             <p className="tw-mt-3 tw-body-medium tw-text-error" role="alert">

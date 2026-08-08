@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Select } from "@frontify/fondue/components";
+import LangSelect from "@/components/LangSelect";
 import Loading from "@/components/Loading";
 import { PANEL, PANEL_LANG } from "@/components/panel";
 import { baseLang, type SenseGroup } from "@/lib/translate";
@@ -105,22 +105,16 @@ function useForms(forms: string[], sl: string, tl: string, enabled: boolean): Fo
 }
 
 function LanguageSelect({ value, onChange }: { value: string; onChange: (l: string) => void }) {
-  const options = [...new Set([...COMMON_LANGS, browserLang(), value])].sort((a, b) =>
-    endonym(a).localeCompare(endonym(b)),
-  );
+  const options = [...new Set([...COMMON_LANGS, browserLang(), value])]
+    .map((code) => ({ code, name: endonym(code) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
   return (
-    <Select
-      aria-label="Translation language"
+    <LangSelect
+      label="Translation language"
       value={value}
-      onSelect={(v) => v && onChange(v)}
-      showStringValue
-    >
-      {options.map((code) => (
-        <Select.Item key={code} value={code} label={endonym(code)}>
-          <span lang={code} className="tw-text-large">{endonym(code)}</span>
-        </Select.Item>
-      ))}
-    </Select>
+      options={options}
+      onChange={onChange}
+    />
   );
 }
 
@@ -198,19 +192,20 @@ export default function WordCard({
       aria-label={`Meaning of ${word}`}
       className={`WordCard ${PANEL}`}
     >
-      {/* Above the gloss, since it decides what the gloss says. */}
-      <div className={PANEL_LANG}>
-        <LanguageSelect value={tl} onChange={onTlChange} />
-      </div>
       {/* Wraps on the card's own width, not the viewport's — it is also cramped in the
           two-column layout just past 860px. Alone on a wrapped row, justify-between
           leaves the link at the start. */}
       <div className="tw-flex tw-flex-wrap tw-items-start tw-justify-between tw-gap-2 min-[700px]:tw-gap-4">
+        {/* Leads the row, since it decides what the gloss says. */}
+        <div className={PANEL_LANG}>
+          <LanguageSelect value={tl} onChange={onTlChange} />
+        </div>
         {/* The card is only the meaning now — the word itself is in the search box
             and spotlighted in the cloud, so printing it a third time said nothing. */}
         {/* 44px, centred: the gloss sits on the same line as the search field facing
-            it, and level with the link beside it. */}
-        <div className="tw-flex tw-min-h-[44px] tw-min-w-0 tw-grow tw-basis-[17rem] tw-items-center">
+            it, and level with the link beside it. Basis is short by the width the
+            select takes from the row, so the link still drops at the same card width. */}
+        <div className="tw-flex tw-min-h-[44px] tw-min-w-0 tw-grow tw-basis-[11rem] tw-items-center">
           {/* Announce translation state changes to assistive tech (WCAG 4.1.3). */}
           <div aria-live="polite">
             {translate && status === "loading" && (

@@ -33,9 +33,10 @@ form[role="search"] div:has(> input) > div:first-child {
   font-size: var(--typography-font-size-x-large);
 }
 
-/* Visually hidden but exposed to assistive tech — for section headings (2.4.10)
-   and the search help text (3.3.5). */
-.visually-hidden {
+/* Visually hidden but exposed to assistive tech — for section headings (2.4.10),
+   the search help text (3.3.5), and the endonym inside a language select's trigger. */
+.visually-hidden,
+[role="combobox"] .lang-name {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -46,6 +47,24 @@ form[role="search"] div:has(> input) > div:first-child {
   clip-path: inset(50%);
   overflow: hidden;
   white-space: nowrap;
+}
+
+/* Language selects (see LangSelect) list "EN  English" and show just "EN" once picked.
+   Their menu is portaled to <body>, so [role="combobox"] only ever matches a trigger. */
+.lang-option {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.625rem;
+}
+
+/* One column for the codes, so the endonyms line up down the menu. */
+[role="option"] .lang-code {
+  min-width: 1.75rem;
+}
+
+/* In the trigger the code is the whole value, not a key beside a name — full contrast. */
+[role="combobox"] .lang-code {
+  color: var(--color-primary-default);
 }
 
 html,
