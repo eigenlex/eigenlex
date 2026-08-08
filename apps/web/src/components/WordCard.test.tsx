@@ -139,11 +139,17 @@ describe("WordCard case-homographs", () => {
 });
 
 // A dict-mode stub returning Google's part-of-speech groups for a single-casing word.
-function mockGroups(groups: { pos: string; terms: string[] }[], translation: string) {
+function mockGroups(
+  groups: { pos: string; terms: string[] }[],
+  translation: string,
+  levels: Record<string, { key: string; label: string; rank: number }> = {},
+) {
   return vi.fn(async (url: string | URL) => {
     const u = new URL(String(url), "http://localhost");
     const word = decodeURIComponent(u.pathname.split("/api/translate/")[1] ?? "");
-    return new Response(JSON.stringify({ word, tl: "en", translation, senses: [], groups }));
+    return new Response(
+      JSON.stringify({ word, tl: "en", translation, senses: [], groups, levels }),
+    );
   });
 }
 
@@ -218,5 +224,66 @@ describe("WordCard multi-sense words", () => {
     await screen.findByText("need");
     const call = (fetch as unknown as { mock: { calls: [string][] } }).mock.calls[0]!;
     expect(String(call[0])).toContain("dict=1");
+  });
+});
+
+const A1 = { key: "A1", label: "A1 · Beginner", rank: 391 };
+const B2 = { key: "B2", label: "B2 · Upper-intermediate", rank: 9002 };
+
+// Google orders a gloss's alternatives by confidence, not by difficulty, so "water" and
+// "aqua" arrive as equals. The level is what tells a learner which one is theirs.
+describe("WordCard levels", () => {
+  it("trails each alternative with its own CEFR level", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockGroups([{ pos: "noun", terms: ["water", "aqua"] }], "water", { water: A1, aqua: B2 }),
+    );
+    render(<WordCard word="agua" forms={["agua"]} lang="es" tl="en" onTlChange={() => {}} />);
+
+    // The badges annotate the line; its text is still the gloss itself.
+    expect(await screen.findByText("water, aqua")).toBeInTheDocument();
+    expect(screen.getByText("A1")).toBeInTheDocument();
+    expect(screen.getByText("B2")).toBeInTheDocument();
+  });
+
+  it("names the badge with its band and rank, for hover and for AT alike", async () => {
+    vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["sea"] }], "sea", { sea: A1 }));
+    render(<WordCard word="mare" forms={["mare"]} lang="it" tl="en" onTlChange={() => {}} />);
+    await screen.findByText("sea");
+    expect(screen.getByRole("img", { name: "A1 · Beginner · rank 391" })).toBeInTheDocument();
+  });
+
+  // Only the six indexed languages have levels; the server sends none for the rest.
+  it("leaves the gloss unbadged when the language has no levels", async () => {
+    vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["mizu"] }], "mizu"));
+    render(<WordCard word="acqua" forms={["acqua"]} lang="it" tl="ja" onTlChange={() => {}} />);
+    await screen.findByText("mizu");
+    expect(screen.queryByText("A1")).not.toBeInTheDocument();
+  });
+
+  it("badges only the terms the gloss language actually carries", async () => {
+    vi.stubGlobal(
+      "fetch",
+      // "usar naja" is a phrase, so it has no rank to show.
+      mockGroups([{ pos: "noun", terms: ["knife", "usar naja"] }], "knife", { knife: A1 }),
+    );
+    render(<WordCard word="faca" forms={["faca"]} lang="pt" tl="en" onTlChange={() => {}} />);
+    await screen.findByText("knife, usar naja");
+    expect(screen.getAllByRole("img")).toHaveLength(1);
+  });
+
+  it("levels each casing's gloss of a case-homograph", async () => {
+    vi.stubGlobal("fetch", (async (url: string | URL) => {
+      const u = new URL(String(url), "http://localhost");
+      const form = decodeURIComponent(u.pathname.split("/api/translate/")[1] ?? "");
+      const senses = form === "Essen" ? ["food"] : ["dine"];
+      const levels = form === "Essen" ? { food: A1 } : { dine: B2 };
+      return new Response(JSON.stringify({ word: form, tl: "en", translation: form, senses, levels }));
+    }) as typeof fetch);
+    render(<WordCard word="Essen" forms={["Essen", "essen"]} lang="de" tl="en" onTlChange={() => {}} />);
+
+    expect(await screen.findByText("food")).toBeInTheDocument();
+    expect(screen.getByText("A1")).toBeInTheDocument();
+    expect(screen.getByText("B2")).toBeInTheDocument();
   });
 });

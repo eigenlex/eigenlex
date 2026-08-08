@@ -1,3 +1,6 @@
+import { getLevel } from "@/lib/bands";
+import { isSourceLang } from "@/lib/languages";
+import type { WordLevel } from "@/lib/types";
 import {
   alignGroup,
   baseLang,
@@ -12,6 +15,24 @@ import {
 
 // A word's translation is stable — let Next's data cache hold it for a day.
 export const revalidate = 86400;
+
+/**
+ * Each gloss term's CEFR level in the language it's written in, keyed by the term as
+ * Google spelled it. Google's senses are ordered by confidence, not by difficulty — "agua"
+ * A1 and "abrevar" C2 arrive as equals — so the level is what tells a learner which
+ * alternative is theirs. Only the six indexed languages have levels; a term that is a
+ * phrase, or a word the list doesn't carry, is simply absent.
+ */
+function levelsOf(tl: string, groups: SenseGroup[], translation: string) {
+  if (!isSourceLang(tl)) return {};
+  const levels: Record<string, WordLevel> = {};
+  for (const term of [...groups.flatMap((g) => g.terms), translation]) {
+    if (!term || term in levels) continue;
+    const level = getLevel(tl, term);
+    if (level) levels[term] = level;
+  }
+  return levels;
+}
 
 async function gtx(word: string, sl: string, tl: string, dict: boolean): Promise<unknown> {
   const res = await fetch(gtxUrl(word, sl, tl, dict), { next: { revalidate } });
@@ -47,14 +68,16 @@ export async function GET(
       if (pivot) groups = alignGroup(parseSenseGroups(await gtx(pivot.term, "en", tl, true)), pivot.pos);
     }
 
+    const translation = parseGtx(data);
     return Response.json({
       word: text,
       sl,
       tl,
-      translation: parseGtx(data),
+      translation,
       senses: flattenSenses(groups),
       // Per-part-of-speech readings, so the card can show a word's distinct meanings.
       groups,
+      levels: levelsOf(tl, groups, translation),
     });
   } catch {
     return new Response("upstream error", { status: 502 });

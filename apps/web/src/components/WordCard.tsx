@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import CefrBadge from "@/components/CefrBadge";
 import LangSelect from "@/components/LangSelect";
 import Loading from "@/components/Loading";
 import { PANEL, PANEL_LANG } from "@/components/panel";
+import type { WordLevel } from "@/lib/types";
 import { baseLang, type SenseGroup } from "@/lib/translate";
 
 // Offered in the picker; the reader's browser language and current pick are merged in.
@@ -32,16 +34,26 @@ function translateHref(word: string, sl: string, tl: string) {
   return `https://translate.google.com/?${p}`;
 }
 
+/** Each gloss term's CEFR level in the gloss language, keyed by the term. */
+type Levels = Record<string, WordLevel>;
+
 // Session cache: learners check dozens of words and revisit some, so don't refetch.
-const glossCache = new Map<string, { text: string; groups: SenseGroup[] }>();
+const glossCache = new Map<string, { text: string; groups: SenseGroup[]; levels: Levels }>();
 
 const NO_GROUPS: SenseGroup[] = [];
+const NO_LEVELS: Levels = {};
+const PENDING = { status: "loading", text: "", groups: NO_GROUPS, levels: NO_LEVELS } as const;
 
-type Gloss = { status: "loading" | "done" | "error"; text: string; groups: SenseGroup[] };
+type Gloss = {
+  status: "loading" | "done" | "error";
+  text: string;
+  groups: SenseGroup[];
+  levels: Levels;
+};
 
 // Dict mode: it carries the per-part-of-speech readings.
 function useGloss(word: string, sl: string, tl: string, enabled: boolean): Gloss {
-  const [gloss, setGloss] = useState<Gloss>({ status: "loading", text: "", groups: NO_GROUPS });
+  const [gloss, setGloss] = useState<Gloss>(PENDING);
   useEffect(() => {
     if (!enabled) return;
     const key = `${sl}:${tl}:${word}`;
@@ -50,54 +62,70 @@ function useGloss(word: string, sl: string, tl: string, enabled: boolean): Gloss
       setGloss({ status: "done", ...cached });
       return;
     }
-    setGloss({ status: "loading", text: "", groups: NO_GROUPS });
+    setGloss(PENDING);
     const ac = new AbortController();
     fetch(`/api/translate/${encodeURIComponent(word)}?sl=${sl}&tl=${tl}&dict=1`, { signal: ac.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d: { translation: string; groups?: SenseGroup[] }) => {
-        const entry = { text: d.translation, groups: d.groups ?? NO_GROUPS };
+      .then((d: { translation: string; groups?: SenseGroup[]; levels?: Levels }) => {
+        const entry = {
+          text: d.translation,
+          groups: d.groups ?? NO_GROUPS,
+          levels: d.levels ?? NO_LEVELS,
+        };
         glossCache.set(key, entry);
         setGloss({ status: "done", ...entry });
       })
       .catch(() => {
-        if (!ac.signal.aborted) setGloss({ status: "error", text: "", groups: NO_GROUPS });
+        if (!ac.signal.aborted) setGloss({ ...PENDING, status: "error" });
       });
     return () => ac.abort();
   }, [word, sl, tl, enabled]);
   return gloss;
 }
 
-/** One listed line: a label — a source-language casing, or a part of speech — and its gloss. */
-type GlossLine = { label: string; gloss: string };
-type Forms = { status: "loading" | "done" | "error"; items: GlossLine[] };
+/** One listed line: a label — a source-language casing, or a part of speech — and its terms. */
+type GlossLine = { label: string; terms: string[] };
+type Forms = { status: "loading" | "done" | "error"; items: GlossLine[]; levels: Levels };
 
 // Glosses for a case-homograph: translate each casing on its own (dict mode, which is
 // casing-sensitive), then keep only casings whose meaning is distinct — so a spurious
 // pairing ("wer"/"Wer" → both "who") collapses back to a single gloss.
 function useForms(forms: string[], sl: string, tl: string, enabled: boolean): Forms {
-  const [state, setState] = useState<Forms>({ status: "loading", items: [] });
+  const [state, setState] = useState<Forms>({ status: "loading", items: [], levels: NO_LEVELS });
   const key = `${sl}:${tl}:${forms.join("|")}`;
   useEffect(() => {
     if (!enabled) return;
-    setState({ status: "loading", items: [] });
+    setState({ status: "loading", items: [], levels: NO_LEVELS });
     const ac = new AbortController();
     Promise.all(
       forms.map((form) =>
         fetch(`/api/translate/${encodeURIComponent(form)}?sl=${sl}&tl=${tl}&dict=1`, { signal: ac.signal })
           .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-          .then((d: { translation: string; senses: string[] }): GlossLine => ({
-            label: form,
-            gloss: (d.senses.length ? d.senses : [d.translation]).filter(Boolean).join(", "),
+          .then((d: { translation: string; senses: string[]; levels?: Levels }) => ({
+            line: {
+              label: form,
+              terms: (d.senses.length ? d.senses : [d.translation]).filter(Boolean),
+            },
+            levels: d.levels ?? NO_LEVELS,
           })),
       ),
     )
       .then((all) => {
         const seen = new Set<string>();
-        const items = all.filter((it) => it.gloss && !seen.has(it.gloss.toLowerCase()) && seen.add(it.gloss.toLowerCase()));
-        setState({ status: "done", items });
+        const items: GlossLine[] = [];
+        const levels: Levels = {};
+        for (const { line, levels: own } of all) {
+          Object.assign(levels, own);
+          const gloss = line.terms.join(", ").toLowerCase();
+          if (gloss && !seen.has(gloss)) {
+            seen.add(gloss);
+            items.push(line);
+          }
+        }
+        setState({ status: "done", items, levels });
       })
       .catch(() => {
-        if (!ac.signal.aborted) setState({ status: "error", items: [] });
+        if (!ac.signal.aborted) setState({ status: "error", items: [], levels: NO_LEVELS });
       });
     return () => ac.abort();
   }, [key, enabled]); // forms is captured via `key`
@@ -130,6 +158,28 @@ const GLOSS_TYPE = {
 
 // Smaller type, but the gloss's line box — else each translation resizes the card.
 const STATUS_TYPE = { display: GLOSS_TYPE.display, lineHeight: GLOSS_TYPE.lineHeight };
+
+/**
+ * One reading's alternatives, each trailed by its own CEFR level where the gloss language
+ * is one we index. The separators are plain text and the badges are the only elements, so
+ * the line's text content is still exactly the gloss ("water, aqua").
+ */
+function Terms({ terms, levels, lang }: { terms: string[]; levels: Levels; lang: string }) {
+  return (
+    <span lang={lang} className="tw-body-large tw-text-primary" style={GLOSS_TYPE}>
+      {terms.map((term, i) => {
+        const level = levels[term];
+        return (
+          <Fragment key={`${i}:${term}`}>
+            {i > 0 && ", "}
+            {term}
+            {level && <CefrBadge level={level} />}
+          </Fragment>
+        );
+      })}
+    </span>
+  );
+}
 
 /** The looked-up word and its translation. */
 export default function WordCard({
@@ -169,21 +219,25 @@ export default function WordCard({
   const lines: GlossLine[] = homograph
     ? multi.items
     : single.groups.length > 1
-      ? single.groups.map((g) => ({ label: g.pos, gloss: g.terms.join(", ") }))
+      ? single.groups.map((g) => ({ label: g.pos, terms: g.terms }))
       : [];
   const showLines = lines.length > 1;
+  const levels = homograph ? multi.levels : single.levels;
   // Dictionary terms beat the plain translation, which alone can be wrong ("acqua" → "waterfall").
-  const hero = homograph
-    ? (multi.items[0]?.gloss ?? "")
+  const heroTerms = homograph
+    ? (multi.items[0]?.terms ?? [])
     : single.groups.length === 1
-      ? single.groups[0]!.terms.join(", ")
-      : single.text;
-  const missing = status === "error" || (status === "done" && !showLines && !hero);
+      ? single.groups[0]!.terms
+      : single.text
+        ? [single.text]
+        : [];
+  const missing = status === "error" || (status === "done" && !showLines && !heroTerms.length);
 
   // "water, aqua" -> "water": the term a swap into this language would look up.
+  const heroTerm = heroTerms[0]?.split(",")[0]?.trim() ?? "";
   useEffect(() => {
-    if (status === "done" && hero) onGloss?.(hero.split(",")[0]!.trim());
-  }, [status, hero, onGloss]);
+    if (status === "done" && heroTerm) onGloss?.(heroTerm);
+  }, [status, heroTerm, onGloss]);
 
   return (
     // Named for AT: without the heading the card is an unlabelled box, and its live
@@ -222,7 +276,7 @@ export default function WordCard({
               <ul className="tw-flex tw-flex-col tw-gap-1.5">
                 {lines.map((l) => (
                   <li
-                    key={`${l.label}:${l.gloss}`}
+                    key={`${l.label}:${l.terms.join(",")}`}
                     className="tw-flex tw-flex-wrap tw-items-baseline tw-gap-x-2"
                   >
                     {l.label && (
@@ -234,17 +288,13 @@ export default function WordCard({
                         {l.label}
                       </span>
                     )}
-                    <span lang={tl} className="tw-body-large tw-text-primary" style={GLOSS_TYPE}>
-                      {l.gloss}
-                    </span>
+                    <Terms terms={l.terms} levels={levels} lang={tl} />
                   </li>
                 ))}
               </ul>
             )}
-            {translate && status === "done" && !showLines && hero && (
-              <span lang={tl} className="tw-body-large tw-text-primary" style={GLOSS_TYPE}>
-                {hero}
-              </span>
+            {translate && status === "done" && !showLines && heroTerms.length > 0 && (
+              <Terms terms={heroTerms} levels={levels} lang={tl} />
             )}
             {translate && missing && (
               <span className="tw-body-small text-muted-aaa" style={STATUS_TYPE}>

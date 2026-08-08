@@ -9,6 +9,12 @@ export interface BandRef {
   label: string;
 }
 
+/** Where a word sits in a language: its CEFR band, and the rank that put it there. */
+export interface WordLevel extends BandRef {
+  /** 1-based frequency rank (1 = most frequent). */
+  rank: number;
+}
+
 /** A single word's placement: its frequency rank and both band labelings. */
 export interface WordBands {
   word: string;

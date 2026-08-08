@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { getBand } from "@/lib/bands";
 import { GET as wordGET } from "./word/[word]/route";
 import { GET as suggestGET } from "./suggest/route";
 import { GET as bandsGET } from "./bands/[view]/route";
 import { GET as bandGET } from "./band/[view]/[key]/route";
+import { GET as translateGET } from "./translate/[word]/route";
 
 // A guaranteed-present headword (the single most frequent) and an absent one.
 const REAL = getBand("en", "freq", "1")!.words[0]!;
@@ -63,6 +64,53 @@ describe("GET /api/bands/[view]", () => {
   it("404s for an unknown view", async () => {
     const res = await bandsGET(req("/api/bands/x"), { params: promise({ view: "nope" }) });
     expect(res.status).toBe(404);
+  });
+});
+
+// A gtx dt=bd response: translation segments, then dictionary groups of scored entries.
+function mockGtx(translation: string, pos: string, entries: [string, number][]) {
+  const body = [
+    [[translation, "x", null, null, 1]],
+    [[pos, entries.map(([t]) => t), entries.map(([t, s]) => [t, [], null, s])]],
+  ];
+  return vi.fn(async () => new Response(JSON.stringify(body)));
+}
+
+const translate = (word: string, qs: string) =>
+  translateGET(req(`/api/translate/x?${qs}`), { params: promise({ word }) });
+
+afterEach(() => vi.unstubAllGlobals());
+
+// Google ranks a gloss's alternatives by confidence, not difficulty, so the card badges
+// each with its level in the language it's written in — "agua" A1 beside "orina" B1.
+describe("GET /api/translate/[word] levels", () => {
+  it("levels every dictionary term in the gloss language", async () => {
+    vi.stubGlobal("fetch", mockGtx("agua", "noun", [["agua", 0.6], ["orina", 0.02]]));
+    const { levels } = await (await translate("water", "sl=en&tl=es&dict=1")).json();
+    expect(levels.agua.key).toBe("A1");
+    expect(levels.agua.rank).toBeGreaterThan(0);
+    expect(levels.orina.key).not.toBe("A1");
+  });
+
+  it("levels the plain translation too, which is the gloss when there is no dictionary", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify([[["casa", "x"]]]))));
+    const { levels } = await (await translate("house", "sl=en&tl=es")).json();
+    expect(levels.casa.key).toBe("A1");
+  });
+
+  // Only the six indexed languages have a word list to place a term in.
+  it("leaves the terms unlevelled for a language we don't index", async () => {
+    vi.stubGlobal("fetch", mockGtx("水", "noun", [["水", 0.6]]));
+    const { levels } = await (await translate("water", "sl=en&tl=ja&dict=1")).json();
+    expect(levels).toEqual({});
+  });
+
+  // Phrases and words the list has no headword for are ordinary, and go unbadged.
+  it("skips a term the gloss language has no entry for", async () => {
+    vi.stubGlobal("fetch", mockGtx("naja", "noun", [["naja", 0.6], ["cuchillo", 0.5]]));
+    const { levels } = await (await translate("knife", "sl=en&tl=es&dict=1")).json();
+    expect(levels.cuchillo).toBeDefined();
+    expect(levels.naja).toBeUndefined();
   });
 });
 

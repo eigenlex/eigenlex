@@ -1,5 +1,5 @@
 import "server-only";
-import type { Band, BandSummary, BandView, WordBands } from "@/lib/types";
+import type { Band, BandSummary, BandView, WordBands, WordLevel } from "@/lib/types";
 import type { SourceLang } from "@/lib/languages";
 // The per-language word-bands artifacts (built by scripts/build-bands.ts). Imported
 // directly so Next bundles them into the API functions — each file is small.
@@ -98,6 +98,19 @@ export function getWord(lang: SourceLang, word: string): WordBands | null {
     freq: { key: freq.key, label: freq.label },
     cefr: { key: cefr.key, label: cefr.label },
   };
+}
+
+/**
+ * A word's CEFR placement, keyed case-insensitively — what the word card's level badges
+ * show. Unlike `getWord` this is only ever asked about a *gloss* term, which is often a
+ * phrase or a word the language doesn't have; a miss is ordinary, and simply goes unbadged.
+ */
+export function getLevel(lang: SourceLang, word: string): WordLevel | null {
+  const d = REGISTRY[lang];
+  const rank = d.rankOf.get(word.toLowerCase());
+  if (rank === undefined) return null;
+  const b = bandAtRank(d.cefrBands, rank)!;
+  return { key: b.key, label: b.label, rank };
 }
 
 /** Every band of a view with its word count — the browser's tabs. */

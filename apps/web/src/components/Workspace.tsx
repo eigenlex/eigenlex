@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { SegmentedControl, Tooltip } from "@frontify/fondue/components";
 import BandBrowser from "@/components/BandBrowser";
+import CefrBadge from "@/components/CefrBadge";
 import LangSelect from "@/components/LangSelect";
 import WordCard from "@/components/WordCard";
 import WordSearchBox from "@/components/WordSearchBox";
@@ -376,9 +377,22 @@ export default function Workspace() {
             </section>
           </div>
 
-          {error && (
+          {/* The word's own CEFR level, under the field it was typed into. Otherwise it
+              shows only in CEFR view, as whichever band tab happens to be open — and in
+              Frequency view it isn't visible at all. Swapped out for the error, which
+              would otherwise sit under a level belonging to the last word that resolved. */}
+          {error ? (
             <p className="tw-mt-3 tw-body-medium tw-text-error" role="alert">
               {error}
+            </p>
+          ) : (
+            <p className="tw-mt-2 tw-flex tw-min-h-[1.5em] tw-items-center tw-body-x-small text-muted-aaa">
+              {info && (
+                <>
+                  Level
+                  <CefrBadge level={{ ...info.cefr, rank: info.rank }} />
+                </>
+              )}
             </p>
           )}
         </div>

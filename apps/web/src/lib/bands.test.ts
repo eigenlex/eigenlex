@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getBand, getBandSummary, getSuggestions, getWord } from "@/lib/bands";
+import { getBand, getBandSummary, getLevel, getSuggestions, getWord } from "@/lib/bands";
 
 // German carries display casing (nouns/names capitalized) while lookups stay
 // case-insensitive; other languages are unaffected. See scripts/build-bands.ts.
@@ -73,6 +73,28 @@ describe("CEFR tail", () => {
       expect(sum(cefr)).toBe(sum(getBandSummary(lang, "freq")));
       expect(cefr.every((b) => b.count > 0)).toBe(true);
     }
+  });
+});
+
+// The level badges on the word card. Google orders a gloss's alternatives by confidence,
+// not difficulty, so the level is what separates the word to learn from the one beside it.
+describe("gloss levels", () => {
+  it("places a term at its CEFR band and rank", () => {
+    const water = getLevel("en", "water")!;
+    expect(water.key).toBe("A1");
+    expect(water.rank).toBeGreaterThan(0);
+    // Same gloss, far rarer alternative — the difference the badge exists to show.
+    expect(getLevel("en", "aqua")!.rank).toBeGreaterThan(water.rank * 5);
+  });
+
+  it("keys case-insensitively, so a capitalized gloss term still resolves", () => {
+    expect(getLevel("de", "wasser")).toEqual(getLevel("de", "Wasser"));
+  });
+
+  // A gloss term is routinely something the list has no headword for; that is not an error.
+  it("returns nothing for a phrase or a word the language doesn't carry", () => {
+    expect(getLevel("es", "usar naja")).toBeNull();
+    expect(getLevel("en", "zzzzznotaword")).toBeNull();
   });
 });
 

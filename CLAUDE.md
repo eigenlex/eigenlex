@@ -171,6 +171,32 @@ Google's "amigo" entry tops out at .004 with no "friend" in it, and there the pl
 translation ("Freund") is the better gloss. And a part-of-speech miss yields nothing
 rather than a gloss for a different word, since "escuela" is never the verb "to school".
 
+**Levels on the gloss.** Google orders a gloss's alternatives by confidence, not by
+difficulty, so a three-to-four band spread arrives as a flat list of equals: "agua" A1
+beside "abrevar" C2, "buddy" A1 beside "cobber" C2. So `/api/translate` annotates every
+dictionary term — and the plain translation — with its CEFR band and rank *in the gloss
+language*, and the card trails each with a quiet badge (`CefrBadge`, band name and rank in
+its tooltip). The looked-up word carries the same badge under the search field, which in
+Frequency view is the only place its CEFR level shows at all. The order stays Google's
+throughout: the badge lets a learner filter, it doesn't re-rank for them.
+
+The annotation is server-side, in the route that already fetches the gloss, so it costs no
+extra round trip. `levels` is keyed by the term as Google spelled it, and `getLevel` keys
+case-insensitively underneath. Only the six indexed languages have levels — for the rest
+the map is empty and nothing renders. A term goes unbadged when it is a phrase ("de agua")
+or an inflected form the lemma merge folded away ("eating"): ~4% of terms.
+
+In the markup the separators are bare text and the badges are the only elements, so a
+line's text content stays exactly the gloss. That keeps what a reader copies clean, and —
+since no whitespace separates a term from its badge — a wrap can never split the two.
+`role="img"` carries the detail as the badge's accessible name; hidden text would say the
+same thing but ride along into anything copied out of the gloss.
+
+Comparing one *language* against another through the bands is the weaker reading: the six
+agree almost everywhere, and where they don't it is usually a word within 20% of a
+threshold — en "green" at rank 909 vs es 1,170 straddles the A1/A2 line at 1,000. The rank
+in the tooltip is what tells that apart from a real difference, like it "parete" at 2,702.
+
 ## Verifying a build while the web dev server is running
 
 `next dev` and `next build` both default to `apps/web/.next`. Running `pnpm build`

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
 import Workspace from "./Workspace";
@@ -95,9 +95,27 @@ describe("Workspace", () => {
   // The card carries no visible word either, so it is found by its region label.
   it("renders a card for the looked-up word, without band metadata", async () => {
     render(<Workspace />);
-    expect(await screen.findByRole("region", { name: /meaning of water/i })).toBeInTheDocument();
-    expect(screen.queryByText("Top 1,000")).not.toBeInTheDocument();
-    expect(screen.queryByText("A1 · Beginner")).not.toBeInTheDocument();
+    const card = await screen.findByRole("region", { name: /meaning of water/i });
+    expect(within(card).queryByText("Top 1,000")).not.toBeInTheDocument();
+    expect(within(card).queryByText(/A1 · Beginner/)).not.toBeInTheDocument();
+  });
+
+  // The level belongs beside the word, not in the card: in Frequency view it is the only
+  // place a CEFR band shows at all, and it is what a gloss's own badges compare against.
+  it("shows the looked-up word's CEFR level beneath the search field", async () => {
+    render(<Workspace />);
+    await screen.findByRole("region", { name: /meaning of water/i });
+    expect(screen.getByText("Level")).toBeInTheDocument();
+    expect(screen.getByText("A1")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "A1 · Beginner · rank 1" })).toBeInTheDocument();
+  });
+
+  // Otherwise the failure reads as a level for a word that isn't the one in the field.
+  it("drops the level when the lookup fails", async () => {
+    window.history.replaceState(null, "", "/?lang=en&word=missing");
+    render(<Workspace />);
+    await screen.findByRole("alert");
+    expect(screen.queryByText("Level")).not.toBeInTheDocument();
   });
 
   it("switches source language and looks its default word up in that dictionary", async () => {
