@@ -1,15 +1,7 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from "react";
-import { Button, LoadingCircle, TextInput } from "@frontify/fondue/components";
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { LoadingCircle, TextInput } from "@frontify/fondue/components";
 
 // A typeahead <li role="option">, painted with Fondue tokens (per the ARIA combobox
 // pattern the options carry the click handlers directly, not a nested control).
@@ -20,8 +12,8 @@ const SUGGEST_DEBOUNCE_MS = 500;
 /**
  * A word-lookup field with a debounced (500ms) typeahead dropdown backed by
  * /api/suggest. Controlled: the parent owns the text `value`; `onSubmit` fires
- * when a word is committed — a suggestion picked, Enter on the highlight, or the
- * form submitted.
+ * when a word is committed — a suggestion picked, Enter, the form submitted, or
+ * typing that settles on a word the corpus already knows.
  */
 export default function WordSearchBox({
   value,
@@ -31,7 +23,6 @@ export default function WordSearchBox({
   ariaLabel,
   describedBy,
   placeholder,
-  submitLabel,
   busy = false,
 }: {
   value: string;
@@ -42,8 +33,7 @@ export default function WordSearchBox({
   ariaLabel: string;
   describedBy?: string;
   placeholder: string;
-  submitLabel: ReactNode;
-  /** Lookup in flight: disables the button and marks it working. */
+  /** Lookup in flight: shows the field's spinner. */
   busy?: boolean;
 }) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -80,6 +70,11 @@ export default function WordSearchBox({
         setSuggestions(words);
         setActiveIndex(-1);
         setOpen(words.length > 0);
+        // Typing has settled on a word the corpus knows, so look it up unasked —
+        // no button to press, and no failed lookup to report, since the suggestion
+        // is the proof it exists (an exact match leads the list, see getSuggestions).
+        // The dropdown stays up: it is also the way from "water" to "waterfall".
+        if (words[0] && words[0].toLowerCase() === term.toLowerCase()) onSubmit(words[0]);
       } catch {
         /* a failed suggest fetch just leaves the dropdown as-is */
       } finally {
@@ -87,7 +82,7 @@ export default function WordSearchBox({
         if (reqId === suggestSeq.current) setLoading(false);
       }
     },
-    [closeSuggestions, lang],
+    [closeSuggestions, lang, onSubmit],
   );
 
   const onQueryChange = useCallback(
@@ -100,12 +95,15 @@ export default function WordSearchBox({
     [onValueChange, fetchSuggestions, closeSuggestions],
   );
 
+  // Asking for a word outright, as opposed to the auto-lookup above: the field takes
+  // the word straight away rather than waiting on the fetch, and the list is done.
   const commit = useCallback(
     (word: string) => {
+      onValueChange(word);
       closeSuggestions();
       onSubmit(word);
     },
-    [closeSuggestions, onSubmit],
+    [onValueChange, closeSuggestions, onSubmit],
   );
 
   const onInputKeyDown = useCallback(
@@ -140,9 +138,19 @@ export default function WordSearchBox({
     [],
   );
 
+  // A language switch drops whatever the last keystroke asked for: those suggestions
+  // come from the vocabulary just left, and the lookup they would trigger with them.
+  // A no-op on mount, where there is nothing pending.
+  useEffect(() => {
+    closeSuggestions();
+  }, [lang, closeSuggestions]);
+
   return (
+    // No submit button: typing that settles on a word looks it up, and Enter still
+    // submits implicitly for the rest. `flex` so the field shrinks below its
+    // 40-character intrinsic width on a narrow panel instead of overflowing.
     <form
-      className="tw-flex tw-gap-2"
+      className="tw-flex"
       role="search"
       onSubmit={(e) => {
         e.preventDefault();
@@ -178,8 +186,14 @@ export default function WordSearchBox({
           placeholder={placeholder}
           spellCheck={false}
         />
-        {loading && (
-          <div className="tw-pointer-events-none tw-absolute tw-inset-y-0 tw-right-3 tw-flex tw-items-center">
+        {/* One spinner for both waits — suggesting and looking up run into each other,
+            and which one you are in is not a distinction worth drawing. Decorative:
+            the result is what gets announced, by the card's live region. */}
+        {(loading || busy) && (
+          <div
+            aria-hidden="true"
+            className="tw-pointer-events-none tw-absolute tw-inset-y-0 tw-right-3 tw-flex tw-items-center"
+          >
             <LoadingCircle size="x-small" />
           </div>
         )}
@@ -213,22 +227,6 @@ export default function WordSearchBox({
           </ul>
         )}
       </div>
-      <Button type="submit" disabled={busy}>
-        {/* Stacked on the label, not swapped for it, so the button keeps one width —
-            and opacity, not visibility, so it keeps its accessible name too. */}
-        <span className="tw-grid tw-items-center tw-justify-items-center">
-          <span className={`tw-col-start-1 tw-row-start-1 ${busy ? "tw-opacity-0" : ""}`}>
-            {submitLabel}
-          </span>
-          {busy && (
-            // The same spinner every other waiting state uses; `disabled` is what
-            // carries the state to assistive tech, so it stays decorative here.
-            <span className="tw-col-start-1 tw-row-start-1 tw-flex" aria-hidden="true">
-              <LoadingCircle size="x-small" />
-            </span>
-          )}
-        </span>
-      </Button>
     </form>
   );
 }

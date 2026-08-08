@@ -159,12 +159,14 @@ describe("Workspace", () => {
     expect(screen.getByRole("region", { name: /meaning of water/i })).toBeInTheDocument();
   });
 
-  // A blank word is not a wait, or the card would spin for good.
+  // A blank word is not a wait, or the card would spin for good. The frame follows
+  // `loading`, so a wait that never ends is a frame that never goes.
   it("stops waiting when the deeplink carries nothing to look up", async () => {
     window.history.replaceState(null, "", "/?lang=en&word=%20");
     render(<Workspace />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "look up" })).toBeEnabled());
-    expect(screen.queryByRole("region", { name: /meaning of/i })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("region", { name: /meaning of/i })).not.toBeInTheDocument(),
+    );
   });
 
   it("drops the frame again when the word turns out not to exist", async () => {
@@ -176,12 +178,34 @@ describe("Workspace", () => {
     expect(screen.queryByRole("region", { name: /meaning of/i })).not.toBeInTheDocument();
   });
 
-  // The label is what fixes the button's width, so it has to survive the wait.
-  it("keeps the submit button's label while a lookup is in flight", async () => {
+  // There is no submit button: settling on a word is the ask.
+  it("looks a word up once typing settles on one the corpus knows", async () => {
+    const user = userEvent.setup();
     render(<Workspace />);
-    expect(screen.getByRole("button", { name: "look up" })).toBeDisabled();
+    await screen.findByRole("region", { name: /meaning of water/i }); // initial lookup settled
+
+    const input = screen.getByRole("combobox", { name: /look up a word/i });
+    await user.clear(input);
+    await user.type(input, "cat");
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/cat")));
+    // The suggestions stay up — they are also the way on to a longer word.
+    expect(screen.getByRole("option", { name: "cat" })).toBeInTheDocument();
+  });
+
+  // A prefix is not an ask: "ca" is no word, so nothing is looked up and nothing fails.
+  it("stays quiet while the typed text is only a prefix", async () => {
+    const user = userEvent.setup();
+    render(<Workspace />);
     await screen.findByRole("region", { name: /meaning of water/i });
-    expect(screen.getByRole("button", { name: "look up" })).toBeEnabled();
+
+    const input = screen.getByRole("combobox", { name: /look up a word/i });
+    await user.clear(input);
+    await user.type(input, "ca");
+    await screen.findByRole("option", { name: "care" }); // suggestions landed
+
+    expect(fetch).not.toHaveBeenCalledWith(expect.stringContaining("/api/word/ca?"));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   const swapButton = () => screen.getByRole("button", { name: /swap the study and translation/i });

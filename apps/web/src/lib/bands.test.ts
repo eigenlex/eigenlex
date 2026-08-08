@@ -96,4 +96,10 @@ describe("typeahead", () => {
     expect(hits).toHaveLength(3);
     expect(hits[0]).toBe("the");
   });
+
+  // The search box reads the head of the list to decide whether the typed text is
+  // itself a word, so the exact match has to be there however crowded the prefix is.
+  it("leads with the exact match, ahead of commoner words sharing the prefix", () => {
+    expect(getSuggestions("en", "ban", 3)).toEqual(["ban", "bank", "band"]);
+  });
 });

@@ -257,8 +257,10 @@ export default function Workspace() {
         setError(null);
         const found = (await res.json()) as WordBands;
         setInfo(found);
-        // Echo the corpus's display casing ("Plädoyer"), not the lowercased lookup key.
-        setQuery(found.word);
+        // Echo the corpus's display casing ("Plädoyer"), not the lowercased lookup key
+        // — but only onto the word that was asked for. Typing carries on while a
+        // lookup is in flight, and the field is the one thing the user is holding.
+        setQuery((q) => (q.trim().toLowerCase() === term ? found.word : q));
         setBand(bandOverride);
       } finally {
         setLoading(false);
@@ -364,13 +366,13 @@ export default function Workspace() {
                 ariaLabel="Look up a word"
                 describedBy="search-help"
                 placeholder="look up a word…"
-                submitLabel="look up"
                 busy={loading}
               />
               {/* Context-sensitive help for the field (WCAG 3.3.5). */}
               <p id="search-help" className="visually-hidden">
-                Type a {langName} word, then press Enter or choose a suggestion to see its
-                frequency and CEFR level.
+                Type a {langName} word to see its frequency and CEFR level. It is looked
+                up as soon as you stop typing; press Enter or choose a suggestion to look
+                one up at once.
               </p>
             </section>
           </div>
@@ -411,7 +413,12 @@ export default function Workspace() {
           anchorBandKey={info ? info[view].key : null}
           bandKey={band}
           onBandChange={setBand}
-          onSelect={(w) => void lookup(w, lang)}
+          // Into the field first, as every other way of picking a word does — the
+          // lookup only corrects the casing on top of it.
+          onSelect={(w) => {
+            setQuery(w);
+            void lookup(w, lang);
+          }}
           viewControl={<ViewToggle view={view} onChange={chooseView} />}
         />
 

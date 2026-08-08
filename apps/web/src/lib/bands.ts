@@ -118,7 +118,13 @@ export function getBand(lang: SourceLang, view: BandView, key: string): Band | n
   return { key: b.key, label: b.label, words: d.ranked.slice(b.min - 1, lastRank(d, b)) };
 }
 
-/** Words starting with `prefix`, most frequent first, for typeahead. */
+/**
+ * Words starting with `prefix`, most frequent first, for typeahead. An exact match
+ * leads, ahead of frequency: commoner words sharing the prefix would otherwise crowd
+ * it past `limit` — "ban" trails bank, band, bang, banana, bandit and banker — and
+ * the search box reads the head of this list to decide whether what was typed is
+ * itself a word, and so worth looking up unasked.
+ */
 export function getSuggestions(lang: SourceLang, prefix: string, limit = 8): string[] {
   const p = prefix.trim().toLowerCase();
   if (!p) return [];
@@ -127,10 +133,12 @@ export function getSuggestions(lang: SourceLang, prefix: string, limit = 8): str
   // all: a miss costs a failed lookup, and a hit never walks the rest of the list.
   const candidates = d.byPrefix.get(p.slice(0, 2));
   if (!candidates) return [];
-  const out: string[] = [];
+  const exact = d.rankOf.get(p);
+  const out: string[] = exact === undefined ? [] : [d.ranked[exact - 1]!];
   for (const i of candidates) {
     const word = d.ranked[i]!;
-    if (word.toLowerCase().startsWith(p)) {
+    const l = word.toLowerCase();
+    if (l !== p && l.startsWith(p)) {
       out.push(word);
       if (out.length >= limit) break;
     }

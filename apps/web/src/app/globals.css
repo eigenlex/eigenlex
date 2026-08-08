@@ -19,9 +19,8 @@
 }
 
 /* 2.5.5 Target Size (Enhanced, AAA): 44px pointer targets for the primary
-   controls. The Fondue Button/TextInput own their className, so size them here.
+   controls. The Fondue TextInput owns its className, so size it here.
    (Word-cloud chips stay compact — the search box is the equivalent mechanism.) */
-form[role="search"] button[type="submit"],
 form[role="search"] [data-test-id="fondue-text-input"] {
   min-height: 44px;
 }
