@@ -54,11 +54,6 @@ this and rank can't either — `peut-être` and `rendez-vous` sit among `avez-vo
 `dis-moi`. `là`/`ci` are deliberately not clitics, since `celui-là` and `là-bas` are
 vocabulary; `cliticExceptions` covers the rest (`rendez-vous`, `garde-à-vous`).
 
-The tail is thin vocabulary, and the CEFR view now says so rather than filing it under
-C2 — see the `rare` band below. Dictionary-known share by rank, measured across all six:
-~45% at 12k–25k, 26% at 25k–40k, then 6–16% past 50k, where OCR debris (`lnternet` for
-"Internet", `construçao`) and surnames dominate. Raising `minCount` would cut a slice
-of it.
 A surface word that **heads its own entry** in the lemma list keeps it, rather than being
 merged into whichever lemma claims it. The lists are lemma-sorted, so plain first-wins
 silently hands a shared form to the alphabetically-first claimant — which used to delete
@@ -70,15 +65,35 @@ to the `LANGS` table in the build script and to `SOURCE_LANG_META` (+ the `bands
 registry import). CEFR bands are frequency-rank thresholds calibrated against CEFR-J
 (English-derived, reused for every language); no graph or external dictionary is involved.
 
-**The CEFR tail.** Band tops roughly double — 1k, 3k, 6k, 12k, 25k, 50k — so C2 ends at
-50k instead of running open-ended to the end of the list, and a seventh band, `rare`
-("Rare · beyond C2"), holds everything past it. CEFR genuinely stops at C2, and so does
-the vocabulary: past 50k only 6–16% of words are known to the language's own lemma
-dictionary, so the band is mostly surnames and OCR debris, which shouldn't carry a CEFR
-level at all. Both band lists are now filtered per language to those that actually
-contain words, so English (SUBTLEX, 39.7k) emits no `rare` band and its tab row still
-ends at C2. `getWord` asserts a band exists at every rank, so the last band must stay
-open-ended — keep `max: null` on whichever band is last.
+**The tail, and the dictionary gate.** The subtitle tail is not rare vocabulary. Past
+25k only ~14% of it is in the language's own lemma list; the rest is character names,
+untranslated English (`truck`, `workshop`), misspellings (`gerer` for "gérer", `règler`),
+OCR debris (`lslam`, `arrãªtez`) and pure noise (`rrr`, `shhhh`). Neither frequency nor
+the name gazetteer can tell that from a rare word — the gazetteer has no entry for
+`ryûji` or `rrr` — but the dictionary can. So `dictGate` (25,000) requires the lemma
+list to vouch for a word past that rank. It drops ~80 junk words per real one, and
+lands the five subtitle languages at 33–40k words each, about where English's curated
+SUBTLEX ends on its own.
+
+It is deliberately **not** applied to English, whose source is curated and whose lemma
+list is the smallest by far (808KB vs French's 4.9MB) — gating it would cut 11k
+mostly-real words.
+
+*Known costs.* The gate deletes real words michmech happens to lack, ~1–3% of what it
+drops (900–2,700 per language), concentrated in productive morphology the lists don't
+headword: `-mente`/`-ment` adverbs, `-ità`/`-ité` nouns, superlatives — `logicamente`,
+`unanimità`, `rigoureusement`, `Geborgenheit`. Italian's list has no `entropia`, so the
+build's own spot-check for it now reports `—`. And the gate starts at 25k, so it does
+nothing for 12k–25k, which is still roughly half names and English (`Nami`, `Calcutta`,
+`because`, `corn`, `truck` all sit around rank 13,000).
+
+**CEFR band tops** roughly double — 1k, 3k, 6k, 12k, 25k, 50k — so C2 ends at 50k rather
+than running open-ended to the end of the list. A seventh band `rare` ("Rare · beyond
+C2") covers past 50k, but it is a **backstop, not an expected band**: with the gate no
+language reaches 50k, so every artifact currently ends at C2. It stays because `getWord`
+asserts a band exists at every rank, so the last band must be open-ended — keep
+`max: null` on whichever band is last. Both band lists are filtered per language to
+those that actually contain words, so an unreached `rare` never renders as an empty tab.
 
 **Display casing** is optional per language, driven by a third input: `casing-<code>.txt`,
 a Leipzig Corpora *sentences* file (`downloads.wortschatz-leipzig.de`, e.g.

@@ -21,9 +21,12 @@ learning order than any dictionary-structure metric, so the ranking rests on it 
   calibrated against the [CEFR-J](https://www.cefr-j.org/) vocabulary profile — so the
   labels are learner-familiar while coverage stays the full vocabulary. The calibration
   is English-derived and reused for every language as a first-order heuristic. No
-  external dictionary is required at runtime. C2 ends at rank 50,000; rarer words are
-  browsable under a **Rare · beyond C2** band, because the scale stops at C2 and the
-  deep tail of a subtitle corpus is mostly names and OCR noise rather than vocabulary.
+  external dictionary is required at runtime.
+- **The tail is filtered.** A subtitle corpus does not trail off into rare words, it
+  trails off into character names, untranslated English, misspellings and OCR debris —
+  past rank 25,000 only about one word in seven is in the language's own dictionary. So
+  past that rank the lemmatization list has to vouch for a word for it to be listed,
+  which leaves each language with 33–40k words of genuine vocabulary.
 - **Display casing** is measured from the
   [Leipzig Corpora](https://wortschatz.uni-leipzig.de/en/download) sentence collection:
   how often each word is capitalized mid-sentence decides whether it's shown capitalized.

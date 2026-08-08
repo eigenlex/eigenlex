@@ -37,27 +37,32 @@ describe("case-homographs", () => {
   });
 });
 
-// C2 ends at rank 50,000 and the tail past it is its own non-CEFR band, emitted only
-// for languages whose list reaches that far. See CEFR_BANDS in scripts/build-bands.ts.
+// C2 ends at rank 50,000, and `dictGate` keeps every list well short of that, so the
+// open-ended `rare` band past it exists only as a backstop and is emitted for no
+// language today. See CEFR_BANDS and `dictGate` in scripts/build-bands.ts.
 describe("CEFR tail", () => {
   it("bounds C2 instead of letting it swallow the list", () => {
     const c2 = getBandSummary("es", "cefr").find((b) => b.key === "C2")!;
-    expect(c2.count).toBe(25000);
+    expect(c2.count).toBeLessThan(25000);
   });
 
-  it("files the deep tail under `rare`, outside the CEFR scale", () => {
-    const first = getBand("es", "cefr", "rare")!.words[0]!;
-    const w = getWord("es", first)!;
-    expect(w.rank).toBe(50001);
-    expect(w.cefr.key).toBe("rare");
-    expect(w.cefr.label).toBe("Rare · beyond C2");
+  it("ends every language at C2, with no tail band rendered", () => {
+    for (const lang of ["en", "es", "fr", "de", "pt", "it"] as const) {
+      const keys = getBandSummary(lang, "cefr").map((b) => b.key);
+      expect(keys.at(-1)).toBe("C2");
+      expect(keys).not.toContain("rare");
+      expect(getBand(lang, "cefr", "rare")).toBeNull();
+    }
   });
 
-  it("omits the tail band for a language that never reaches it", () => {
-    const keys = getBandSummary("en", "cefr").map((b) => b.key);
-    expect(keys).not.toContain("rare");
-    expect(keys.at(-1)).toBe("C2");
-    expect(getBand("en", "cefr", "rare")).toBeNull();
+  // The dictionary gate's whole point: the deep tail was names and OCR debris, so the
+  // last word of every list should now be something its own dictionary vouches for.
+  it("keeps the deepest word inside C2", () => {
+    for (const lang of ["fr", "it"] as const) {
+      const c2 = getBand(lang, "cefr", "C2")!;
+      const last = c2.words.at(-1)!;
+      expect(getWord(lang, last)!.cefr.key).toBe("C2");
+    }
   });
 
   // getWord asserts a band exists at every rank, so a gap would be a crash, not a miss.

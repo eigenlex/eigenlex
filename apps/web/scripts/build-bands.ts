@@ -46,11 +46,12 @@ const FREQ_BANDS: BandDef[] = [
 // (1k, 3k, 6k, 12k, 25k, 50k), so C2 ends where the trend says it ends rather than
 // swallowing the rest of the list.
 //
-// Past 50k the corpus is no longer vocabulary: only 6–16% of those words are known
-// to the language's own lemma dictionary, against 26% at 25k–40k and ~45% at 12k–25k.
-// Calling that "Proficiency" would file OCR debris ("lnternet") under a CEFR level, so
-// it gets a band of its own, outside the scale. `rare` is emitted only for languages
-// whose list reaches it — English (SUBTLEX, 39.7k) has no such tail.
+// `rare` is a backstop, not an expected band. `dictGate` now removes the junk tail at
+// its source rather than banding it, so no language reaches 50k and every artifact
+// currently ends at C2. It stays because it is the open-ended last band, and `getWord`
+// asserts a band exists at every rank — a future language whose lemma list is weak
+// enough to leave a long tail lands here instead of crashing. Bands with no words are
+// filtered per language, so an unreached `rare` never renders as an empty tab.
 const CEFR_BANDS: BandDef[] = [
   { key: "A1", label: "A1 · Beginner", min: 1, max: 1000 },
   { key: "A2", label: "A2 · Elementary", min: 1001, max: 3000 },
@@ -60,6 +61,12 @@ const CEFR_BANDS: BandDef[] = [
   { key: "C2", label: "C2 · Proficiency", min: 25001, max: 50000 },
   { key: "rare", label: "Rare · beyond C2", min: 50001, max: null },
 ];
+
+// Where the subtitle tail stops being vocabulary and the lemma list takes over as the
+// arbiter (see `dictGate`). Chosen from measured dictionary coverage, which runs ~45%
+// at 12k–25k and then halves to 26% by 40k. It lands the five subtitle languages at
+// 33–40k words each, about where English's curated SUBTLEX ends on its own.
+const DICT_GATE = 25000;
 
 interface FreqSource {
   file: string;
@@ -112,6 +119,18 @@ interface LangConfig {
   mesoEndings?: Set<string>;
   /** Compounds ending in something spelled like a clitic, kept whole. */
   cliticExceptions?: Set<string>;
+  /**
+   * Rank past which the lemma list must know a word for it to stay. The subtitle
+   * tail is not rare vocabulary — past 25k only ~14% of it is in the language's own
+   * dictionary, the rest being character names, untranslated English, misspellings
+   * ("gerer", "règler") and OCR debris ("lslam", "arrãªtez"). The frequency list can't
+   * tell those from rare words, and neither can the name gazetteer, which has no entry
+   * for "ryûji" or "rrr"; the dictionary can. Costs the real words michmech happens to
+   * lack ("préventivement", "raticide"), which is the price of dropping ~9 in 10 junk.
+   * Omitted for English, whose SUBTLEX source is curated and whose lemma list is the
+   * smallest by far — gating it would cut 11k mostly-real words.
+   */
+  dictGate?: number;
 }
 
 const LANGS: Record<string, LangConfig> = {
@@ -133,6 +152,7 @@ const LANGS: Record<string, LangConfig> = {
     code: "es",
     freq: { file: "freq-es.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
     lemmaFile: "lemma-es.txt",
+    dictGate: DICT_GATE,
     singleLetterOk: new Set(["a", "y", "o", "e", "u"]),
     fragments: new Set(),
     spotChecks: ["de", "ser", "agua", "gobierno", "filosofía", "entropía"],
@@ -147,6 +167,7 @@ const LANGS: Record<string, LangConfig> = {
     code: "fr",
     freq: { file: "freq-fr.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
     lemmaFile: "lemma-fr.txt",
+    dictGate: DICT_GATE,
     singleLetterOk: new Set(["à", "a", "y"]),
     fragments: new Set(["sync"]),
     spotChecks: ["de", "être", "eau", "gouvernement", "philosophie", "entropie"],
@@ -171,6 +192,7 @@ const LANGS: Record<string, LangConfig> = {
     code: "de",
     freq: { file: "freq-de.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
     lemmaFile: "lemma-de.txt",
+    dictGate: DICT_GATE,
     singleLetterOk: new Set(),
     fragments: new Set(),
     spotChecks: ["ich", "sein", "wasser", "regierung", "philosophie", "entropie"],
@@ -187,6 +209,7 @@ const LANGS: Record<string, LangConfig> = {
     code: "pt",
     freq: { file: "freq-pt.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
     lemmaFile: "lemma-pt.txt",
+    dictGate: DICT_GATE,
     singleLetterOk: new Set(["a", "o", "e", "é", "à", "á"]),
     fragments: new Set(["pt-subs", "pt-pt"]),
     spotChecks: ["que", "ser", "água", "governo", "filosofia", "entropia"],
@@ -213,6 +236,7 @@ const LANGS: Record<string, LangConfig> = {
     code: "it",
     freq: { file: "freq-it.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
     lemmaFile: "lemma-it.txt",
+    dictGate: DICT_GATE,
     singleLetterOk: new Set(["a", "e", "è", "i", "o"]),
     fragments: new Set(["srt"]),
     spotChecks: ["di", "essere", "acqua", "società", "filosofia", "entropia"],
@@ -497,8 +521,15 @@ function buildLang(cfg: LangConfig) {
     if (!s || s.tot < NAME_MIN_OBS || s.cap / s.tot < NAME_CAP_SHARE) return false;
     return s.det / s.tot < NAME_DET_SHARE;
   };
-  const keptKeys = rankedKeys.filter((w, i) => i < NAME_RANK_FLOOR || !isName(w));
-  const dropped = rankedKeys.length - keptKeys.length;
+  const namedKeys = rankedKeys.filter((w, i) => i < NAME_RANK_FLOOR || !isName(w));
+  const dropped = rankedKeys.length - namedKeys.length;
+
+  // Past DICT_GATE the corpus stops being vocabulary, so the lemma list has to vouch
+  // for a word to stay (see `dictGate`). Applied on the post-name-filter ranking, so
+  // the gate rank means the rank a learner actually sees.
+  const gate = cfg.dictGate ?? Infinity;
+  const keptKeys = namedKeys.filter((w, i) => i < gate || known(w));
+  const gated = namedKeys.length - keptKeys.length;
 
   const ranked = cased ? keptKeys.map((w) => cased.casing.get(w) ?? w) : keptKeys;
 
@@ -538,6 +569,11 @@ function buildLang(cfg: LangConfig) {
   if (cfg.clitics) {
     console.log(`  clitics: ${declitMerged.toLocaleString()} forms merged into their verb,`,
       `${declitDropped.toLocaleString()} dropped as unattributable`);
+  }
+  if (cfg.dictGate) {
+    const sample = namedKeys.filter((w, i) => i >= cfg.dictGate! && !known(w)).slice(0, 6);
+    console.log(`  dict gate: ${gated.toLocaleString()} dropped past rank`,
+      `${cfg.dictGate.toLocaleString()}`, "e.g.", sample.join(" "));
   }
 }
 
