@@ -339,9 +339,9 @@ export default function Workspace() {
       {/* Tighter above and below the card on a phone, where it is stacked, not beside. */}
       <div className="tw-mb-6 tw-grid tw-grid-cols-1 tw-gap-x-4 tw-gap-y-3 min-[700px]:tw-mb-12 min-[700px]:tw-gap-y-4 min-[860px]:tw-grid-cols-[minmax(0,1fr)_auto_minmax(0,1.1fr)]">
         <div className={PANEL}>
-          {/* Language and word share a row — the select is only wide enough for a code.
-              It wraps back onto its own line once the field would be squeezed. */}
-          <div className="tw-flex tw-flex-wrap tw-items-start tw-gap-2 min-[700px]:tw-gap-3">
+          {/* Language and word share one row at every width — the select is only wide
+              enough for a code, and a phone has no line to spare for it alone. */}
+          <div className="tw-flex tw-items-start tw-gap-2 min-[700px]:tw-gap-3">
             {/* Section headings (WCAG 2.4.10) — visually hidden, structural for AT. */}
             <section aria-labelledby="lang-heading">
               <h2 id="lang-heading" className="visually-hidden">
@@ -352,9 +352,8 @@ export default function Workspace() {
               </div>
             </section>
 
-            {/* Basis is a comfortable ~16 characters of field; below that the row
-                wraps and the field gets the panel to itself. */}
-            <section aria-labelledby="search-heading" className="tw-min-w-0 tw-grow tw-basis-[17rem]">
+            {/* Whatever the select leaves, which the field then shrinks into. */}
+            <section aria-labelledby="search-heading" className="tw-min-w-0 tw-grow tw-basis-0">
               <h2 id="search-heading" className="visually-hidden">
                 Look up a word
               </h2>

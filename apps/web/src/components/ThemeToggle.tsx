@@ -26,7 +26,9 @@ export default function ThemeToggle() {
             type="button"
             aria-pressed={active}
             onClick={() => setPreference(value)}
-            className={`tw-min-h-[44px] tw-rounded-large tw-px-4 tw-body-small tw-transition-colors ${
+            // Narrower on a phone, where the three labels beside the masthead run
+            // past the gutter; the 44px target comes from the height.
+            className={`tw-min-h-[44px] tw-rounded-large tw-px-3 min-[700px]:tw-px-4 tw-body-small tw-transition-colors ${
               active
                 ? "tw-bg-surface-hover tw-font-medium tw-text-primary"
                 : "tw-text-secondary hover:tw-text-primary"

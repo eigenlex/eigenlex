@@ -4,7 +4,7 @@
  * control: source on the left, target on the right.
  */
 export const PANEL =
-  "tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-4 tw-py-4 " +
+  "tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface tw-px-3 tw-py-4 " +
   "min-[700px]:tw-px-6 min-[700px]:tw-py-5";
 
 /**
