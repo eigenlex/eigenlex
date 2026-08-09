@@ -367,6 +367,14 @@ export default function Workspace() {
                 describedBy="search-help"
                 placeholder="look up a word…"
                 busy={loading}
+                // Only while the field still holds the word this level belongs to.
+                // Sitting against the text, it would otherwise read as a claim about
+                // whatever is being typed over it.
+                badge={
+                  info && query.trim().toLowerCase() === info.word.toLowerCase() ? (
+                    <CefrBadge level={{ ...info.cefr, rank: info.rank }} />
+                  ) : null
+                }
               />
               {/* Context-sensitive help for the field (WCAG 3.3.5). */}
               <p id="search-help" className="visually-hidden">
@@ -377,22 +385,9 @@ export default function Workspace() {
             </section>
           </div>
 
-          {/* The word's own CEFR level, under the field it was typed into. Otherwise it
-              shows only in CEFR view, as whichever band tab happens to be open — and in
-              Frequency view it isn't visible at all. Swapped out for the error, which
-              would otherwise sit under a level belonging to the last word that resolved. */}
-          {error ? (
+          {error && (
             <p className="tw-mt-3 tw-body-medium tw-text-error" role="alert">
               {error}
-            </p>
-          ) : (
-            <p className="tw-mt-2 tw-flex tw-min-h-[1.5em] tw-items-center tw-body-x-small text-muted-aaa">
-              {info && (
-                <>
-                  Level
-                  <CefrBadge level={{ ...info.cefr, rank: info.rank }} />
-                </>
-              )}
             </p>
           )}
         </div>

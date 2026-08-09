@@ -102,20 +102,28 @@ describe("Workspace", () => {
 
   // The level belongs beside the word, not in the card: in Frequency view it is the only
   // place a CEFR band shows at all, and it is what a gloss's own badges compare against.
-  it("shows the looked-up word's CEFR level beneath the search field", async () => {
+  it("trails the looked-up word with its CEFR level, inside the search field", async () => {
     render(<Workspace />);
     await screen.findByRole("region", { name: /meaning of water/i });
-    expect(screen.getByText("Level")).toBeInTheDocument();
-    expect(screen.getByText("A1")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "A1 · Beginner · rank 1" })).toBeInTheDocument();
+    const search = screen.getByRole("search");
+    expect(within(search).getByRole("img", { name: "A1 · Beginner · rank 1" })).toBeInTheDocument();
   });
 
-  // Otherwise the failure reads as a level for a word that isn't the one in the field.
-  it("drops the level when the lookup fails", async () => {
+  // Sitting against the text, a stale level reads as a claim about what is being typed.
+  it("withholds the level the moment the field stops holding that word", async () => {
+    const user = userEvent.setup();
+    render(<Workspace />);
+    await screen.findByRole("img", { name: /A1/ });
+
+    await user.type(screen.getByRole("combobox", { name: /look up a word/i }), "x");
+    expect(screen.queryByRole("img", { name: /A1/ })).not.toBeInTheDocument();
+  });
+
+  it("shows no level at all when the lookup fails", async () => {
     window.history.replaceState(null, "", "/?lang=en&word=missing");
     render(<Workspace />);
     await screen.findByRole("alert");
-    expect(screen.queryByText("Level")).not.toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
   it("switches source language and looks its default word up in that dictionary", async () => {

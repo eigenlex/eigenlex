@@ -176,9 +176,9 @@ difficulty, so a three-to-four band spread arrives as a flat list of equals: "ag
 beside "abrevar" C2, "buddy" A1 beside "cobber" C2. So `/api/translate` annotates every
 dictionary term — and the plain translation — with its CEFR band and rank *in the gloss
 language*, and the card trails each with a quiet badge (`CefrBadge`, band name and rank in
-its tooltip). The looked-up word carries the same badge under the search field, which in
-Frequency view is the only place its CEFR level shows at all. The order stays Google's
-throughout: the badge lets a learner filter, it doesn't re-rank for them.
+its tooltip). The looked-up word carries the same badge inside the search field, trailing
+the word itself — in Frequency view that is the only place its CEFR level shows at all.
+The order stays Google's throughout: the badge lets a learner filter, it doesn't re-rank.
 
 The annotation is server-side, in the route that already fetches the gloss, so it costs no
 extra round trip. `levels` is keyed by the term as Google spelled it, and `getLevel` keys
@@ -191,6 +191,24 @@ line's text content stays exactly the gloss. That keeps what a reader copies cle
 since no whitespace separates a term from its badge — a wrap can never split the two.
 `role="img"` carries the detail as the badge's accessible name; hidden text would say the
 same thing but ride along into anything copied out of the gloss.
+
+**The badge in the field.** Nothing goes *inside* an `<input>`, so `WordSearchBox` overlays
+one: an absolutely-positioned run holding an `invisible` copy of the value followed by the
+badge. Laying the same string out in the same font puts the badge where the text ends with
+nothing measured, and it re-flows on its own when Diatype replaces the fallback. The run is
+inline (not a flex row) so the badge takes the word's baseline rather than being centred
+against it. `TEXT_INSET` mirrors where Fondue starts the text — 1px root border plus 12px
+input padding — since that CSS module's class is a build hash.
+
+Three rules keep it honest. The caller passes `badge` **only while the field still holds
+the resolved word**, because pressed against the text a stale level reads as a claim about
+what is being typed. It stands down whenever the spinner is up: they share that strip of
+the box, and mid-lookup the level is unknown anyway. And a word long enough to leave no
+room — 27-char German at a 250px phone field — hides it via `fits`, which compares the
+overlay's scroll and client widths; the badge stays in the DOM and only loses `visibility`,
+so it keeps its slot and the measurement can't oscillate with its own answer. The overlay
+is `pointer-events-none` except the badge, whose click puts the caret at the end of the
+word — which is what a click just past the text means.
 
 Comparing one *language* against another through the bands is the weaker reading: the six
 agree almost everywhere, and where they don't it is usually a word within 20% of a

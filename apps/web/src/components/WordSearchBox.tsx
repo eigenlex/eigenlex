@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { LoadingCircle, TextInput } from "@frontify/fondue/components";
 
 // A typeahead <li role="option">, painted with Fondue tokens (per the ARIA combobox
@@ -8,6 +17,11 @@ import { LoadingCircle, TextInput } from "@frontify/fondue/components";
 const OPTION =
   "tw-flex tw-min-h-[44px] tw-w-full tw-items-center tw-px-3 tw-py-1.5 tw-text-x-large tw-text-left tw-transition-colors";
 const SUGGEST_DEBOUNCE_MS = 500;
+
+// Where the field's text begins, from the wrapper's edge: the root's 1px border plus the
+// input's 12px padding. Both belong to Fondue's CSS module, whose class is a build hash,
+// so the overlay mirrors the numbers rather than reading them.
+const TEXT_INSET = 13;
 
 /**
  * A word-lookup field with a debounced (500ms) typeahead dropdown backed by
@@ -24,6 +38,7 @@ export default function WordSearchBox({
   describedBy,
   placeholder,
   busy = false,
+  badge,
 }: {
   value: string;
   onValueChange: (value: string) => void;
@@ -35,6 +50,12 @@ export default function WordSearchBox({
   placeholder: string;
   /** Lookup in flight: shows the field's spinner. */
   busy?: boolean;
+  /**
+   * Trailed just after the field's text, inside the box. Only pass it for something that
+   * describes *this* text — it is laid out against the current value, so a caller must
+   * withhold it while the two have drifted apart.
+   */
+  badge?: ReactNode;
 }) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
@@ -46,6 +67,32 @@ export default function WordSearchBox({
   const suggestSeq = useRef(0);
   const listboxId = useId();
   const optionId = (i: number) => `${listboxId}-opt-${i}`;
+
+  // The badge is laid out after a hidden copy of the text, so it lands where the text
+  // ends without anything being measured — and re-flows by itself when the webfont
+  // arrives. A long word can still leave it no room; `fits` is what notices.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [fits, setFits] = useState(true);
+  // Hidden, the badge keeps its slot, so the measurement can't oscillate with the answer.
+  const measure = useCallback(() => {
+    const el = overlayRef.current;
+    if (el) setFits(el.scrollWidth <= el.clientWidth);
+  }, []);
+  useLayoutEffect(measure, [measure, value, !!badge]);
+  // Every glyph is wider once Diatype replaces the fallback, which can be the difference.
+  useEffect(() => {
+    void document.fonts?.ready.then(measure);
+  }, [measure]);
+
+  // The badge covers the few pixels just past the word — where a click means "put the
+  // caret at the end". Do that, rather than swallowing it.
+  const caretToEnd = () => {
+    const input = wrapRef.current?.querySelector("input");
+    if (!input) return;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  };
 
   const closeSuggestions = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -160,7 +207,7 @@ export default function WordSearchBox({
       {/* Stay clear of the ≥16px that keeps iOS from zooming on focus — Fondue's
           body-small (~13px) would trigger it. The placeholder is a separate element,
           sized in globals.css. */}
-      <div className="tw-relative tw-w-fit [&_input]:tw-text-x-large">
+      <div ref={wrapRef} className="tw-relative tw-w-fit [&_input]:tw-text-x-large">
         <TextInput.Root
           // TextInput.Root forwards unknown props to its <input> but omits the
           // combobox ARIA from its typed surface; attach them via a plain spread.
@@ -186,6 +233,32 @@ export default function WordSearchBox({
           placeholder={placeholder}
           spellCheck={false}
         />
+        {/* Trails the word inside the field. Stood down whenever the spinner is up: the
+            two share the same strip of the box, and mid-lookup the level is unknown
+            anyway. The mirror is `invisible` rather than hidden text, so it takes the
+            text's exact width while staying out of the accessibility tree. */}
+        {badge && !loading && !busy && (
+          <div
+            ref={overlayRef}
+            className="tw-pointer-events-none tw-absolute tw-inset-y-0 tw-flex tw-items-center tw-overflow-hidden tw-text-x-large"
+            style={{ left: 0, right: TEXT_INSET, paddingLeft: TEXT_INSET }}
+          >
+            {/* One inline run, so the badge takes the word's baseline rather than being
+                centred against it on its own — the flex row only centres the run. */}
+            <div className="tw-whitespace-pre">
+              <span className="tw-invisible">{value}</span>
+              <span
+                className={`tw-pointer-events-auto ${fits ? "" : "tw-invisible"}`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  caretToEnd();
+                }}
+              >
+                {badge}
+              </span>
+            </div>
+          </div>
+        )}
         {/* One spinner for both waits — suggesting and looking up run into each other,
             and which one you are in is not a distinction worth drawing. Decorative:
             the result is what gets announced, by the card's live region. */}
