@@ -390,6 +390,8 @@ export default function Workspace({ country }: { country?: string | null }) {
                 describedBy="search-help"
                 placeholder="look up a word…"
                 busy={loading}
+                // The one thing the page is for: it opens ready to be typed into.
+                autoFocus
                 // Only while the field still holds the word this level belongs to.
                 // Sitting against the text, it would otherwise read as a claim about
                 // whatever is being typed over it.

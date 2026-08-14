@@ -38,6 +38,7 @@ export default function WordSearchBox({
   describedBy,
   placeholder,
   busy = false,
+  autoFocus = false,
   badge,
 }: {
   value: string;
@@ -50,6 +51,8 @@ export default function WordSearchBox({
   placeholder: string;
   /** Lookup in flight: shows the field's spinner. */
   busy?: boolean;
+  /** Take focus on mount, with the current value selected. */
+  autoFocus?: boolean;
   /**
    * Trailed just after the field's text, inside the box. Only pass it for something that
    * describes *this* text — it is laid out against the current value, so a caller must
@@ -93,6 +96,30 @@ export default function WordSearchBox({
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
   };
+
+  // Selected, not just focused: the field lands holding a word already, so the first
+  // keystroke means a new one. It re-selects while the opening word is still what the
+  // field holds, because the initial lookup echoes the corpus's casing back into it
+  // ("wasser" → "Wasser") and that collapses the selection. Once focus has been given
+  // away, or the text is no longer that word, the field is the user's — hands off.
+  const seeded = useRef(value);
+  const grab = useRef<"pending" | "held" | "released">("pending");
+  useEffect(() => {
+    if (!autoFocus || grab.current === "released") return;
+    const input = wrapRef.current?.querySelector("input");
+    if (!input) return;
+    const mine =
+      value.toLowerCase() === seeded.current.toLowerCase() &&
+      (grab.current === "pending" || document.activeElement === input);
+    // Released for good, so retyping the opening word later can't select it again.
+    if (!mine) {
+      grab.current = "released";
+      return;
+    }
+    grab.current = "held";
+    input.focus();
+    input.select();
+  }, [autoFocus, value]);
 
   const closeSuggestions = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

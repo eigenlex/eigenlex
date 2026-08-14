@@ -86,6 +86,29 @@ describe("Workspace", () => {
     expect(screen.getAllByRole("combobox", { name: /look up a word/i })).toHaveLength(1);
   });
 
+  // The page opens ready to be typed into, on the one thing it is for.
+  it("opens with the search box focused and its word selected", async () => {
+    render(<Workspace />);
+    const box = screen.getByRole("combobox", { name: /look up a word/i }) as HTMLInputElement;
+    expect(box).toHaveFocus();
+    expect([box.selectionStart, box.selectionEnd]).toEqual([0, box.value.length]);
+    // Selected, so the first keystroke asks for a different word rather than editing this
+    // one. Typed without a click, which is the point: nothing was touched to get here.
+    await userEvent.setup().keyboard("cat");
+    expect(box.value).toBe("cat");
+  });
+
+  // The lookup echoes the corpus's casing back into the field, which collapses the
+  // selection; without re-selecting, half the languages would open only half-ready.
+  it("keeps the word selected across the lookup that recases it", async () => {
+    window.history.replaceState(null, "", "/?source=de&word=plädoyer");
+    render(<Workspace />);
+    const box = screen.getByRole("combobox", { name: /look up a word/i }) as HTMLInputElement;
+    await waitFor(() => expect(box.value).toBe("Plädoyer"));
+    expect(box).toHaveFocus();
+    expect([box.selectionStart, box.selectionEnd]).toEqual([0, "Plädoyer".length]);
+  });
+
   it("renders the band browser beneath the search box", () => {
     render(<Workspace />);
     expect(screen.getByText("band browser")).toBeInTheDocument();
