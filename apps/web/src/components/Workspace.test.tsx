@@ -48,7 +48,7 @@ function mockFetch() {
         { status: 200 },
       );
     }
-    // The card's gloss; its leading term is what a language swap carries over.
+    // The card's translation; its leading term is what a language swap carries over.
     if (u.includes("/api/translate/")) {
       return new Response(
         JSON.stringify({
@@ -101,7 +101,7 @@ describe("Workspace", () => {
   });
 
   // The level belongs beside the word, not in the card: in Frequency view it is the only
-  // place a CEFR band shows at all, and it is what a gloss's own badges compare against.
+  // place a CEFR band shows at all, and it is what the translation's badges compare against.
   it("trails the looked-up word with its CEFR level, inside the search field", async () => {
     render(<Workspace />);
     await screen.findByRole("region", { name: /meaning of water/i });
@@ -120,7 +120,7 @@ describe("Workspace", () => {
   });
 
   it("shows no level at all when the lookup fails", async () => {
-    window.history.replaceState(null, "", "/?lang=en&word=missing");
+    window.history.replaceState(null, "", "/?source=en&word=missing");
     render(<Workspace />);
     await screen.findByRole("alert");
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
@@ -133,36 +133,36 @@ describe("Workspace", () => {
     await user.click(screen.getByRole("combobox", { name: /source language/i }));
     await user.click(await screen.findByRole("option", { name: /Español/ }));
     expect(await screen.findByRole("region", { name: /meaning of agua/i })).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/agua?lang=es"));
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/agua?source=es"));
   });
 
   // jsdom's navigator.language is en-US, so the browser is a reader of English
   // throughout — which is what the corporate-laptop case looks like abroad.
   describe("the languages a first-time visitor lands on", () => {
-    // The mirrored URL, not the gloss fetch: the word card caches glosses across
+    // The mirrored URL, not the translate fetch: the word card caches translations across
     // renders, so an earlier test having asked for the same pair spares the request.
-    const settlesOn = (lang: string, tl: string) =>
+    const settlesOn = (source: string, target: string) =>
       waitFor(() => {
         const p = new URLSearchParams(window.location.search);
-        expect([p.get("lang"), p.get("tl")]).toEqual([lang, tl]);
+        expect([p.get("source"), p.get("target")]).toEqual([source, target]);
       });
 
     it("studies the language of the country the client is in", async () => {
       render(<Workspace country="ES" />);
       expect(await screen.findByRole("region", { name: /meaning of agua/i })).toBeInTheDocument();
-      expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/agua?lang=es"));
+      expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/agua?source=es"));
       await settlesOn("es", "en");
     });
 
     it("studies English where no language it indexes is spoken", async () => {
       render(<Workspace country="JP" />);
       expect(await screen.findByRole("region", { name: /meaning of water/i })).toBeInTheDocument();
-      expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/water?lang=en"));
+      expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/water?source=en"));
     });
 
-    // The pair the app used to open on for an English browser, which glossed a word
+    // The pair the app used to open on for an English browser, which translated a word
     // into its own language.
-    it("never glosses a word into the language being studied", async () => {
+    it("never translates a word into the language being studied", async () => {
       render(<Workspace />);
       await screen.findByRole("region", { name: /meaning of water/i });
       await settlesOn("en", "es");
@@ -175,14 +175,14 @@ describe("Workspace", () => {
     });
 
     it("yields to a shared deeplink", async () => {
-      window.history.replaceState(null, "", "/?lang=de&word=wasser&tl=en");
+      window.history.replaceState(null, "", "/?source=de&word=wasser&target=en");
       render(<Workspace country="ES" />);
       expect(await screen.findByRole("region", { name: /meaning of wasser/i })).toBeInTheDocument();
       await settlesOn("de", "en");
     });
   });
 
-  it("moves the gloss aside when the visitor studies the language it was glossing to", async () => {
+  it("moves the target aside when the visitor studies the language it translated into", async () => {
     const user = userEvent.setup();
     render(<Workspace />); // opens on en → es
     await screen.findByRole("region", { name: /meaning of water/i });
@@ -192,8 +192,8 @@ describe("Workspace", () => {
 
     await waitFor(() => {
       const p = new URLSearchParams(window.location.search);
-      expect(p.get("lang")).toBe("es");
-      expect(p.get("tl")).toBe("en");
+      expect(p.get("source")).toBe("es");
+      expect(p.get("target")).toBe("en");
     });
   });
 
@@ -249,7 +249,7 @@ describe("Workspace", () => {
   // A blank word is not a wait, or the card would spin for good. The frame follows
   // `loading`, so a wait that never ends is a frame that never goes.
   it("stops waiting when the deeplink carries nothing to look up", async () => {
-    window.history.replaceState(null, "", "/?lang=en&word=%20");
+    window.history.replaceState(null, "", "/?source=en&word=%20");
     render(<Workspace />);
     await waitFor(() =>
       expect(screen.queryByRole("region", { name: /meaning of/i })).not.toBeInTheDocument(),
@@ -257,7 +257,7 @@ describe("Workspace", () => {
   });
 
   it("drops the frame again when the word turns out not to exist", async () => {
-    window.history.replaceState(null, "", "/?lang=en&word=missing");
+    window.history.replaceState(null, "", "/?source=en&word=missing");
     render(<Workspace />);
     expect(screen.getByRole("region", { name: /meaning of missing/i })).toBeInTheDocument();
 
@@ -295,27 +295,27 @@ describe("Workspace", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  const swapButton = () => screen.getByRole("button", { name: /swap the study and translation/i });
+  const swapButton = () => screen.getByRole("button", { name: /swap the source and target/i });
 
   it("swaps the pair and carries the word over as its own translation", async () => {
-    window.history.replaceState(null, "", "/?lang=de&word=wasser&tl=en");
+    window.history.replaceState(null, "", "/?source=de&word=wasser&target=en");
     const user = userEvent.setup();
     render(<Workspace />);
-    await screen.findByText("water, aqua"); // the gloss the swap will land on
+    await screen.findByText("water, aqua"); // the translation the swap will land on
 
     await user.click(swapButton());
 
     await waitFor(() => {
       const p = new URLSearchParams(window.location.search);
-      expect(p.get("lang")).toBe("en");
-      expect(p.get("tl")).toBe("de");
+      expect(p.get("source")).toBe("en");
+      expect(p.get("target")).toBe("de");
       expect(p.get("word")).toBe("water");
     });
   });
 
   // Only the six indexed languages have a word list to browse.
   it("refuses to swap into a language that cannot be studied", async () => {
-    window.history.replaceState(null, "", "/?lang=de&word=wasser&tl=ja");
+    window.history.replaceState(null, "", "/?source=de&word=wasser&target=ja");
     const user = userEvent.setup();
     render(<Workspace />);
     await screen.findByRole("region", { name: /meaning of wasser/i });
@@ -323,15 +323,15 @@ describe("Workspace", () => {
     expect(swapButton()).toHaveAttribute("aria-disabled", "true");
     await user.click(swapButton());
     await waitFor(() => {
-      expect(new URLSearchParams(window.location.search).get("lang")).toBe("de");
+      expect(new URLSearchParams(window.location.search).get("source")).toBe("de");
     });
   });
 
   it("restores the source language and word from the URL", async () => {
-    window.history.replaceState(null, "", "/?lang=es&word=agua");
+    window.history.replaceState(null, "", "/?source=es&word=agua");
     render(<Workspace />);
     expect(await screen.findByRole("region", { name: /meaning of agua/i })).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/agua?lang=es"));
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/agua?source=es"));
   });
 
   it("reflects the looked-up word and language in the URL", async () => {
@@ -339,7 +339,7 @@ describe("Workspace", () => {
     await screen.findByRole("region", { name: /meaning of water/i });
     await waitFor(() => {
       const p = new URLSearchParams(window.location.search);
-      expect(p.get("lang")).toBe("en");
+      expect(p.get("source")).toBe("en");
       expect(p.get("word")).toBe("water");
       expect(p.get("view")).toBe("freq");
     });

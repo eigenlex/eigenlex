@@ -46,7 +46,7 @@ afterEach(() => {
 
 describe("BandBrowser", () => {
   it("renders the active view's band tabs with counts and shows the first band", async () => {
-    render(<BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+    render(<BandBrowser view="freq" source="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
     expect(await screen.findByRole("tab", { name: /Top 1,000/ })).toBeInTheDocument();
     // First band opens by default; its words render as chips.
     expect(await screen.findByRole("button", { name: "water" })).toBeInTheDocument();
@@ -54,7 +54,7 @@ describe("BandBrowser", () => {
 
   // Neither control announces its own wait; the spinner covers both.
   it("stands one spinner in for both band controls until they load", async () => {
-    render(<BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+    render(<BandBrowser view="freq" source="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
     expect(screen.getByText("Loading bands…")).toBeInTheDocument();
     expect(screen.queryByRole("tab")).not.toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
@@ -67,7 +67,7 @@ describe("BandBrowser", () => {
   it("opens the anchor's band and looks a chip up when picked", async () => {
     const onSelect = vi.fn();
     render(
-      <BandBrowser view="cefr" lang="en" anchorWord="water" anchorBandKey="A1" onSelect={onSelect} />,
+      <BandBrowser view="cefr" source="en" anchorWord="water" anchorBandKey="A1" onSelect={onSelect} />,
     );
     await screen.findByRole("button", { name: "water" });
     await userEvent.click(screen.getByRole("button", { name: "be" }));
@@ -75,7 +75,7 @@ describe("BandBrowser", () => {
   });
 
   it("switches bands when another tab is selected", async () => {
-    render(<BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+    render(<BandBrowser view="freq" source="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
     await screen.findByRole("button", { name: "water" });
     await userEvent.click(await screen.findByRole("tab", { name: /1,001/ }));
     expect(await screen.findByRole("button", { name: "engine" })).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe("BandBrowser", () => {
   // The narrow-viewport dropdown. Both it and the tablist are always in the DOM —
   // a media query picks one — so jsdom, which applies no CSS, can drive either.
   it("switches bands from the band dropdown too", async () => {
-    render(<BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+    render(<BandBrowser view="freq" source="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
     await screen.findByRole("button", { name: "water" });
     await userEvent.click(screen.getByRole("combobox", { name: /frequency bands/i }));
     await userEvent.click(await screen.findByRole("option", { name: /1,001/ }));
@@ -95,7 +95,7 @@ describe("BandBrowser", () => {
   it("steps to the word either side of the current one", async () => {
     const onSelect = vi.fn();
     render(
-      <BandBrowser view="freq" lang="en" anchorWord="be" anchorBandKey="1" onSelect={onSelect} />,
+      <BandBrowser view="freq" source="en" anchorWord="be" anchorBandKey="1" onSelect={onSelect} />,
     );
     await screen.findByRole("button", { name: "water" }); // words: the, be, water
     await userEvent.click(screen.getByRole("button", { name: /next word/i }));
@@ -106,7 +106,7 @@ describe("BandBrowser", () => {
 
   it("disables the step past each end of the band", async () => {
     render(
-      <BandBrowser view="freq" lang="en" anchorWord="the" anchorBandKey="1" onSelect={() => {}} />,
+      <BandBrowser view="freq" source="en" anchorWord="the" anchorBandKey="1" onSelect={() => {}} />,
     );
     await screen.findByRole("button", { name: "water" }); // "the" is the band's first word
     expect(screen.getByRole("button", { name: /previous word/i })).toBeDisabled();
@@ -116,7 +116,7 @@ describe("BandBrowser", () => {
   // A hand-picked band holds no anchor, so there is nothing to step back from.
   it("enters at the first word when the band holds no current word", async () => {
     const onSelect = vi.fn();
-    render(<BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={onSelect} />);
+    render(<BandBrowser view="freq" source="en" anchorWord={null} anchorBandKey={null} onSelect={onSelect} />);
     await screen.findByRole("button", { name: "water" });
     expect(screen.getByRole("button", { name: /previous word/i })).toBeDisabled();
     await userEvent.click(screen.getByRole("button", { name: /next word/i }));
@@ -125,10 +125,10 @@ describe("BandBrowser", () => {
 
   it("reloads the summary and words when the view changes", async () => {
     const { rerender } = render(
-      <BandBrowser view="freq" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />,
+      <BandBrowser view="freq" source="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />,
     );
     await screen.findByRole("tab", { name: /Top 1,000/ });
-    rerender(<BandBrowser view="cefr" lang="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+    rerender(<BandBrowser view="cefr" source="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
     await waitFor(() =>
       expect(screen.getByRole("tab", { name: /A1/ })).toBeInTheDocument(),
     );

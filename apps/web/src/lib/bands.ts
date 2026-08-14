@@ -82,8 +82,8 @@ export function isView(v: string): v is BandView {
   return v === "freq" || v === "cefr";
 }
 
-export function getWord(lang: SourceLang, word: string): WordBands | null {
-  const d = REGISTRY[lang];
+export function getWord(source: SourceLang, word: string): WordBands | null {
+  const d = REGISTRY[source];
   const rank = d.rankOf.get(word.toLowerCase());
   if (rank === undefined) return null;
   const freq = bandAtRank(d.freqBands, rank)!;
@@ -102,11 +102,13 @@ export function getWord(lang: SourceLang, word: string): WordBands | null {
 
 /**
  * A word's CEFR placement, keyed case-insensitively — what the word card's level badges
- * show. Unlike `getWord` this is only ever asked about a *gloss* term, which is often a
- * phrase or a word the language doesn't have; a miss is ordinary, and simply goes unbadged.
+ * show. This is the one lookup taken against the *target* language, so the caller checks
+ * `isSourceLang` first — only the six indexed languages have levels. Unlike `getWord` it
+ * is asked about a translated term, which is often a phrase or a word the language doesn't
+ * have; a miss is ordinary, and simply goes unbadged.
  */
-export function getLevel(lang: SourceLang, word: string): WordLevel | null {
-  const d = REGISTRY[lang];
+export function getLevel(target: SourceLang, word: string): WordLevel | null {
+  const d = REGISTRY[target];
   const rank = d.rankOf.get(word.toLowerCase());
   if (rank === undefined) return null;
   const b = bandAtRank(d.cefrBands, rank)!;
@@ -114,8 +116,8 @@ export function getLevel(lang: SourceLang, word: string): WordLevel | null {
 }
 
 /** Every band of a view with its word count — the browser's tabs. */
-export function getBandSummary(lang: SourceLang, view: BandView): BandSummary[] {
-  const d = REGISTRY[lang];
+export function getBandSummary(source: SourceLang, view: BandView): BandSummary[] {
+  const d = REGISTRY[source];
   return defsFor(d, view).map((b) => ({
     key: b.key,
     label: b.label,
@@ -124,8 +126,8 @@ export function getBandSummary(lang: SourceLang, view: BandView): BandSummary[] 
 }
 
 /** One band's words, in frequency order. */
-export function getBand(lang: SourceLang, view: BandView, key: string): Band | null {
-  const d = REGISTRY[lang];
+export function getBand(source: SourceLang, view: BandView, key: string): Band | null {
+  const d = REGISTRY[source];
   const b = defsFor(d, view).find((x) => x.key === key);
   if (!b) return null;
   return { key: b.key, label: b.label, words: d.ranked.slice(b.min - 1, lastRank(d, b)) };
@@ -138,10 +140,10 @@ export function getBand(lang: SourceLang, view: BandView, key: string): Band | n
  * the search box reads the head of this list to decide whether what was typed is
  * itself a word, and so worth looking up unasked.
  */
-export function getSuggestions(lang: SourceLang, prefix: string, limit = 8): string[] {
+export function getSuggestions(source: SourceLang, prefix: string, limit = 8): string[] {
   const p = prefix.trim().toLowerCase();
   if (!p) return [];
-  const d = REGISTRY[lang];
+  const d = REGISTRY[source];
   // Every candidate shares the query's first two characters, so one bucket holds them
   // all: a miss costs a failed lookup, and a hit never walks the rest of the list.
   const candidates = d.byPrefix.get(p.slice(0, 2));

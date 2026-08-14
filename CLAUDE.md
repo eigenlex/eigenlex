@@ -4,20 +4,48 @@ pnpm + turbo monorepo with one app. `apps/web` is the Next.js site and the hoste
 It is a vocabulary learning tool. Every word gets a frequency band and a CEFR band, so a
 learner can see where a word sits and browse the vocabulary in order.
 
+## Source and target
+
+Two languages. They are `source` and `target` everywhere — symbols, URL, storage keys,
+our own API params — and in that order. `lang`, `sl` and `tl` name neither.
+
+| | Source | Target |
+| --- | --- | --- |
+| What it is | The language being studied | What a word is translated into |
+| Drives | The bands, the word cloud, the suggestions | The word card only |
+| Type | `SourceLang`, one of the six indexed | `TargetLang`, any code Google takes |
+| Seeded from | The client's country | The browser language |
+| Stored under | `eigenlex:source` | `eigenlex:target` |
+| URL and API param | `source` | `target` |
+
+`isSourceLang` asks whether a language is one of the six, whichever role it is in. The
+target passes it only when we index it too, which is what CEFR levels on a translation
+and the swap button need.
+
+Two spellings are still read, never written, so a shared link or a stored pick made
+under them keeps working: `?lang=`/`?tl=` in `SOURCE_PARAMS`/`TARGET_PARAMS`, and
+`eigenlex:lang` in `TARGET_KEY_ALT`. Opening such a link rewrites the URL.
+
+`gtxUrl` is the exception that stays: `sl`/`tl` there are Google's own param names, not
+ours. `source`/`target` map onto them at that one call.
+
+`source` never means the frequency corpus. That is `corpus`: `SourceLangMeta.corpus`,
+`CorpusCredit`.
+
 ## Which languages a first-time visitor lands on
 
-The client's country seeds the study language. The browser seeds the gloss.
+The client's country seeds the source. The browser seeds the target.
 
 | Step | Rule | Example |
 | --- | --- | --- |
 | Read the country | Vercel sets `x-vercel-ip-country`. `page.tsx` reads it and passes it to `Workspace` as a prop | |
-| Pick the study language | `localLang` maps the country to one of the six studiable languages, en/es/fr/de/pt/it | DE → study German |
+| Pick the source | `sourceLang` maps the country to one of the six, en/es/fr/de/pt/it | DE → study German |
 | Multilingual country | `CH`, `BE`, `CA` and `LU` list several. The browser locale picks; the first listed is the fallback | CH + fr browser → French |
 | Unlisted country | English. `Exclude<SourceLang, "en">` on the table enforces that English has no entries | JP + ja browser → en → ja |
-| Pick the gloss | The browser language | ES + en browser → es → en |
-| Same-language clash | `glossLang` returns English instead, or Spanish when English is what is being studied | ES + es browser → es → en; US + en browser → en → es |
+| Pick the target | The browser language | ES + en browser → es → en |
+| Same-language clash | `targetLang` returns English instead, or Spanish when English is the source | ES + es browser → es → en; US + en browser → en → es |
 | Explicit pick | Never overridden. The clash rule applies only to the derived value | A deeplink or stored pick is used as given |
-| Live switch | `chooseLang` moves the gloss to the language just left when you pick the one it was glossing to | en → es, pick Spanish → es → en |
+| Live switch | `chooseSource` moves the target to the language just left when you pick the one it was translating into | en → es, pick Spanish → es → en |
 
 Reading the header server-side is free, because the root layout already reads cookies for
 the theme and the route is dynamic anyway. An `/api/geo` round trip would answer after the
@@ -168,14 +196,14 @@ threshold: en "green" at rank 909 against es 1,170 straddles the A1/A2 line at 1
 rank in the tooltip is what tells that apart from a real difference, like it "parete" at
 2,702.
 
-## Glossing a word
+## Translating a word
 
 Every word card fetches `dict=1`, which adds Google's `dt=bd` dictionary block.
 
 | Rule | Why |
 | --- | --- |
-| Gloss from the dictionary terms, not the plain translation | The plain translation of a lone word is sometimes just wrong: "acqua" → "waterfall" |
-| Keep the block's part-of-speech groups (`parseSenseGroups`) | A word with more than one reading gets a labelled line each: it "solo" adj. "only" / adv. "just"; es "nada" pron./noun/adv. A single reading stays one gloss. `flattenSenses` collapses them for the per-casing lines |
+| Translate from the dictionary terms, not the plain translation | The plain translation of a lone word is sometimes just wrong: "acqua" → "waterfall" |
+| Keep the block's part-of-speech groups (`parseSenseGroups`) | A word with more than one reading gets a labelled line each: it "solo" adj. "only" / adv. "just"; es "nada" pron./noun/adv. A single reading stays one line. `flattenSenses` collapses them for the per-casing lines |
 | One line per casing of a case-homograph | `dt=bd` is casing-sensitive, unlike the plain translation: "Essen" → food/meal, "essen" → eat/dine. Lines collapse to one when the meanings do not actually differ |
 | Flag a homograph only when both casings are used mid-sentence and the lemma list has a capitalized spelling | Filters surnames ("Klein") and quote-capitalized adjectives |
 | Cut senses relative to their group's best (`MIN_RELATIVE_SCORE`), not at a fixed rank | Senses trail off into noise: en→de "dog" runs Hund .51, Rüde .0018, then "Schreckschraube" (battle-axe) at 3e-6 |
@@ -201,22 +229,22 @@ one extra round trip: about 150ms cold, then a day in the data cache.
 
 | Load-bearing detail | Why |
 | --- | --- |
-| Follow Google's group order, not the top score across groups | "verde" scores adjective "green" and noun "green" identically, and the noun glosses it as a lawn: Grün/Rasen/Wiese |
-| Require `MIN_PIVOT_SCORE` confidence | Google's "amigo" entry tops out at .004 with no "friend" in it, and there the plain translation ("Freund") is the better gloss |
-| A part-of-speech miss yields nothing | Better than a gloss for a different word: "escuela" is never the verb "to school" |
+| Follow Google's group order, not the top score across groups | "verde" scores adjective "green" and noun "green" identically, and the noun translates it as a lawn: Grün/Rasen/Wiese |
+| Require `MIN_PIVOT_SCORE` confidence | Google's "amigo" entry tops out at .004 with no "friend" in it, and there the plain translation ("Freund") is the better answer |
+| A part-of-speech miss yields nothing | Better than a translation of a different word: "escuela" is never the verb "to school" |
 
-## CEFR levels on the gloss
+## CEFR levels on the translation
 
-Google orders a gloss's alternatives by confidence, not by difficulty, so a three-to-four
+Google orders the alternatives by confidence, not by difficulty, so a three-to-four
 band spread arrives as a flat list of equals: "agua" A1 beside "abrevar" C2, "buddy" A1
 beside "cobber" C2. `/api/translate` annotates every dictionary term, and the plain
-translation, with its CEFR band and rank in the gloss language. The card trails each with a
+translation, with its CEFR band and rank in the target language. The card trails each with a
 quiet `CefrBadge` carrying the band name and rank in its tooltip.
 
 | Rule | Detail |
 | --- | --- |
 | The order stays Google's | The badge lets a learner filter; it does not re-rank |
-| Annotate server-side | It happens in the route that already fetches the gloss, so it costs no extra round trip |
+| Annotate server-side | It happens in the route that already fetches the translation, so it costs no extra round trip |
 | `levels` is keyed by the term as Google spelled it | `getLevel` keys case-insensitively underneath |
 | Only the six indexed languages have levels | For the rest the map is empty and nothing renders |
 | Some terms go unbadged | Phrases ("de agua") and inflected forms the lemma merge folded away ("eating"): about 4% of terms |
@@ -226,9 +254,9 @@ quiet `CefrBadge` carrying the band name and rank in its tooltip.
 
 | Rule | Why |
 | --- | --- |
-| Separators are bare text and the badges are the only elements | A line's text content stays exactly the gloss, so what a reader copies is clean |
+| Separators are bare text and the badges are the only elements | A line's text content stays exactly the translation, so what a reader copies is clean |
 | No whitespace between a term and its badge | A wrap can never split the two |
-| `role="img"` carries the detail as the badge's accessible name | Hidden text would say the same thing but ride along into anything copied out of the gloss |
+| `role="img"` carries the detail as the badge's accessible name | Hidden text would say the same thing but ride along into anything copied out of the translation |
 
 ### The badge in the search field
 
@@ -258,3 +286,7 @@ start returning 500s.
 | `pnpm test`, `pnpm typecheck` | Yes |
 | `pnpm --filter @eigenlex/web build:check` | Yes — builds into `.next-build` |
 | `pnpm build`, `turbo run build`, `next build` | No — stop the dev server first |
+
+`build:check` leaves one tracked file dirty: Next rewrites `next-env.d.ts` to import
+`./.next-build/types/routes.d.ts`. Check it out again afterwards, or the committed file
+points at a directory only that command builds.

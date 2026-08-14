@@ -2,7 +2,7 @@
 // Vercel resolves the client IP to a country and passes it as a request header; the
 // page reads that server-side and hands it down to seed the source language.
 
-import type { SourceLang } from "@/lib/languages";
+import type { SourceLang, TargetLang } from "@/lib/languages";
 
 // ISO 3166-1 alpha-2 countries whose everyday language is one we index. English is
 // excluded by the type: anywhere unlisted falls back to it, so it needs no entries.
@@ -31,11 +31,15 @@ const BY_COUNTRY = new Map<string, SourceLang>(
 );
 
 /**
- * The indexed language spoken where the client is. Null when there's no country to go
- * on — off Vercel, or behind a VPN Vercel can't place — or when nothing we index is
- * spoken there, both of which leave the caller on its own default.
+ * The source language to open on: the indexed language spoken where the client is.
+ * Null when there's no country to go on — off Vercel, or behind a VPN Vercel can't
+ * place — or when nothing we index is spoken there, both of which leave the caller
+ * on its own default.
  */
-export function localLang(country: string | null | undefined, browser: string): SourceLang | null {
+export function sourceLang(
+  country: string | null | undefined,
+  browser: string,
+): SourceLang | null {
   const cc = country?.trim().toUpperCase();
   if (!cc) return null;
   const many = MULTILINGUAL[cc];
@@ -44,12 +48,12 @@ export function localLang(country: string | null | undefined, browser: string): 
 }
 
 /**
- * The gloss language: the reader's own, per the browser. It steps aside when that is
- * the language being studied, since a word glossed into itself is no gloss — the case
- * of a local browsing their own vocabulary. Spanish backs English off as the second
- * language an anglophone most often has.
+ * The target language to open on: the reader's own, per the browser. It steps aside
+ * when that is the language being studied, since a word translated into itself says
+ * nothing — the case of a local browsing their own vocabulary. Spanish backs English
+ * off as the second language an anglophone most often has.
  */
-export function glossLang(lang: SourceLang, browser: string): string {
-  if (browser !== lang) return browser;
-  return lang === "en" ? "es" : "en";
+export function targetLang(source: SourceLang, browser: string): TargetLang {
+  if (browser !== source) return browser;
+  return source === "en" ? "es" : "en";
 }

@@ -1,9 +1,16 @@
-// The source languages whose vocabulary the app bands — the axis a learner picks
-// from. Distinct from the reader's *target* language (the gloss language chosen in
-// the word card). Shared by the server (lib/bands) and the client UI.
+// The source languages whose vocabulary the app bands — the axis a learner picks from.
+// Distinct from the target language, which a word is translated into on the word card.
+// Shared by the server (lib/bands) and the client UI.
 
 export const SOURCE_LANGS = ["en", "es", "fr", "de", "pt", "it"] as const;
 export type SourceLang = (typeof SOURCE_LANGS)[number];
+
+/**
+ * The language a word is translated into. Anything Google translates to, not only the
+ * six we index, so it stays a plain code — `isSourceLang` is what asks whether this
+ * one also has a word list behind it (CEFR levels on the translation, and the swap).
+ */
+export type TargetLang = string;
 
 export const DEFAULT_SOURCE: SourceLang = "en";
 
@@ -17,7 +24,7 @@ export interface SourceLangMeta {
   /** Word looked up when this language is first selected. */
   defaultWord: string;
   /** Where its frequency ranking comes from, credited beneath the browser. */
-  source: { name: string; url: string };
+  corpus: { name: string; url: string };
 }
 
 const SUBTLEX_US = {
@@ -31,10 +38,10 @@ const opensubs = (path: string) => ({
 });
 
 export const SOURCE_LANG_META: Record<SourceLang, SourceLangMeta> = {
-  en: { name: "English", defaultWord: "water", source: SUBTLEX_US },
-  es: { name: "Español", defaultWord: "agua", source: opensubs("es") },
-  fr: { name: "Français", defaultWord: "eau", source: opensubs("fr") },
-  de: { name: "Deutsch", defaultWord: "wasser", source: opensubs("de") },
-  pt: { name: "Português", defaultWord: "água", source: opensubs("pt") },
-  it: { name: "Italiano", defaultWord: "acqua", source: opensubs("it") },
+  en: { name: "English", defaultWord: "water", corpus: SUBTLEX_US },
+  es: { name: "Español", defaultWord: "agua", corpus: opensubs("es") },
+  fr: { name: "Français", defaultWord: "eau", corpus: opensubs("fr") },
+  de: { name: "Deutsch", defaultWord: "wasser", corpus: opensubs("de") },
+  pt: { name: "Português", defaultWord: "água", corpus: opensubs("pt") },
+  it: { name: "Italiano", defaultWord: "acqua", corpus: opensubs("it") },
 };

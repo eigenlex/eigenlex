@@ -76,22 +76,22 @@ describe("CEFR tail", () => {
   });
 });
 
-// The level badges on the word card. Google orders a gloss's alternatives by confidence,
+// The level badges on the word card. Google orders the alternatives by confidence,
 // not difficulty, so the level is what separates the word to learn from the one beside it.
-describe("gloss levels", () => {
+describe("translation levels", () => {
   it("places a term at its CEFR band and rank", () => {
     const water = getLevel("en", "water")!;
     expect(water.key).toBe("A1");
     expect(water.rank).toBeGreaterThan(0);
-    // Same gloss, far rarer alternative — the difference the badge exists to show.
+    // Same meaning, far rarer alternative — the difference the badge exists to show.
     expect(getLevel("en", "aqua")!.rank).toBeGreaterThan(water.rank * 5);
   });
 
-  it("keys case-insensitively, so a capitalized gloss term still resolves", () => {
+  it("keys case-insensitively, so a capitalized term still resolves", () => {
     expect(getLevel("de", "wasser")).toEqual(getLevel("de", "Wasser"));
   });
 
-  // A gloss term is routinely something the list has no headword for; that is not an error.
+  // A translated term is routinely something the list has no headword for; not an error.
   it("returns nothing for a phrase or a word the language doesn't carry", () => {
     expect(getLevel("es", "usar naja")).toBeNull();
     expect(getLevel("en", "zzzzznotaword")).toBeNull();

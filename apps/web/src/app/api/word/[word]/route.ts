@@ -8,8 +8,8 @@ export async function GET(
   { params }: { params: Promise<{ word: string }> },
 ) {
   const { word } = await params;
-  const lang = new URL(req.url).searchParams.get("lang") ?? DEFAULT_SOURCE;
-  if (!isSourceLang(lang)) return new Response("unknown language", { status: 404 });
-  const info = getWord(lang, decodeURIComponent(word).toLowerCase());
+  const source = new URL(req.url).searchParams.get("source") ?? DEFAULT_SOURCE;
+  if (!isSourceLang(source)) return new Response("unknown language", { status: 404 });
+  const info = getWord(source, decodeURIComponent(word).toLowerCase());
   return info ? Response.json(info) : new Response("not found", { status: 404 });
 }

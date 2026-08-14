@@ -33,7 +33,7 @@ export default function WordSearchBox({
   value,
   onValueChange,
   onSubmit,
-  lang,
+  source,
   ariaLabel,
   describedBy,
   placeholder,
@@ -44,7 +44,7 @@ export default function WordSearchBox({
   onValueChange: (value: string) => void;
   onSubmit: (word: string) => void;
   /** Source language whose vocabulary to suggest from. */
-  lang: string;
+  source: string;
   ariaLabel: string;
   describedBy?: string;
   placeholder: string;
@@ -110,7 +110,7 @@ export default function WordSearchBox({
       const reqId = ++suggestSeq.current;
       setLoading(true);
       try {
-        const res = await fetch(`/api/suggest?q=${encodeURIComponent(term)}&lang=${lang}`);
+        const res = await fetch(`/api/suggest?q=${encodeURIComponent(term)}&source=${source}`);
         if (!res.ok || reqId !== suggestSeq.current) return;
         const words = (await res.json()) as string[];
         if (reqId !== suggestSeq.current) return; // superseded while fetching
@@ -129,7 +129,7 @@ export default function WordSearchBox({
         if (reqId === suggestSeq.current) setLoading(false);
       }
     },
-    [closeSuggestions, lang, onSubmit],
+    [closeSuggestions, source, onSubmit],
   );
 
   const onQueryChange = useCallback(
@@ -190,7 +190,7 @@ export default function WordSearchBox({
   // A no-op on mount, where there is nothing pending.
   useEffect(() => {
     closeSuggestions();
-  }, [lang, closeSuggestions]);
+  }, [source, closeSuggestions]);
 
   return (
     // No submit button: typing that settles on a word looks it up, and Enter still
@@ -275,7 +275,7 @@ export default function WordSearchBox({
             id={listboxId}
             role="listbox"
             aria-label="Word suggestions"
-            lang={lang}
+            lang={source}
             className="tw-absolute tw-inset-x-0 tw-top-full tw-z-20 tw-mt-1 tw-max-h-64 tw-overflow-auto tw-rounded-large tw-border tw-border-line-subtle tw-bg-surface tw-py-1 tw-shadow-mid"
           >
             {suggestions.map((w, i) => (

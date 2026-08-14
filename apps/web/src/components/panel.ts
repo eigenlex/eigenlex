@@ -9,7 +9,7 @@ export const PANEL =
 
 /**
  * The language select each panel leads with. Narrow, because it shows only the ISO
- * code (see LangSelect), and one step below the word and gloss it governs (20px)
+ * code (see LangSelect), and one step below the word and translation it governs (20px)
  * rather than Fondue's 14px default, which reads as a stray control.
  */
 export const PANEL_LANG =

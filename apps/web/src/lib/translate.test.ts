@@ -65,7 +65,7 @@ describe("flattenSenses", () => {
     expect(flattenSenses(parseSenseGroups([[["x"]], null]))).toEqual([]);
   });
 
-  it("flattens across parts of speech, so a casing gloss stays one line", () => {
+  it("flattens across parts of speech, so a casing stays one line", () => {
     expect(flattenSenses(parseSenseGroups(nada))).toEqual([
       "nothing", "none", "nothingness", "nil",
     ]);
@@ -122,7 +122,7 @@ describe("parseSenseGroups", () => {
     expect(parseSenseGroups(null)).toEqual([]);
   });
 
-  // Otherwise the card glosses "agua" as "Gänsewein, Urin" and drops "Wasser" entirely.
+  // Otherwise the card translates "agua" as "Gänsewein, Urin" and drops "Wasser" entirely.
   it("discards a wholly unscored block, which is a reverse lookup, not a dictionary", () => {
     expect(parseSenseGroups(agua)).toEqual([]);
     expect(flattenSenses(parseSenseGroups(agua))).toEqual([]);
@@ -159,7 +159,7 @@ describe("needsPivot", () => {
 });
 
 describe("pivotTerm", () => {
-  // "verde" scores adjective "green" and noun "green" alike; the noun reading glosses it
+  // "verde" scores adjective "green" and noun "green" alike; the noun reading translates it
   // as a lawn, so the pivot follows Google's group order rather than the score.
   const verde = [
     [["Grün", "verde"]],
@@ -192,7 +192,7 @@ describe("alignGroup", () => {
     expect(alignGroup(groups, "noun")).toEqual([{ pos: "noun", terms: ["Schule"] }]);
   });
 
-  // "escuela" is never the verb "to school", so glossing it as one would be worse than nothing.
+  // "escuela" is never the verb "to school", so translating it as one is worse than nothing.
   it("yields nothing when the English word's readings don't include it", () => {
     expect(alignGroup(groups, "adjective")).toEqual([]);
   });

@@ -75,7 +75,7 @@ function StepButtons({
  */
 export default function BandBrowser({
   view,
-  lang,
+  source,
   anchorWord,
   anchorBandKey,
   bandKey = null,
@@ -85,7 +85,7 @@ export default function BandBrowser({
 }: {
   view: BandView;
   /** Source language whose bands to browse. */
-  lang: string;
+  source: string;
   anchorWord: string | null;
   anchorBandKey: string | null;
   /** Explicitly-picked band tab (controlled); null follows the anchor, then the first. */
@@ -107,13 +107,13 @@ export default function BandBrowser({
     let live = true;
     setSummary(null);
     setBand(null);
-    void fetch(`/api/bands/${view}?lang=${lang}`)
+    void fetch(`/api/bands/${view}?source=${source}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((s) => live && s && setSummary(s as BandSummary[]));
     return () => {
       live = false;
     };
-  }, [view, lang]);
+  }, [view, source]);
 
   // Show the explicitly-picked band; else the anchor's band; else the first.
   useEffect(() => {
@@ -135,19 +135,19 @@ export default function BandBrowser({
 
   const fetchBand = useCallback(
     async (key: string) => {
-      const ck = `${lang}:${view}:${key}`;
+      const ck = `${source}:${view}:${key}`;
       const hit = cache.current[ck];
       if (hit) {
         setBand(hit);
         return;
       }
-      const res = await fetch(`/api/band/${view}/${encodeURIComponent(key)}?lang=${lang}`);
+      const res = await fetch(`/api/band/${view}/${encodeURIComponent(key)}?source=${source}`);
       if (!res.ok) return;
       const b = (await res.json()) as Band;
       cache.current[ck] = b;
       setBand(b);
     },
-    [view, lang],
+    [view, source],
   );
 
   useEffect(() => {
@@ -245,7 +245,7 @@ export default function BandBrowser({
               anchorClass={CHIP_ANCHOR}
               onPick={onSelect}
               label={`Words in ${band.label}`}
-              lang={lang}
+              lang={source}
             />
           </>
         ) : (

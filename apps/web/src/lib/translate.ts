@@ -1,5 +1,5 @@
-// The source-language word → the reader's language via Google Translate's public
-// gtx endpoint. Single words, so we only ask for the translation segments (dt=t).
+// The source-language word → the target language via Google Translate's public gtx
+// endpoint. Single words, so we only ask for the translation segments (dt=t).
 
 const ENDPOINT = "https://translate.googleapis.com/translate_a/single";
 
@@ -10,9 +10,10 @@ export function baseLang(tag: string | null | undefined): string {
 
 // `dict` adds the bilingual-dictionary block (dt=bd), which — unlike the plain
 // translation — is casing-sensitive ("Essen" -> food/meal, "essen" -> eat/dine), so we
-// use it to gloss each casing of a case-homograph.
-export function gtxUrl(word: string, sl: string, tl: string, dict = false): string {
-  const q = new URLSearchParams({ client: "gtx", sl, tl, dt: "t", q: word });
+// use it to translate each casing of a case-homograph.
+export function gtxUrl(word: string, source: string, target: string, dict = false): string {
+  // sl/tl are Google's own spellings for the pair.
+  const q = new URLSearchParams({ client: "gtx", sl: source, tl: target, dt: "t", q: word });
   if (dict) q.append("dt", "bd");
   return `${ENDPOINT}?${q}`;
 }
@@ -33,7 +34,7 @@ export function parseGtx(data: unknown): string {
 
 /** One part-of-speech reading of a word, as Google's dictionary block groups them. */
 export interface SenseGroup {
-  /** POS label, in the *reader's* language ("noun", "sustantivo"); "" if absent. */
+  /** POS label, in the *target* language ("noun", "sustantivo"); "" if absent. */
   pos: string;
   terms: string[];
 }
@@ -96,7 +97,7 @@ export function parseSenseGroups(data: unknown, limit = 4): SenseGroup[] {
   return ranked ? out : [];
 }
 
-/** The senses flattened across groups — a compact gloss, "food, meal, dinner". */
+/** The senses flattened across groups — one compact line, "food, meal, dinner". */
 export function flattenSenses(groups: SenseGroup[], limit = 4): string[] {
   const terms: string[] = [];
   for (const g of groups) for (const t of g.terms) if (!terms.includes(t)) terms.push(t);
@@ -104,8 +105,8 @@ export function flattenSenses(groups: SenseGroup[], limit = 4): string[] {
 }
 
 /** English is Google's hub: only pairs touching it have a dictionary to look a word up in. */
-export function needsPivot(sl: string, tl: string): boolean {
-  return sl !== "en" && tl !== "en";
+export function needsPivot(source: string, target: string): boolean {
+  return source !== "en" && target !== "en";
 }
 
 /** The English word a source word is looked up through, with the reading it was taken from. */
@@ -116,14 +117,14 @@ export interface Pivot {
 
 // How sure Google must be that its dictionary holds the word at all. "amigo" tops out at
 // .004 with no "friend" in the block, where a sound entry scores .2–.75 — so below this
-// the dictionary has nothing to say and the plain translation is the better gloss.
+// the dictionary has nothing to say and the plain translation is the better answer.
 const MIN_PIVOT_SCORE = 0.05;
 
 /**
  * The English term to pivot on, from a source→English `dt=bd` response: the best-scoring
  * sense of the *first* group. Google orders groups by importance, and going by score alone
  * crosses readings — "verde" scores adjective "green" and noun "green" identically, and
- * the noun sends the gloss to Grün/Rasen/Wiese, a lawn.
+ * the noun sends the translation to Grün/Rasen/Wiese, a lawn.
  */
 export function pivotTerm(data: unknown): Pivot | null {
   const groups = Array.isArray(data) ? (data as unknown[])[1] : undefined;
@@ -142,7 +143,7 @@ export function pivotTerm(data: unknown): Pivot | null {
 /**
  * The English→target groups narrowed to the reading the source word actually had. The
  * English word carries readings the source word doesn't — "escuela" is never the verb
- * "to school" — so a miss yields nothing rather than a gloss for a different word.
+ * "to school" — so a miss yields nothing rather than a translation of a different word.
  */
 export function alignGroup(groups: SenseGroup[], pos: string): SenseGroup[] {
   const match = groups.find((g) => g.pos === pos);

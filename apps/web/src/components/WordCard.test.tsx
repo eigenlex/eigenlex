@@ -7,25 +7,41 @@ import WordCard from "./WordCard";
 
 // The workspace owns the target language now; a tiny stateful host stands in for it so
 // picking a language in the card re-renders with the new value, as it does in the app.
-function Host({ word, lang, tl: initial }: { word: string; lang: string; tl: string }) {
-  const [tl, setTl] = useState(initial);
-  return <WordCard word={word} forms={[word]} lang={lang} tl={tl} onTlChange={setTl} />;
+function Host({
+  word,
+  source,
+  target: initial,
+}: {
+  word: string;
+  source: string;
+  target: string;
+}) {
+  const [target, setTarget] = useState(initial);
+  return (
+    <WordCard
+      word={word}
+      forms={[word]}
+      source={source}
+      target={target}
+      onTargetChange={setTarget}
+    />
+  );
 }
 
-// Translate stub: returns a per-language gloss so we can assert re-translation.
+// Translate stub: returns a per-language translation so we can assert re-translation.
 const GLOSS: Record<string, string> = { es: "agua", fr: "eau" };
 function mockFetch() {
   return vi.fn(async (url: string | URL) => {
     const u = String(url);
     if (u.includes("/api/translate/")) {
-      const tl = new URL(u, "http://localhost").searchParams.get("tl") ?? "";
+      const tl = new URL(u, "http://localhost").searchParams.get("target") ?? "";
       return new Response(JSON.stringify({ word: "water", tl, translation: GLOSS[tl] ?? "" }));
     }
     return new Response("no", { status: 404 });
   });
 }
 
-const selector = () => screen.getByRole("combobox", { name: /translation language/i });
+const selector = () => screen.getByRole("combobox", { name: /target language/i });
 
 beforeEach(() => {
   localStorage.clear();
@@ -38,48 +54,48 @@ afterEach(() => {
 
 describe("WordCard language selector", () => {
   it("shows the target language and skips translating a word into its own language", () => {
-    render(<WordCard word="water" forms={["water"]} lang="en" tl="en" onTlChange={() => {}} />);
+    render(<WordCard word="water" forms={["water"]} source="en" target="en" onTargetChange={() => {}} />);
     // Fondue's Select shows the picked language's endonym in its trigger, not a value.
     expect(selector()).toHaveTextContent("English");
     expect(fetch).not.toHaveBeenCalled();
   });
 
   it("always offers a Google Translate link opening in a new tab, even for English", () => {
-    render(<WordCard word="water" forms={["water"]} lang="en" tl="en" onTlChange={() => {}} />);
+    render(<WordCard word="water" forms={["water"]} source="en" target="en" onTargetChange={() => {}} />);
     const link = screen.getByRole("link", { name: /google translate/i });
     expect(link).toHaveAttribute("target", "_blank");
     expect(link.getAttribute("href")).toContain("translate.google.com");
   });
 
   it("translates the word into the target language", async () => {
-    render(<WordCard word="water" forms={["water"]} lang="en" tl="es" onTlChange={() => {}} />);
+    render(<WordCard word="water" forms={["water"]} source="en" target="es" onTargetChange={() => {}} />);
     expect(selector()).toHaveTextContent(/español/i);
     expect(await screen.findByText("agua")).toBeInTheDocument();
   });
 
   it("translates from a non-English source language, tagging the request with sl", async () => {
-    render(<WordCard word="water" forms={["water"]} lang="es" tl="fr" onTlChange={() => {}} />);
+    render(<WordCard word="water" forms={["water"]} source="es" target="fr" onTargetChange={() => {}} />);
     expect(await screen.findByText("eau")).toBeInTheDocument();
     const call = (fetch as unknown as { mock: { calls: [string][] } }).mock.calls.find(([u]) =>
       String(u).includes("/api/translate/"),
     );
-    expect(String(call![0])).toContain("sl=es");
+    expect(String(call![0])).toContain("source=es");
   });
 
   it("re-translates and reports the pick when the language changes", async () => {
-    const onTlChange = vi.fn();
-    render(<WordCard word="water" forms={["water"]} lang="en" tl="es" onTlChange={onTlChange} />);
+    const onTargetChange = vi.fn();
+    render(<WordCard word="water" forms={["water"]} source="en" target="es" onTargetChange={onTargetChange} />);
     await screen.findByText("agua");
 
     // Open the Fondue Select and pick French from the listbox.
     await userEvent.click(selector());
     await userEvent.click(await screen.findByRole("option", { name: /français/i }));
 
-    expect(onTlChange).toHaveBeenCalledWith("fr");
+    expect(onTargetChange).toHaveBeenCalledWith("fr");
   });
 
   it("re-translates through a stateful host when the language changes", async () => {
-    render(<Host word="water" lang="en" tl="es" />);
+    render(<Host word="water" source="en" target="es" />);
     await screen.findByText("agua");
 
     await userEvent.click(selector());
@@ -89,22 +105,22 @@ describe("WordCard language selector", () => {
   });
 });
 
-// A dt=1 fetch stub that glosses each casing from a lookup table of senses.
+// A dt=1 fetch stub that translates each casing from a lookup table of senses.
 function mockDict(senses: Record<string, string[]>) {
   return vi.fn(async (url: string | URL) => {
     const u = new URL(String(url), "http://localhost");
     const form = decodeURIComponent(u.pathname.split("/api/translate/")[1] ?? "");
     const s = senses[form] ?? [];
-    return new Response(JSON.stringify({ word: form, tl: "en", translation: form, senses: s }));
+    return new Response(JSON.stringify({ word: form, target: "en", translation: form, senses: s }));
   });
 }
 
 // The workspace renders this frame before the lookup lands, so the hero row is
 // already its settled height and the browser below it never gets shoved down.
 describe("WordCard pending", () => {
-  it("holds the whole frame, glossing nothing, until the forms arrive", () => {
+  it("holds the whole frame, translating nothing, until the forms arrive", () => {
     const { rerender } = render(
-      <WordCard word="water" forms={null} lang="es" tl="en" onTlChange={() => {}} />,
+      <WordCard word="water" forms={null} source="es" target="en" onTargetChange={() => {}} />,
     );
     expect(screen.getByRole("region", { name: /meaning of water/i })).toBeInTheDocument();
     expect(selector()).toBeInTheDocument();
@@ -113,25 +129,25 @@ describe("WordCard pending", () => {
     // Nothing is known to be translatable yet — the word may not even be a word.
     expect(fetch).not.toHaveBeenCalled();
 
-    rerender(<WordCard word="water" forms={["water"]} lang="es" tl="en" onTlChange={() => {}} />);
+    rerender(<WordCard word="water" forms={["water"]} source="es" target="en" onTargetChange={() => {}} />);
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/translate/water"), expect.anything());
   });
 });
 
 describe("WordCard case-homographs", () => {
-  it("shows a distinct gloss for each casing", async () => {
+  it("shows a distinct translation for each casing", async () => {
     vi.stubGlobal("fetch", mockDict({ Essen: ["food", "meal"], essen: ["to eat", "dine"] }));
-    render(<WordCard word="Essen" forms={["Essen", "essen"]} lang="de" tl="en" onTlChange={() => {}} />);
-    // Both glosses and the lowercase casing label appear (the noun label doubles the hero).
+    render(<WordCard word="Essen" forms={["Essen", "essen"]} source="de" target="en" onTargetChange={() => {}} />);
+    // Both lines and the lowercase casing label appear (the noun label doubles the hero).
     expect(await screen.findByText("food, meal")).toBeInTheDocument();
     expect(await screen.findByText("to eat, dine")).toBeInTheDocument();
     expect(screen.getByText("essen")).toBeInTheDocument();
   });
 
-  it("collapses to one gloss when the casings mean the same thing", async () => {
-    // "wer"/"Wer" both gloss to "who" — no distinct sense, so only one line shows.
+  it("collapses to one line when the casings mean the same thing", async () => {
+    // "wer"/"Wer" both translate to "who" — no distinct sense, so only one line shows.
     vi.stubGlobal("fetch", mockDict({ Wer: ["who"], wer: ["who"] }));
-    render(<WordCard word="Wer" forms={["Wer", "wer"]} lang="de" tl="en" onTlChange={() => {}} />);
+    render(<WordCard word="Wer" forms={["Wer", "wer"]} source="de" target="en" onTargetChange={() => {}} />);
     expect(await screen.findByText("who")).toBeInTheDocument();
     expect(screen.getAllByText("who")).toHaveLength(1);
     expect(screen.queryByText("wer")).not.toBeInTheDocument();
@@ -148,14 +164,14 @@ function mockGroups(
     const u = new URL(String(url), "http://localhost");
     const word = decodeURIComponent(u.pathname.split("/api/translate/")[1] ?? "");
     return new Response(
-      JSON.stringify({ word, tl: "en", translation, senses: [], groups, levels }),
+      JSON.stringify({ word, target: "en", translation, senses: [], groups, levels }),
     );
   });
 }
 
 describe("WordCard multi-sense words", () => {
   // Italian "solo": adjective "only/alone" and adverb "just" — one word, two readings.
-  it("lists a gloss per part of speech when a word reads as more than one", async () => {
+  it("lists a line per part of speech when a word reads as more than one", async () => {
     vi.stubGlobal(
       "fetch",
       mockGroups(
@@ -166,17 +182,17 @@ describe("WordCard multi-sense words", () => {
         "Alone",
       ),
     );
-    render(<WordCard word="solo" forms={["solo"]} lang="it" tl="en" onTlChange={() => {}} />);
+    render(<WordCard word="solo" forms={["solo"]} source="it" target="en" onTargetChange={() => {}} />);
     expect(await screen.findByText("only, alone")).toBeInTheDocument();
     expect(screen.getByText("just")).toBeInTheDocument();
     expect(screen.getByText("adjective")).toBeInTheDocument();
     expect(screen.getByText("adverb")).toBeInTheDocument();
   });
 
-  it("keeps a single reading as one unlabelled gloss", async () => {
+  it("keeps a single reading as one unlabelled line", async () => {
     vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["water"] }], "water"));
     render(
-      <WordCard word="acqua" forms={["acqua"]} lang="it" tl="en" onTlChange={() => {}} />,
+      <WordCard word="acqua" forms={["acqua"]} source="it" target="en" onTargetChange={() => {}} />,
     );
     expect(await screen.findByText("water")).toBeInTheDocument();
     expect(screen.queryByText("noun")).not.toBeInTheDocument();
@@ -186,25 +202,25 @@ describe("WordCard multi-sense words", () => {
     // Real case: "acqua" plainly translates to "waterfall", but the dictionary is right.
     vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["water", "aqua"] }], "waterfall"));
     render(
-      <WordCard word="acquario" forms={["acquario"]} lang="it" tl="en" onTlChange={() => {}} />,
+      <WordCard word="acquario" forms={["acquario"]} source="it" target="en" onTargetChange={() => {}} />,
     );
     expect(await screen.findByText("water, aqua")).toBeInTheDocument();
     expect(screen.queryByText("waterfall")).not.toBeInTheDocument();
   });
 
-  it("falls back to the plain gloss when there is no dictionary entry", async () => {
+  it("falls back to the plain translation when there is no dictionary entry", async () => {
     vi.stubGlobal("fetch", mockGroups([], "Milan"));
     render(
-      <WordCard word="Milano" forms={["Milano"]} lang="it" tl="en" onTlChange={() => {}} />,
+      <WordCard word="Milano" forms={["Milano"]} source="it" target="en" onTargetChange={() => {}} />,
     );
     expect(await screen.findByText("Milan")).toBeInTheDocument();
   });
 
-  // The spinner row is shorter than the gloss it stands in for.
-  it("reserves the gloss's line box while translating", async () => {
+  // The spinner row is shorter than the translation it stands in for.
+  it("reserves the translation's line box while translating", async () => {
     vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["sky"] }], "sky"));
     render(
-      <WordCard word="cielo" forms={["cielo"]} lang="it" tl="en" onTlChange={() => {}} />,
+      <WordCard word="cielo" forms={["cielo"]} source="it" target="en" onTargetChange={() => {}} />,
     );
     const spinner = screen.getByText("Translating…").closest("div.Loading");
     expect(spinner).toHaveClass("tw-min-h-[var(--typography-line-height-loose)]");
@@ -217,9 +233,9 @@ describe("WordCard multi-sense words", () => {
 
   it("asks for the dictionary block, which is what carries the readings", async () => {
     vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["need"] }], "need"));
-    // A word no other test looks up — the gloss cache is module-level, by design.
+    // A word no other test looks up — `glossCache` is module-level, by design.
     render(
-      <WordCard word="bisogno" forms={["bisogno"]} lang="it" tl="en" onTlChange={() => {}} />,
+      <WordCard word="bisogno" forms={["bisogno"]} source="it" target="en" onTargetChange={() => {}} />,
     );
     await screen.findByText("need");
     const call = (fetch as unknown as { mock: { calls: [string][] } }).mock.calls[0]!;
@@ -230,7 +246,7 @@ describe("WordCard multi-sense words", () => {
 const A1 = { key: "A1", label: "A1 · Beginner", rank: 391 };
 const B2 = { key: "B2", label: "B2 · Upper-intermediate", rank: 9002 };
 
-// Google orders a gloss's alternatives by confidence, not by difficulty, so "water" and
+// Google orders the alternatives by confidence, not by difficulty, so "water" and
 // "aqua" arrive as equals. The level is what tells a learner which one is theirs.
 describe("WordCard levels", () => {
   it("trails each alternative with its own CEFR level", async () => {
@@ -238,9 +254,9 @@ describe("WordCard levels", () => {
       "fetch",
       mockGroups([{ pos: "noun", terms: ["water", "aqua"] }], "water", { water: A1, aqua: B2 }),
     );
-    render(<WordCard word="agua" forms={["agua"]} lang="es" tl="en" onTlChange={() => {}} />);
+    render(<WordCard word="agua" forms={["agua"]} source="es" target="en" onTargetChange={() => {}} />);
 
-    // The badges annotate the line; its text is still the gloss itself.
+    // The badges annotate the line; its text is still the translation itself.
     expect(await screen.findByText("water, aqua")).toBeInTheDocument();
     expect(screen.getByText("A1")).toBeInTheDocument();
     expect(screen.getByText("B2")).toBeInTheDocument();
@@ -248,39 +264,39 @@ describe("WordCard levels", () => {
 
   it("names the badge with its band and rank, for hover and for AT alike", async () => {
     vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["sea"] }], "sea", { sea: A1 }));
-    render(<WordCard word="mare" forms={["mare"]} lang="it" tl="en" onTlChange={() => {}} />);
+    render(<WordCard word="mare" forms={["mare"]} source="it" target="en" onTargetChange={() => {}} />);
     await screen.findByText("sea");
     expect(screen.getByRole("img", { name: "A1 · Beginner · rank 391" })).toBeInTheDocument();
   });
 
   // Only the six indexed languages have levels; the server sends none for the rest.
-  it("leaves the gloss unbadged when the language has no levels", async () => {
+  it("leaves the line unbadged when the language has no levels", async () => {
     vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["mizu"] }], "mizu"));
-    render(<WordCard word="acqua" forms={["acqua"]} lang="it" tl="ja" onTlChange={() => {}} />);
+    render(<WordCard word="acqua" forms={["acqua"]} source="it" target="ja" onTargetChange={() => {}} />);
     await screen.findByText("mizu");
     expect(screen.queryByText("A1")).not.toBeInTheDocument();
   });
 
-  it("badges only the terms the gloss language actually carries", async () => {
+  it("badges only the terms the target language actually carries", async () => {
     vi.stubGlobal(
       "fetch",
       // "usar naja" is a phrase, so it has no rank to show.
       mockGroups([{ pos: "noun", terms: ["knife", "usar naja"] }], "knife", { knife: A1 }),
     );
-    render(<WordCard word="faca" forms={["faca"]} lang="pt" tl="en" onTlChange={() => {}} />);
+    render(<WordCard word="faca" forms={["faca"]} source="pt" target="en" onTargetChange={() => {}} />);
     await screen.findByText("knife, usar naja");
     expect(screen.getAllByRole("img")).toHaveLength(1);
   });
 
-  it("levels each casing's gloss of a case-homograph", async () => {
+  it("levels each casing's translation of a case-homograph", async () => {
     vi.stubGlobal("fetch", (async (url: string | URL) => {
       const u = new URL(String(url), "http://localhost");
       const form = decodeURIComponent(u.pathname.split("/api/translate/")[1] ?? "");
       const senses = form === "Essen" ? ["food"] : ["dine"];
       const levels = form === "Essen" ? { food: A1 } : { dine: B2 };
-      return new Response(JSON.stringify({ word: form, tl: "en", translation: form, senses, levels }));
+      return new Response(JSON.stringify({ word: form, target: "en", translation: form, senses, levels }));
     }) as typeof fetch);
-    render(<WordCard word="Essen" forms={["Essen", "essen"]} lang="de" tl="en" onTlChange={() => {}} />);
+    render(<WordCard word="Essen" forms={["Essen", "essen"]} source="de" target="en" onTargetChange={() => {}} />);
 
     expect(await screen.findByText("food")).toBeInTheDocument();
     expect(screen.getByText("A1")).toBeInTheDocument();

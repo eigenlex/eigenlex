@@ -1,20 +1,33 @@
 // The learner's current scenario, encoded in the URL's query string so it can be
 // copied as a shareable deeplink. Reflects the four things a sender might want a
-// recipient to land on: the source language, the looked-up word, the target (gloss)
+// recipient to land on: the source language, the looked-up word, the target
 // language, and the band view / pinned band tab.
 
-import { isSourceLang, type SourceLang } from "@/lib/languages";
+import { isSourceLang, type SourceLang, type TargetLang } from "@/lib/languages";
 import type { BandView } from "@/lib/types";
 
 const isView = (v: string): v is BandView => v === "freq" || v === "cefr";
 
+// The spellings each language is accepted under, canonical first. Only the canonical one
+// is ever written, so a link carrying another is rewritten the moment it is opened.
+const SOURCE_PARAMS = ["source", "lang"] as const;
+const TARGET_PARAMS = ["target", "tl"] as const;
+
+function param(p: URLSearchParams, names: readonly string[]): string | null {
+  for (const n of names) {
+    const v = p.get(n);
+    if (v) return v;
+  }
+  return null;
+}
+
 export interface Scenario {
   /** Source language whose vocabulary is being browsed. */
-  lang: SourceLang;
+  source: SourceLang;
   /** The looked-up word. */
   word: string;
-  /** Target/gloss language (the reader's language). */
-  tl: string;
+  /** Target language (the reader's own). */
+  target: TargetLang;
   /** Frequency vs CEFR band view. */
   view: BandView;
   /** An explicitly-picked band tab, when it differs from the word's own band. */
@@ -26,12 +39,12 @@ export function readScenario(): Partial<Scenario> {
   if (typeof window === "undefined") return {};
   const p = new URLSearchParams(window.location.search);
   const out: Partial<Scenario> = {};
-  const lang = p.get("lang");
-  if (lang && isSourceLang(lang)) out.lang = lang;
+  const source = param(p, SOURCE_PARAMS);
+  if (source && isSourceLang(source)) out.source = source;
   const word = p.get("word");
   if (word) out.word = word;
-  const tl = p.get("tl");
-  if (tl) out.tl = tl;
+  const target = param(p, TARGET_PARAMS);
+  if (target) out.target = target;
   const view = p.get("view");
   if (view && isView(view)) out.view = view;
   const band = p.get("band");
@@ -46,9 +59,9 @@ export function readScenario(): Partial<Scenario> {
 export function writeScenario(s: Scenario): void {
   if (typeof window === "undefined") return;
   const p = new URLSearchParams();
-  p.set("lang", s.lang);
+  p.set(SOURCE_PARAMS[0], s.source);
   if (s.word) p.set("word", s.word);
-  if (s.tl) p.set("tl", s.tl);
+  if (s.target) p.set(TARGET_PARAMS[0], s.target);
   p.set("view", s.view);
   if (s.band) p.set("band", s.band);
   const { pathname, hash } = window.location;

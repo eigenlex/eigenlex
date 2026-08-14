@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const { view } = await params;
   if (!isView(view)) return new Response("unknown view", { status: 404 });
-  const lang = new URL(req.url).searchParams.get("lang") ?? DEFAULT_SOURCE;
-  if (!isSourceLang(lang)) return new Response("unknown language", { status: 404 });
-  return Response.json(getBandSummary(lang, view));
+  const source = new URL(req.url).searchParams.get("source") ?? DEFAULT_SOURCE;
+  if (!isSourceLang(source)) return new Response("unknown language", { status: 404 });
+  return Response.json(getBandSummary(source, view));
 }

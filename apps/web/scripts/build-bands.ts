@@ -312,7 +312,7 @@ const CASING_TOKEN = /[^\W\d_]+(?:['’-][^\W\d_]+)*/gu;
 // Case-homograph: a lemma whose two casings are genuinely both used (German "Essen"
 // the noun vs "essen" the verb) — merged into one source entry, but worth translating
 // in both casings. Flagged when the minority casing occurs enough mid-sentence to be
-// real, not noise. The runtime backstops this: a casing whose gloss adds nothing is
+// real, not noise. The runtime backstops this: a casing whose translation adds nothing is
 // dropped from the card, so a loose gate here only costs a wasted lookup.
 const HOMOGRAPH_MIN_COUNT = 100;
 const HOMOGRAPH_MIN_SHARE = 0.1;

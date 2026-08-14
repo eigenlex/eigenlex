@@ -21,7 +21,7 @@ export interface WordBands {
   /**
    * Casings to translate. Usually just `[word]`; a case-homograph (German "Essen" the
    * noun vs "essen" the verb) carries both casings, most frequent first, so the card
-   * can show a gloss for each.
+   * can show a translation for each.
    */
   forms: string[];
   /** 1-based frequency rank (1 = most frequent). */

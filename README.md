@@ -36,7 +36,7 @@ learning order than any dictionary-structure metric, so the ranking rests on it 
   aren't vocabulary. A word is dropped only when a [names gazetteer](https://github.com/smashew/NameDatabases),
   the lemma list, mid-sentence casing, and how often it follows a determiner *all* agree
   it's a name; each guard rescues words the others would wrongly take.
-- **Translations** — the per-word gloss in the word card — are fetched live from
+- **Translations** — the word card's short meaning — are fetched live from
   [Google Translate](https://translate.google.com/) (its public `gtx` endpoint) in the
   reader's chosen language, and cached. This is the only source consulted at runtime;
   everything above is baked into the committed artifacts at build time.

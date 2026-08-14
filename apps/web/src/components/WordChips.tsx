@@ -125,7 +125,7 @@ export default function WordChips({
   anchorClass: string;
   onPick: (word: string) => void;
   label: string;
-  /** Source language of the words, for assistive tech. */
+  /** Source language of the words, forwarded as the `lang` attribute for assistive tech. */
   lang?: string;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);

@@ -14,8 +14,9 @@ import {
   SOURCE_LANGS,
   SOURCE_LANG_META,
   type SourceLang,
+  type TargetLang,
 } from "@/lib/languages";
-import { glossLang, localLang } from "@/lib/geo";
+import { sourceLang, targetLang } from "@/lib/geo";
 import { baseLang } from "@/lib/translate";
 import { readScenario, writeScenario } from "@/lib/scenario";
 import { PANEL, PANEL_LANG } from "@/components/panel";
@@ -50,9 +51,11 @@ function Abbr({ title, children }: { title: string; children: ReactNode }) {
 
 // Persisted picks, so a returning learner lands back where they left off. A shareable
 // URL (see lib/scenario) takes precedence over these when present; where neither says
-// anything, the client's country seeds the study language (see lib/geo).
+// anything, the client's country seeds the source language (see lib/geo).
 const SOURCE_KEY = "eigenlex:source";
-const LANG_KEY = "eigenlex:lang";
+const TARGET_KEY = "eigenlex:target";
+// Also read, never written, so a target stored under it still resolves.
+const TARGET_KEY_ALT = "eigenlex:lang";
 
 const browserLang = () =>
   baseLang(typeof navigator !== "undefined" ? navigator.language : "en");
@@ -68,9 +71,9 @@ function storedSource(): SourceLang | null {
   }
   return null;
 }
-function storedTarget(): string | null {
+function storedTarget(): TargetLang | null {
   try {
-    const s = window.localStorage.getItem(LANG_KEY);
+    const s = window.localStorage.getItem(TARGET_KEY) ?? window.localStorage.getItem(TARGET_KEY_ALT);
     if (s) return baseLang(s);
   } catch {
     /* storage unavailable */
@@ -85,9 +88,15 @@ const SOURCE_OPTIONS = SOURCE_LANGS.map((code) => ({
 
 // A dropdown, not a segmented control: the language is picked once and then left
 // alone, so it doesn't deserve a row of six always-visible buttons.
-function SourceSelect({ lang, onChange }: { lang: SourceLang; onChange: (l: SourceLang) => void }) {
+function SourceSelect({
+  value,
+  onChange,
+}: {
+  value: SourceLang;
+  onChange: (l: SourceLang) => void;
+}) {
   return (
-    <LangSelect label="Source language" value={lang} options={SOURCE_OPTIONS} onChange={onChange} />
+    <LangSelect label="Source language" value={value} options={SOURCE_OPTIONS} onChange={onChange} />
   );
 }
 
@@ -100,12 +109,12 @@ const SWAP =
   "aria-disabled:tw-cursor-not-allowed aria-disabled:tw-opacity-40 " +
   "aria-disabled:hover:tw-border-line-subtle aria-disabled:hover:tw-text-secondary";
 
-const STUDYABLE = SOURCE_LANGS.map((c) => SOURCE_LANG_META[c].name).join(", ");
+const SOURCE_NAMES = SOURCE_LANGS.map((c) => SOURCE_LANG_META[c].name).join(", ");
 
 /**
- * Study what you were glossing to. Only the six indexed languages can be studied,
- * so a gloss language outside them leaves this inert rather than absent — a control
- * that vanishes as the target changes is harder to understand than one that explains.
+ * Study what you were translating into. Only the six indexed languages can be a source,
+ * so a target outside them leaves this inert rather than absent — a control that vanishes
+ * as the target changes is harder to understand than one that explains.
  */
 function SwapButton({ enabled, onSwap }: { enabled: boolean; onSwap: () => void }) {
   return (
@@ -115,7 +124,7 @@ function SwapButton({ enabled, onSwap }: { enabled: boolean; onSwap: () => void 
         <button
           type="button"
           aria-disabled={!enabled}
-          aria-label="Swap the study and translation languages"
+          aria-label="Swap the source and target languages"
           className={SWAP}
           onClick={() => enabled && onSwap()}
         >
@@ -125,7 +134,7 @@ function SwapButton({ enabled, onSwap }: { enabled: boolean; onSwap: () => void 
         </button>
       </Tooltip.Trigger>
       <Tooltip.Content>
-        {enabled ? "Swap languages" : `Only ${STUDYABLE} can be studied`}
+        {enabled ? "Swap languages" : `Only ${SOURCE_NAMES} can be a source language`}
       </Tooltip.Content>
     </Tooltip.Root>
   );
@@ -156,41 +165,41 @@ function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView
 
 // Data sources credited beneath the browser. All of them, in full, so the attribution
 // stays complete regardless of the active view — the ranking (frequency +
-// lemmatization), the CEFR calibration, German display casing, and the word-card glosses.
-const SOURCE_LINK = "tw-underline hover:tw-text-primary";
+// lemmatization), the CEFR calibration, German display casing, and the word translations.
+const CORPUS_LINK = "tw-underline hover:tw-text-primary";
 
-function SourceCredit({ lang }: { lang: SourceLang }) {
-  const { source, name } = SOURCE_LANG_META[lang];
+function CorpusCredit({ source }: { source: SourceLang }) {
+  const { corpus, name } = SOURCE_LANG_META[source];
   return (
     <>
       Word frequencies from{" "}
-      <a className={SOURCE_LINK} href={source.url} target="_blank" rel="noreferrer">
-        {lang === "en" ? <Abbr title={SUBTLEX_TITLE}>SUBTLEX-US</Abbr> : source.name}
+      <a className={CORPUS_LINK} href={corpus.url} target="_blank" rel="noreferrer">
+        {source === "en" ? <Abbr title={SUBTLEX_TITLE}>SUBTLEX-US</Abbr> : corpus.name}
       </a>
-      {lang === "en" ? " (Brysbaert & New, 2009)" : null}, with inflections merged onto
+      {source === "en" ? " (Brysbaert & New, 2009)" : null}, with inflections merged onto
       their base form via a{" "}
-      <a className={SOURCE_LINK} href={LEMMA_URL} target="_blank" rel="noreferrer">
+      <a className={CORPUS_LINK} href={LEMMA_URL} target="_blank" rel="noreferrer">
         lemmatization list
       </a>
       {/* Spelled out, not an Abbr: a tooltip expansion is unreachable by touch, and CEFR
           is the one abbreviation the UI labels words with. */}
       . CEFR ({CEFR_TITLE}) levels are estimated from frequency, with band
       boundaries calibrated to the{" "}
-      <a className={SOURCE_LINK} href="https://www.cefr-j.org/" target="_blank" rel="noreferrer">
+      <a className={CORPUS_LINK} href="https://www.cefr-j.org/" target="_blank" rel="noreferrer">
         <Abbr title={CEFRJ_TITLE}>CEFR-J</Abbr>
       </a>{" "}
-      vocabulary profile{lang !== "en" ? <> — an English-derived heuristic reused for {name}</> : null}.{" "}
-      {lang === "de" ? (
+      vocabulary profile{source !== "en" ? <> — an English-derived heuristic reused for {name}</> : null}.{" "}
+      {source === "de" ? (
         <>
           Display casing is measured from the{" "}
-          <a className={SOURCE_LINK} href={LEIPZIG_URL} target="_blank" rel="noreferrer">
+          <a className={CORPUS_LINK} href={LEIPZIG_URL} target="_blank" rel="noreferrer">
             <Abbr title={LEIPZIG_TITLE}>Leipzig Corpora</Abbr>
           </a>
           .{" "}
         </>
       ) : null}
       Word translations come from{" "}
-      <a className={SOURCE_LINK} href={TRANSLATE_URL} target="_blank" rel="noreferrer">
+      <a className={CORPUS_LINK} href={TRANSLATE_URL} target="_blank" rel="noreferrer">
         Google Translate
       </a>
       .
@@ -204,11 +213,11 @@ export default function Workspace({ country }: { country?: string | null }) {
   const initial = useRef(readScenario()).current;
   const browser = browserLang();
 
-  const [lang, setLangState] = useState<SourceLang>(
-    () => initial.lang ?? storedSource() ?? localLang(country, browser) ?? DEFAULT_SOURCE,
+  const [source, setSourceState] = useState<SourceLang>(
+    () => initial.source ?? storedSource() ?? sourceLang(country, browser) ?? DEFAULT_SOURCE,
   );
-  const setLang = (l: SourceLang) => {
-    setLangState(l);
+  const setSource = (l: SourceLang) => {
+    setSourceState(l);
     try {
       window.localStorage.setItem(SOURCE_KEY, l);
     } catch {
@@ -216,23 +225,23 @@ export default function Workspace({ country }: { country?: string | null }) {
     }
   };
 
-  // Target/gloss language, lifted out of the word card so it too rides in the URL. Only
-  // the derived value steps aside from `lang` — an explicit pick is honoured as given.
-  // Reading `lang` here is safe: the initializer runs on the first render only.
-  const [tl, setTlState] = useState<string>(
-    () => initial.tl ?? storedTarget() ?? glossLang(lang, browser),
+  // Target language, lifted out of the word card so it too rides in the URL. Only the
+  // derived value steps aside from the source — an explicit pick is honoured as given.
+  // Reading `source` here is safe: the initializer runs on the first render only.
+  const [target, setTargetState] = useState<TargetLang>(
+    () => initial.target ?? storedTarget() ?? targetLang(source, browser),
   );
-  const setTl = (l: string) => {
-    setTlState(l);
+  const setTarget = (l: TargetLang) => {
+    setTargetState(l);
     try {
-      window.localStorage.setItem(LANG_KEY, l);
+      window.localStorage.setItem(TARGET_KEY, l);
     } catch {
       /* private mode / storage disabled — selection still applies for the session */
     }
   };
 
   // The searched word drives the whole view, so its lookup lives here, above it.
-  const [query, setQuery] = useState(() => initial.word ?? SOURCE_LANG_META[lang].defaultWord);
+  const [query, setQuery] = useState(() => initial.word ?? SOURCE_LANG_META[source].defaultWord);
   const [info, setInfo] = useState<WordBands | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Starts true: the effect below looks the initial word up on mount straight away.
@@ -241,11 +250,11 @@ export default function Workspace({ country }: { country?: string | null }) {
   // The band tab the user explicitly picked; null follows the looked-up word's band.
   const [band, setBand] = useState<string | null>(() => initial.band ?? null);
 
-  // `l` is passed explicitly so a language switch looks up the right dictionary
-  // without waiting for the `lang` state update to settle. `bandOverride` restores a
-  // pinned band from a shared link; a normal lookup follows the word's own band (null).
+  // The source is passed explicitly so a language switch looks up the right dictionary
+  // without waiting for the state update to settle — hence the shadowing. `bandOverride`
+  // restores a pinned band from a shared link; a normal lookup follows the word's own (null).
   const lookup = useCallback(
-    async (raw: string, l: SourceLang, bandOverride: string | null = null) => {
+    async (raw: string, source: SourceLang, bandOverride: string | null = null) => {
       const term = raw.trim().toLowerCase();
       // Nothing to look up is not a wait: `?word=%20` would otherwise leave the
       // card pending and the button disabled for good.
@@ -255,7 +264,7 @@ export default function Workspace({ country }: { country?: string | null }) {
       }
       setLoading(true);
       try {
-        const res = await fetch(`/api/word/${encodeURIComponent(term)}?lang=${l}`);
+        const res = await fetch(`/api/word/${encodeURIComponent(term)}?source=${source}`);
         if (!res.ok) {
           setError(`"${term}" is not in this dictionary`);
           return;
@@ -280,8 +289,8 @@ export default function Workspace({ country }: { country?: string | null }) {
   useEffect(() => {
     if (bootstrapped.current) return;
     bootstrapped.current = true;
-    void lookup(query, lang, initial.band ?? null);
-  }, [lookup, lang, query, initial.band]);
+    void lookup(query, source, initial.band ?? null);
+  }, [lookup, source, query, initial.band]);
 
   // Mirror the scenario into the URL so learners can exchange deeplinks. Keyed on the
   // looked-up word (not the in-progress query), and only pins a band when it differs
@@ -289,45 +298,51 @@ export default function Workspace({ country }: { country?: string | null }) {
   useEffect(() => {
     if (!info) return;
     const anchor = info[view].key;
-    writeScenario({ lang, word: info.word, tl, view, band: band && band !== anchor ? band : null });
-  }, [lang, tl, view, band, info]);
+    writeScenario({
+      source,
+      word: info.word,
+      target,
+      view,
+      band: band && band !== anchor ? band : null,
+    });
+  }, [source, target, view, band, info]);
 
-  const chooseLang = (l: SourceLang) => {
-    if (l === lang) return;
-    // Studying what you were glossing to: the gloss takes the language just left,
+  const chooseSource = (l: SourceLang) => {
+    if (l === source) return;
+    // Studying what you were translating into: the target takes the language just left,
     // rather than translating the new source language into itself.
-    if (l === tl) setTl(lang);
-    setLang(l);
+    if (l === target) setTarget(source);
+    setSource(l);
     const word = SOURCE_LANG_META[l].defaultWord;
     setQuery(word);
     void lookup(word, l);
   };
 
-  // The gloss's leading term, reported by the card — what a swap lands on.
+  // The translation's leading term, reported by the card — what a swap lands on.
   const [glossTerm, setGlossTerm] = useState<string | null>(null);
-  const canSwap = isSourceLang(tl) && tl !== lang;
+  const canSwap = isSourceLang(target) && target !== source;
 
-  // Study the gloss language, glossing back to the one just left. The word carries
-  // over as its own translation where that is a word in the new language — a gloss
+  // Study the target language, translating back into the one just left. The word carries
+  // over as its own translation where that is a word in the new language — a translation
   // can be a phrase ("to eat"), and phrases are not in the dictionary.
   const swap = async () => {
-    if (!canSwap || !isSourceLang(tl)) return;
-    const to = tl;
-    const from = lang;
+    if (!canSwap || !isSourceLang(target)) return;
+    const to = target;
+    const from = source;
     setLoading(true);
     let word = SOURCE_LANG_META[to].defaultWord;
     const seed = glossTerm?.trim().toLowerCase();
     if (seed && !seed.includes(" ")) {
       try {
-        const res = await fetch(`/api/word/${encodeURIComponent(seed)}?lang=${to}`);
+        const res = await fetch(`/api/word/${encodeURIComponent(seed)}?source=${to}`);
         if (res.ok) word = seed;
       } catch {
         /* offline: the default word still gives a valid landing place */
       }
     }
     // Swapped together with the word, so no render shows a word beside the wrong pair.
-    setLang(to);
-    setTl(from);
+    setSource(to);
+    setTarget(from);
     setQuery(word);
     await lookup(word, to);
   };
@@ -338,7 +353,7 @@ export default function Workspace({ country }: { country?: string | null }) {
     setBand(null);
   };
 
-  const langName = SOURCE_LANG_META[lang].name;
+  const sourceName = SOURCE_LANG_META[source].name;
 
   return (
     <div className="Workspace">
@@ -357,7 +372,7 @@ export default function Workspace({ country }: { country?: string | null }) {
                 Choose a language to study
               </h2>
               <div className={PANEL_LANG}>
-                <SourceSelect lang={lang} onChange={chooseLang} />
+                <SourceSelect value={source} onChange={chooseSource} />
               </div>
             </section>
 
@@ -369,8 +384,8 @@ export default function Workspace({ country }: { country?: string | null }) {
               <WordSearchBox
                 value={query}
                 onValueChange={setQuery}
-                onSubmit={(w) => void lookup(w, lang)}
-                lang={lang}
+                onSubmit={(w) => void lookup(w, source)}
+                source={source}
                 ariaLabel="Look up a word"
                 describedBy="search-help"
                 placeholder="look up a word…"
@@ -386,7 +401,7 @@ export default function Workspace({ country }: { country?: string | null }) {
               />
               {/* Context-sensitive help for the field (WCAG 3.3.5). */}
               <p id="search-help" className="visually-hidden">
-                Type a {langName} word to see its frequency and CEFR level. It is looked
+                Type a {sourceName} word to see its frequency and CEFR level. It is looked
                 up as soon as you stop typing; press Enter or choose a suggestion to look
                 one up at once.
               </p>
@@ -410,9 +425,9 @@ export default function Workspace({ country }: { country?: string | null }) {
           <WordCard
             word={info?.word ?? query}
             forms={info?.forms ?? null}
-            lang={lang}
-            tl={tl}
-            onTlChange={setTl}
+            source={source}
+            target={target}
+            onTargetChange={setTarget}
             onGloss={setGlossTerm}
           />
         )}
@@ -424,7 +439,7 @@ export default function Workspace({ country }: { country?: string | null }) {
         </h2>
         <BandBrowser
           view={view}
-          lang={lang}
+          source={source}
           anchorWord={info?.word ?? null}
           anchorBandKey={info ? info[view].key : null}
           bandKey={band}
@@ -433,7 +448,7 @@ export default function Workspace({ country }: { country?: string | null }) {
           // lookup only corrects the casing on top of it.
           onSelect={(w) => {
             setQuery(w);
-            void lookup(w, lang);
+            void lookup(w, source);
           }}
           viewControl={<ViewToggle view={view} onChange={chooseView} />}
         />
@@ -444,7 +459,7 @@ export default function Workspace({ country }: { country?: string | null }) {
           className="tw-mt-3 tw-max-w-[80ch] tw-body-x-small text-muted-aaa"
           style={{ lineHeight: 1.5 }}
         >
-          Sources: <SourceCredit lang={lang} />
+          Sources: <CorpusCredit source={source} />
         </p>
       </section>
     </div>

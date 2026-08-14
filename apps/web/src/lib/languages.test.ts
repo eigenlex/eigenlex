@@ -12,12 +12,12 @@ describe("isSourceLang", () => {
 });
 
 describe("source-language metadata", () => {
-  it("covers every source language with a name and default word", () => {
+  it("covers every source language with a name, default word and corpus", () => {
     for (const l of SOURCE_LANGS) {
       const meta = SOURCE_LANG_META[l];
       expect(meta.name).toBeTruthy();
       expect(meta.defaultWord).toBeTruthy();
-      expect(meta.source.url).toMatch(/^https:\/\//);
+      expect(meta.corpus.url).toMatch(/^https:\/\//);
     }
   });
 
