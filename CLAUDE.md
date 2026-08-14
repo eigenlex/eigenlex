@@ -4,43 +4,6 @@ pnpm + turbo monorepo with one app. `apps/web` is the Next.js site and the hoste
 It is a vocabulary learning tool. Every word gets a frequency band and a CEFR band, so a
 learner can see where a word sits and browse the vocabulary in order.
 
-The tool is multi-**source-language**: the learner picks the language they study
-(en/es/fr/de/pt/it). That is separate from the **target** language, the gloss language
-picked in the word card, which can be any language Google takes.
-
-## Where things live
-
-| Path | Holds |
-| --- | --- |
-| `src/lib/languages.ts` | Source-language list, `SOURCE_LANG_META`, `SourceLang` |
-| `src/lib/bands.ts` | Server registry, `getWord`, all word lookups |
-| `src/lib/geo.ts` | Country table, `localLang`, `glossLang` |
-| `src/lib/scenario.ts` | URL encode / decode |
-| `src/lib/translate.ts` | Google Translate fetching and parsing |
-| `scripts/build-bands.ts` | Artifact build, the `LANGS` table |
-| `data/word-bands.<code>.json` | Committed artifact, one per language |
-
-Paths are relative to `apps/web/`.
-
-## URL state (deeplinks)
-
-`Workspace` mirrors the scenario into the query string so it can be shared as a link, and
-writes it back with `replaceState`. It owns all five values; `tl` is lifted out of
-`WordCard` and `band` out of `BandBrowser`. `Workspace` is client-only (`WorkspaceLazy`,
-`ssr:false`), so this is all client-side.
-
-`?lang=<source>&word=<word>&tl=<gloss>&view=freq|cefr&band=<key>`
-
-| Param | Holds | Notes |
-| --- | --- | --- |
-| `lang` | Source language | One of the six |
-| `word` | The looked-up word | |
-| `tl` | Gloss language | Any language, not just the six |
-| `view` | `freq` or `cefr` | |
-| `band` | Pinned band tab | Set only when it differs from the word's own band, which the word and view already imply |
-
-On mount the URL wins over the stored pick, which wins over the seed below.
-
 ## Which languages a first-time visitor lands on
 
 The client's country seeds the study language. The browser seeds the gloss.
@@ -48,7 +11,7 @@ The client's country seeds the study language. The browser seeds the gloss.
 | Step | Rule | Example |
 | --- | --- | --- |
 | Read the country | Vercel sets `x-vercel-ip-country`. `page.tsx` reads it and passes it to `Workspace` as a prop | |
-| Pick the study language | `localLang` maps the country to one of the six | DE → study German |
+| Pick the study language | `localLang` maps the country to one of the six studiable languages, en/es/fr/de/pt/it | DE → study German |
 | Multilingual country | `CH`, `BE`, `CA` and `LU` list several. The browser locale picks; the first listed is the fallback | CH + fr browser → French |
 | Unlisted country | English. `Exclude<SourceLang, "en">` on the table enforces that English has no entries | JP + ja browser → en → ja |
 | Pick the gloss | The browser language | ES + en browser → es → en |
