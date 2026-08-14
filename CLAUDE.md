@@ -22,15 +22,47 @@ our own API params — and in that order. `lang`, `sl` and `tl` name neither.
 target passes it only when we index it too, which is what CEFR levels on a translation
 and the swap button need.
 
-Two spellings are still read, never written, so a shared link or a stored pick made
-under them keeps working: `?lang=`/`?tl=` in `SOURCE_PARAMS`/`TARGET_PARAMS`, and
-`eigenlex:lang` in `TARGET_KEY_ALT`. Opening such a link rewrites the URL.
+Older spellings are still read, never written: `eigenlex:lang` via `TARGET_KEY_ALT`, and
+the two URL params noted below.
 
 `gtxUrl` is the exception that stays: `sl`/`tl` there are Google's own param names, not
 ours. `source`/`target` map onto them at that one call.
 
 `source` never means the frequency corpus. That is `corpus`: `SourceLangMeta.corpus`,
 `CorpusCredit`.
+
+## Where things live
+
+| Path | Holds |
+| --- | --- |
+| `src/lib/languages.ts` | `SOURCE_LANGS`, `SourceLang`, `TargetLang`, `SOURCE_LANG_META` |
+| `src/lib/bands.ts` | Server registry, `getWord`, all word lookups |
+| `src/lib/geo.ts` | Country table, `sourceLang`, `targetLang` |
+| `src/lib/scenario.ts` | URL encode / decode |
+| `src/lib/translate.ts` | Google Translate fetching and parsing |
+| `scripts/build-bands.ts` | Artifact build, the `LANGS` table |
+| `data/word-bands.<code>.json` | Committed artifact, one per language |
+
+Paths are relative to `apps/web/`.
+
+## URL state (deeplinks)
+
+`Workspace` mirrors the scenario into the query string so it can be shared as a link, and
+writes it back with `replaceState`. It owns all five values: the target sits there rather
+than in `WordCard`, and `band` rather than in `BandBrowser`, so both ride in the URL.
+`Workspace` is client-only (`WorkspaceLazy`, `ssr:false`), so this is all client-side.
+
+`?source=<source>&word=<word>&target=<target>&view=freq|cefr&band=<key>`
+
+| Param | Holds | Notes |
+| --- | --- | --- |
+| `source` | Source language | One of the six. `lang` is read too, never written |
+| `word` | The looked-up word | |
+| `target` | Target language | Any language, not just the six. `tl` is read too, never written |
+| `view` | `freq` or `cefr` | |
+| `band` | Pinned band tab | Set only when it differs from the word's own band, which the word and view already imply |
+
+On mount the URL wins over the stored pick, which wins over the seed below.
 
 ## Which languages a first-time visitor lands on
 
