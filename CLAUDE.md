@@ -11,10 +11,38 @@ The `Workspace` mirrors the current scenario into the query string so it can be 
 as a deeplink: `?lang=<source>&word=<word>&tl=<gloss>&view=freq|cefr&band=<key>`. Encode
 / decode lives in `apps/web/src/lib/scenario.ts`; `Workspace` is the single owner of all
 five pieces (target language lifted up out of `WordCard`, band tab lifted up out of
-`BandBrowser`). On mount the URL wins over the localStorage/browser defaults; thereafter
-state is written back with `replaceState`. `band` is only pinned when it differs from the
-looked-up word's own band (otherwise it's implied by word + view). `Workspace` is
-client-only (`WorkspaceLazy`, `ssr:false`), so this is all client-side.
+`BandBrowser`). On mount the URL wins over the localStorage pick, which wins over the
+seeded defaults below; thereafter state is written back with `replaceState`. `band` is
+only pinned when it differs from the looked-up word's own band (otherwise it's implied by
+word + view). `Workspace` is client-only (`WorkspaceLazy`, `ssr:false`), so this is all
+client-side.
+
+## The languages a first-time visitor lands on
+
+A visitor with no deeplink and nothing stored has to land on *some* pair, and a fixed one
+is wrong nearly everywhere. So **where the client is seeds the study language** and the
+browser seeds the gloss: in Portugal you land on Portuguese, glossed into whatever you
+read. `apps/web/src/lib/geo.ts` holds the country table and both rules.
+
+Vercel resolves the client IP and passes `x-vercel-ip-country`; `page.tsx` reads it
+server-side and hands it to the `Workspace` as a prop. That costs nothing — the root
+layout already reads cookies for the theme, so the route is dynamic regardless — and it
+beats a `/api/geo` round trip, which would land after the first lookup had already gone
+out under the wrong language. Off Vercel the header is simply absent.
+
+Only countries whose everyday language is one of the six are listed; `Exclude<SourceLang,
+"en">` on the table enforces that English has no entries, since anywhere unlisted falls
+back to it. `CH`/`BE`/`CA`/`LU` speak more than one of ours, so the browser locale picks
+among them and the first listed is the fallback.
+
+**The gloss steps aside from the source**, because the pair's failure mode is glossing a
+word into its own language — which is what a fixed `en` source met an `en-US` browser
+with, and what geo alone would hand a local reading their own vocabulary. `glossLang`
+keeps them apart, falling back to English, or to Spanish when English is what's being
+studied. It applies only to the *derived* value: an explicit pick, from the URL or from
+storage, is honoured as given. `chooseLang` enforces the same thing live — picking the
+language you were glossing to moves the gloss to the one you just left, rather than
+translating it into itself.
 
 ## Data
 

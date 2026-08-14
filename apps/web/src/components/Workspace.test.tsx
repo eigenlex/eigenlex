@@ -136,6 +136,67 @@ describe("Workspace", () => {
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/agua?lang=es"));
   });
 
+  // jsdom's navigator.language is en-US, so the browser is a reader of English
+  // throughout — which is what the corporate-laptop case looks like abroad.
+  describe("the languages a first-time visitor lands on", () => {
+    // The mirrored URL, not the gloss fetch: the word card caches glosses across
+    // renders, so an earlier test having asked for the same pair spares the request.
+    const settlesOn = (lang: string, tl: string) =>
+      waitFor(() => {
+        const p = new URLSearchParams(window.location.search);
+        expect([p.get("lang"), p.get("tl")]).toEqual([lang, tl]);
+      });
+
+    it("studies the language of the country the client is in", async () => {
+      render(<Workspace country="ES" />);
+      expect(await screen.findByRole("region", { name: /meaning of agua/i })).toBeInTheDocument();
+      expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/agua?lang=es"));
+      await settlesOn("es", "en");
+    });
+
+    it("studies English where no language it indexes is spoken", async () => {
+      render(<Workspace country="JP" />);
+      expect(await screen.findByRole("region", { name: /meaning of water/i })).toBeInTheDocument();
+      expect(fetch).toHaveBeenCalledWith(expect.stringContaining("/api/word/water?lang=en"));
+    });
+
+    // The pair the app used to open on for an English browser, which glossed a word
+    // into its own language.
+    it("never glosses a word into the language being studied", async () => {
+      render(<Workspace />);
+      await screen.findByRole("region", { name: /meaning of water/i });
+      await settlesOn("en", "es");
+    });
+
+    it("yields to a language the visitor picked before", async () => {
+      localStorage.setItem("eigenlex:source", "it");
+      render(<Workspace country="ES" />);
+      expect(await screen.findByRole("region", { name: /meaning of acqua/i })).toBeInTheDocument();
+    });
+
+    it("yields to a shared deeplink", async () => {
+      window.history.replaceState(null, "", "/?lang=de&word=wasser&tl=en");
+      render(<Workspace country="ES" />);
+      expect(await screen.findByRole("region", { name: /meaning of wasser/i })).toBeInTheDocument();
+      await settlesOn("de", "en");
+    });
+  });
+
+  it("moves the gloss aside when the visitor studies the language it was glossing to", async () => {
+    const user = userEvent.setup();
+    render(<Workspace />); // opens on en → es
+    await screen.findByRole("region", { name: /meaning of water/i });
+
+    await user.click(screen.getByRole("combobox", { name: /source language/i }));
+    await user.click(await screen.findByRole("option", { name: /Español/ }));
+
+    await waitFor(() => {
+      const p = new URLSearchParams(window.location.search);
+      expect(p.get("lang")).toBe("es");
+      expect(p.get("tl")).toBe("en");
+    });
+  });
+
   it("lets the user switch between the Frequency and CEFR views", async () => {
     const user = userEvent.setup();
     render(<Workspace />);

@@ -1,7 +1,12 @@
+import { headers } from "next/headers";
 import ThemeToggle from "@/components/ThemeToggle";
 import Workspace from "@/components/WorkspaceLazy";
 
-export default function Home() {
+export default async function Home() {
+  // Vercel resolves the client IP to a country, which seeds the source language for a
+  // first-time visitor. Absent everywhere else, which falls back to English. The root
+  // layout already reads cookies, so this route is dynamic either way.
+  const country = (await headers()).get("x-vercel-ip-country");
   // The word card and chip grid need more room than 1100px gave them — and on a
   // phone the gutter is room taken off them, so it stays narrow until there is some.
   return (
@@ -21,7 +26,7 @@ export default function Home() {
           Which words to learn first.
         </p>
       </header>
-      <Workspace />
+      <Workspace country={country} />
     </main>
   );
 }

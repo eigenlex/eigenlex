@@ -15,6 +15,7 @@ import {
   SOURCE_LANG_META,
   type SourceLang,
 } from "@/lib/languages";
+import { glossLang, localLang } from "@/lib/geo";
 import { baseLang } from "@/lib/translate";
 import { readScenario, writeScenario } from "@/lib/scenario";
 import { PANEL, PANEL_LANG } from "@/components/panel";
@@ -48,7 +49,8 @@ function Abbr({ title, children }: { title: string; children: ReactNode }) {
 }
 
 // Persisted picks, so a returning learner lands back where they left off. A shareable
-// URL (see lib/scenario) takes precedence over these when present.
+// URL (see lib/scenario) takes precedence over these when present; where neither says
+// anything, the client's country seeds the study language (see lib/geo).
 const SOURCE_KEY = "eigenlex:source";
 const LANG_KEY = "eigenlex:lang";
 
@@ -196,13 +198,14 @@ function SourceCredit({ lang }: { lang: SourceLang }) {
   );
 }
 
-export default function Workspace() {
+export default function Workspace({ country }: { country?: string | null }) {
   // A scenario carried in the URL wins over stored/default picks, so a shared deeplink
   // restores exactly what the sender saw. Read once, on mount.
   const initial = useRef(readScenario()).current;
+  const browser = browserLang();
 
   const [lang, setLangState] = useState<SourceLang>(
-    () => initial.lang ?? storedSource() ?? DEFAULT_SOURCE,
+    () => initial.lang ?? storedSource() ?? localLang(country, browser) ?? DEFAULT_SOURCE,
   );
   const setLang = (l: SourceLang) => {
     setLangState(l);
@@ -213,9 +216,11 @@ export default function Workspace() {
     }
   };
 
-  // Target/gloss language, lifted out of the word card so it too rides in the URL.
+  // Target/gloss language, lifted out of the word card so it too rides in the URL. Only
+  // the derived value steps aside from `lang` — an explicit pick is honoured as given.
+  // Reading `lang` here is safe: the initializer runs on the first render only.
   const [tl, setTlState] = useState<string>(
-    () => initial.tl ?? storedTarget() ?? browserLang(),
+    () => initial.tl ?? storedTarget() ?? glossLang(lang, browser),
   );
   const setTl = (l: string) => {
     setTlState(l);
@@ -289,6 +294,9 @@ export default function Workspace() {
 
   const chooseLang = (l: SourceLang) => {
     if (l === lang) return;
+    // Studying what you were glossing to: the gloss takes the language just left,
+    // rather than translating the new source language into itself.
+    if (l === tl) setTl(lang);
     setLang(l);
     const word = SOURCE_LANG_META[l].defaultWord;
     setQuery(word);
