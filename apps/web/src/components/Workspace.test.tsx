@@ -109,6 +109,22 @@ describe("Workspace", () => {
     expect([box.selectionStart, box.selectionEnd]).toEqual([0, "Plädoyer".length]);
   });
 
+  // Clicking in asks for a different word far more often than it edits this one.
+  it("selects the whole word when the field is clicked into", async () => {
+    const user = userEvent.setup();
+    render(<Workspace />);
+    const box = screen.getByRole("combobox", { name: /look up a word/i }) as HTMLInputElement;
+    box.blur();
+    box.setSelectionRange(2, 2);
+    await user.click(box);
+    expect([box.selectionStart, box.selectionEnd]).toEqual([0, box.value.length]);
+    // Only the click that focuses it. A second one leaves the caret alone, so the word
+    // is still editable.
+    box.setSelectionRange(2, 2);
+    await user.click(box);
+    expect(box.selectionStart).toEqual(box.selectionEnd);
+  });
+
   it("renders the band browser beneath the search box", () => {
     render(<Workspace />);
     expect(screen.getByText("band browser")).toBeInTheDocument();

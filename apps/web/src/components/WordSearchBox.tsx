@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
   type ReactNode,
 } from "react";
 import { LoadingCircle, TextInput } from "@frontify/fondue/components";
@@ -120,6 +121,20 @@ export default function WordSearchBox({
     input.focus();
     input.select();
   }, [autoFocus, value]);
+
+  // Clicking into the field means a new word far more often than an edit inside the one
+  // it holds, so the click that focuses it takes the whole value. Armed on mousedown and
+  // spent on mouseup: selecting any earlier is undone by the caret the click places.
+  const takeAll = useRef(false);
+  const onInputMouseDown = (e: MouseEvent<HTMLInputElement>) => {
+    takeAll.current = document.activeElement !== e.currentTarget;
+  };
+  const onInputMouseUp = (e: MouseEvent<HTMLInputElement>) => {
+    if (!takeAll.current) return;
+    takeAll.current = false;
+    // A drag has already picked a range, and that one was asked for by hand.
+    if (e.currentTarget.selectionStart === e.currentTarget.selectionEnd) e.currentTarget.select();
+  };
 
   const closeSuggestions = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -249,6 +264,8 @@ export default function WordSearchBox({
             // the tw-w-fit wrapper then hugs it instead of stretching to the row.
             // `size` is forwarded to the <input> at runtime but absent from Fondue's types.
             size: 40,
+            onMouseDown: onInputMouseDown,
+            onMouseUp: onInputMouseUp,
           } as object)}
           aria-label={ariaLabel}
           value={value}
