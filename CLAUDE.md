@@ -59,7 +59,7 @@ than in `WordCard`, and `band` rather than in `BandBrowser`, so both ride in the
 | `source` | Source language | One of the six. `lang` is read too, never written |
 | `word` | The looked-up word | |
 | `target` | Target language | Any language, not just the six. `tl` is read too, never written |
-| `view` | `freq` or `cefr` | |
+| `view` | `freq` or `cefr` | `cefr` is the default, and sits first in the toggle |
 | `band` | Pinned band tab | Set only when it differs from the word's own band, which the word and view already imply |
 
 On mount the URL wins over the stored pick, which wins over the seed below.

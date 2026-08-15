@@ -148,15 +148,15 @@ function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView
             be invalid, so we follow Fondue's SegmentedControl + Tooltip pattern. */}
         <Tooltip.Root>
           <Tooltip.Trigger asChild>
-            <SegmentedControl.Item value="freq">Frequency</SegmentedControl.Item>
-          </Tooltip.Trigger>
-          <Tooltip.Content>Raw frequency</Tooltip.Content>
-        </Tooltip.Root>
-        <Tooltip.Root>
-          <Tooltip.Trigger asChild>
             <SegmentedControl.Item value="cefr">CEFR</SegmentedControl.Item>
           </Tooltip.Trigger>
           <Tooltip.Content>{`${CEFR_TITLE} (CEFR) level`}</Tooltip.Content>
+        </Tooltip.Root>
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
+            <SegmentedControl.Item value="freq">Frequency</SegmentedControl.Item>
+          </Tooltip.Trigger>
+          <Tooltip.Content>Raw frequency</Tooltip.Content>
         </Tooltip.Root>
       </SegmentedControl.Root>
     </div>
@@ -246,7 +246,8 @@ export default function Workspace({ country }: { country?: string | null }) {
   const [error, setError] = useState<string | null>(null);
   // Starts true: the effect below looks the initial word up on mount straight away.
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<BandView>(() => initial.view ?? "freq");
+  // CEFR by default: a level is what a learner acts on, frequency the detail behind it.
+  const [view, setView] = useState<BandView>(() => initial.view ?? "cefr");
   // The band tab the user explicitly picked; null follows the looked-up word's band.
   const [band, setBand] = useState<string | null>(() => initial.band ?? null);
 

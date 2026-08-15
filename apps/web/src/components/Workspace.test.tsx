@@ -220,21 +220,23 @@ describe("Workspace", () => {
     });
   });
 
-  it("lets the user switch between the Frequency and CEFR views", async () => {
+  it("opens on the CEFR view and lets the user switch to Frequency", async () => {
     const user = userEvent.setup();
     render(<Workspace />);
-    const cefr = screen.getByRole("radio", { name: /CEFR/ });
-    expect(cefr).toHaveAttribute("aria-checked", "false");
-    await user.click(cefr);
-    expect(cefr).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: /CEFR/ })).toHaveAttribute("aria-checked", "true");
+
+    const freq = screen.getByRole("radio", { name: /Frequency/ });
+    expect(freq).toHaveAttribute("aria-checked", "false");
+    await user.click(freq);
+    expect(freq).toHaveAttribute("aria-checked", "true");
   });
 
   it("credits the active view's data source", async () => {
     const user = userEvent.setup();
     render(<Workspace />);
-    expect(screen.getByRole("link", { name: "SUBTLEX-US" })).toBeInTheDocument();
-    await user.click(screen.getByRole("radio", { name: /CEFR/ }));
     expect(screen.getByRole("link", { name: "CEFR-J" })).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /Frequency/ }));
+    expect(screen.getByRole("link", { name: "SUBTLEX-US" })).toBeInTheDocument();
   });
 
   it("offers a debounced typeahead that looks up the picked word", async () => {
@@ -364,7 +366,7 @@ describe("Workspace", () => {
       const p = new URLSearchParams(window.location.search);
       expect(p.get("source")).toBe("en");
       expect(p.get("word")).toBe("water");
-      expect(p.get("view")).toBe("freq");
+      expect(p.get("view")).toBe("cefr");
     });
   });
 
