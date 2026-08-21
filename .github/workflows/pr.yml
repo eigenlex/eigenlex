@@ -1,0 +1,42 @@
+name: PR checks
+
+# Pull requests only. A push from a clone already runs .githooks/pre-push, and a
+# push-triggered run would report after the deploy rather than before it. The gap this
+# fills is the other path: a Dependabot PR merged from the GitHub UI never touches the
+# hook, and a dependency bump is exactly where a silent behaviour change hides.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new commit on the PR makes the run in flight irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the pnpm version from the root package.json `packageManager` field, so this
+      # cannot drift from what the repo actually builds with.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter @eigenlex/web typecheck
+
+      - run: pnpm --filter @eigenlex/web test
+
+      # No build step on purpose: Vercel builds every PR as a preview deployment, and
+      # `next build` type-checks there. Running it here too would spend minutes for a
+      # signal we already get.
