@@ -10,6 +10,6 @@ export async function GET(
   const { word } = await params;
   const source = new URL(req.url).searchParams.get("source") ?? DEFAULT_SOURCE;
   if (!isSourceLang(source)) return new Response("unknown language", { status: 404 });
-  const info = getWord(source, decodeURIComponent(word).toLowerCase());
+  const info = getWord(source, word.toLowerCase());
   return info ? Response.json(info) : new Response("not found", { status: 404 });
 }

@@ -39,6 +39,13 @@ describe("GET /api/word/[word]", () => {
     const res = await wordGET(req("/api/word/x?source=zz"), { params: promise({ word: REAL }) });
     expect(res.status).toBe(404);
   });
+
+  // Next decodes the param before the handler sees it, so a decode here would be a second
+  // one — and would throw on anything holding a stray percent.
+  it("treats the param as already decoded", async () => {
+    const res = await wordGET(req("/api/word/x"), { params: promise({ word: "%" }) });
+    expect(res.status).toBe(404);
+  });
 });
 
 describe("GET /api/suggest", () => {

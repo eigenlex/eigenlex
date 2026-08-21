@@ -66,7 +66,7 @@ export async function GET(
   // `dict` mode translates one casing of a case-homograph: casing is significant, so keep
   // it; otherwise lowercase for a stable, lowercase result and better cache hits.
   const dict = q.get("dict") === "1";
-  const text = dict ? decodeURIComponent(word) : decodeURIComponent(word).toLowerCase();
+  const text = dict ? word : word.toLowerCase();
 
   try {
     // The English hop is worth starting up front: a pair Google has no dictionary for
