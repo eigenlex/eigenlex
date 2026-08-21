@@ -81,6 +81,39 @@ const translate = (word: string, qs: string) =>
 
 afterEach(() => vi.unstubAllGlobals());
 
+// This route answers by calling Google, so what it declines to forward matters as much as
+// what it returns: unguarded it is a general-purpose translation relay on our own quota.
+describe("GET /api/translate/[word] input", () => {
+  const refuses = async (word: string, qs: string) => {
+    const upstream = vi.fn(async () => new Response("[]"));
+    vi.stubGlobal("fetch", upstream);
+    const res = await translate(word, qs);
+    expect(res.status).toBe(400);
+    expect(upstream).not.toHaveBeenCalled();
+  };
+
+  it("refuses arbitrary text, which is what a word is not", async () => {
+    await refuses("the quick brown fox jumps over the lazy dog", "source=en&target=es");
+  });
+
+  it("refuses a word longer than any the corpora hold", async () => {
+    await refuses("a".repeat(65), "source=en&target=es");
+  });
+
+  it("refuses a target that is not a language code", async () => {
+    await refuses("water", "source=en&target=notalanguage");
+  });
+
+  it("refuses a source outside the six we index", async () => {
+    await refuses("water", "source=zz&target=es");
+  });
+
+  it("still takes any language Google does as a target", async () => {
+    vi.stubGlobal("fetch", mockGtx("水", "noun", [["水", 0.6]]));
+    expect((await translate("water", "source=en&target=ja&dict=1")).status).toBe(200);
+  });
+});
+
 // Google ranks a translation's alternatives by confidence, not difficulty, so the card badges
 // each with its level in the language it's written in — "agua" A1 beside "orina" B1.
 describe("GET /api/translate/[word] levels", () => {

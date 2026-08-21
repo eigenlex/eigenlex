@@ -4,6 +4,8 @@ import {
   baseLang,
   flattenSenses,
   gtxUrl,
+  isLangCode,
+  isSingleWord,
   needsPivot,
   parseGtx,
   parseSenseGroups,
@@ -16,6 +18,40 @@ describe("baseLang", () => {
     expect(baseLang("PT")).toBe("pt");
     expect(baseLang(null)).toBe("en");
     expect(baseLang("")).toBe("en");
+  });
+});
+
+describe("isSingleWord", () => {
+  it("accepts the shapes the corpora actually hold", () => {
+    expect(isSingleWord("water")).toBe(true);
+    expect(isSingleWord("antidisestablishmentarianism")).toBe(true);
+    // Hyphens and apostrophes are ordinary vocabulary; only whitespace splits a word.
+    expect(isSingleWord("arc-en-ciel")).toBe(true);
+    expect(isSingleWord("l'eau")).toBe(true);
+    expect(isSingleWord("Wasser")).toBe(true);
+  });
+
+  it("rejects anything that is text to relay rather than a word to look up", () => {
+    expect(isSingleWord("the quick brown fox")).toBe(false);
+    expect(isSingleWord("two\nlines")).toBe(false);
+    expect(isSingleWord("a".repeat(65))).toBe(false);
+    expect(isSingleWord("")).toBe(false);
+  });
+});
+
+describe("isLangCode", () => {
+  it("takes any base code, not just the six we index", () => {
+    expect(isLangCode("es")).toBe(true);
+    expect(isLangCode("ja")).toBe(true);
+    expect(isLangCode("haw")).toBe(true);
+  });
+
+  it("rejects what is not a code", () => {
+    expect(isLangCode("notalanguage")).toBe(false);
+    expect(isLangCode("e")).toBe(false);
+    expect(isLangCode("")).toBe(false);
+    // baseLang lowercases first, so an uppercase tag never reaches this shape.
+    expect(isLangCode("ES")).toBe(false);
   });
 });
 

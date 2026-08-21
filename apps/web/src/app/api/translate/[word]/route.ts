@@ -6,6 +6,8 @@ import {
   baseLang,
   flattenSenses,
   gtxUrl,
+  isLangCode,
+  isSingleWord,
   needsPivot,
   parseGtx,
   parseSenseGroups,
@@ -54,6 +56,13 @@ export async function GET(
   const q = new URL(req.url).searchParams;
   const source = baseLang(q.get("source"));
   const target = baseLang(q.get("target"));
+  // Unlike the other routes, this one answers by calling Google rather than by reading our
+  // own data, so it forwards only what the card asks it for: one word, between two language
+  // codes. Anything else is refused here instead of being relayed upstream on our quota.
+  if (!isSingleWord(word)) return new Response("not a word", { status: 400 });
+  if (!isSourceLang(source) || !isLangCode(target)) {
+    return new Response("unknown language", { status: 400 });
+  }
   // `dict` mode translates one casing of a case-homograph: casing is significant, so keep
   // it; otherwise lowercase for a stable, lowercase result and better cache hits.
   const dict = q.get("dict") === "1";

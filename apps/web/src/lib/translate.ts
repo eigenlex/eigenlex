@@ -8,6 +8,29 @@ export function baseLang(tag: string | null | undefined): string {
   return (tag ?? "en").split("-")[0]?.toLowerCase() || "en";
 }
 
+// The longest word in any of the six artifacts is 28 characters
+// ("antidisestablishmentarianism"), so this leaves better than double the headroom for a
+// compound none of the corpora happen to carry.
+const MAX_WORD = 64;
+
+/**
+ * Whether a lookup param is one word. What reaches this endpoint is forwarded to Google,
+ * so it has to be something we would look up rather than arbitrary text to relay. No
+ * artifact holds a word with whitespace in it, and the card only ever asks for one.
+ */
+export function isSingleWord(word: string): boolean {
+  return word.length > 0 && word.length <= MAX_WORD && !/\s/.test(word);
+}
+
+/**
+ * Whether a tag is shaped like the base language code `baseLang` yields — "es", "haw".
+ * The target is any language Google takes, not one of the six, so shape is all there is
+ * to check; it is still what separates a language code from a string to hand upstream.
+ */
+export function isLangCode(tag: string): boolean {
+  return /^[a-z]{2,3}$/.test(tag);
+}
+
 // `dict` adds the bilingual-dictionary block (dt=bd), which — unlike the plain
 // translation — is casing-sensitive ("Essen" -> food/meal, "essen" -> eat/dine), so we
 // use it to translate each casing of a case-homograph.
