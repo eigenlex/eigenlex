@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Runs before `git push`. A push here deploys, so this is the last place a broken commit
+# can be stopped for free — the two checks take about ten seconds together.
+#
+# Deliberately not `pnpm build`: it writes into apps/web/.next and would corrupt a running
+# `pnpm dev`. Vercel builds on its own anyway, and `next build` type-checks there.
+#
+# Skip with `git push --no-verify`.
+set -euo pipefail
+
+echo "pre-push: typecheck"
+pnpm --filter @eigenlex/web typecheck
+
+echo "pre-push: tests"
+pnpm --filter @eigenlex/web test
+
+echo "pre-push: ok"

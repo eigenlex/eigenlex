@@ -59,10 +59,15 @@ A single Next.js app.
 
 ```sh
 pnpm install
+git config core.hooksPath .githooks   # once per clone, see below
 pnpm dev         # http://localhost:3000
 pnpm test        # run tests
 pnpm typecheck   # type-check everything
 ```
+
+A push to `main` deploys, so `.githooks/pre-push` type-checks and runs the suite first —
+about ten seconds. Git only looks in `.githooks` once `core.hooksPath` points there, hence
+the one-time setup above. `git push --no-verify` skips it.
 
 ## Rebuild the data
 
