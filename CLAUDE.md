@@ -335,6 +335,26 @@ re-flows on its own when Diatype replaces the fallback.
 | Hide with `visibility`, keeping the badge in the DOM | It keeps its slot, so the measurement cannot oscillate with its own answer |
 | The overlay is `pointer-events-none` except the badge | Clicking the badge puts the caret at the end of the word, which is what a click just past the text means |
 
+## API route params
+
+Next percent-decodes a route param before the handler sees it, so a `decodeURIComponent`
+in a handler is a second pass. It is not only redundant: on a param still holding a literal
+`%` after Next's decode it throws a `URIError` nothing catches, and the route answers an
+empty 500 where it should answer a 404.
+
+Take the param as given. Lowercase it where the lookup wants that, and nothing else.
+
+| Request | Answers | Why |
+| --- | --- | --- |
+| `/api/word/%` | 400 | Next's own router rejects malformed encoding; the handler never runs |
+| `/api/word/%25` | 404 | Decoded once to `%`, which is not a word |
+| `/api/word/%77ater` | 200 `water` | Decoded once, by Next |
+| `/api/word/%2577ater` | 404 | Decoded once to `%77ater`, which is not a word |
+
+The last row is the check worth remembering: a 200 `water` there means something decoded
+twice. `routes.test.ts` pins the same thing with a `%` param, which 500s under a second
+decode and 404s without one.
+
 ## Response headers
 
 `next.config.mjs` sends the same set on every path. `poweredByHeader: false` drops the
