@@ -17,6 +17,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # `check` is load-bearing beyond this file: branch protection on main requires a status
+  # check by that exact name. Renaming the job does not fail anything — the required check
+  # simply never reports again, which leaves every PR waiting on a gate that cannot pass.
+  # Rename it only together with the rule in Settings → Branches.
   check:
     runs-on: ubuntu-latest
     steps:
