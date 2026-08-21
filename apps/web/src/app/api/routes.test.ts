@@ -55,6 +55,21 @@ describe("GET /api/suggest", () => {
     expect(words.length).toBeLessThanOrEqual(3);
     expect(words.every((w) => w.startsWith("th"))).toBe(true);
   });
+
+  // Unbounded, one lookup hands back the query's whole prefix bucket.
+  it("clamps a limit asking for more than a dropdown's worth", async () => {
+    const res = await suggestGET(req("/api/suggest?q=a&limit=1000000000"));
+    expect(((await res.json()) as string[]).length).toBeLessThanOrEqual(50);
+  });
+
+  it("falls back to the default for a limit that is not a count", async () => {
+    for (const qs of ["limit=abc", "limit=-1", "limit="]) {
+      const res = await suggestGET(req(`/api/suggest?q=a&${qs}`));
+      const words = (await res.json()) as string[];
+      expect(words.length).toBeGreaterThan(0);
+      expect(words.length).toBeLessThanOrEqual(8);
+    }
+  });
 });
 
 describe("GET /api/bands/[view]", () => {
