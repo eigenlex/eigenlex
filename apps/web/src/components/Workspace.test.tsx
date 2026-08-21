@@ -386,6 +386,16 @@ describe("Workspace", () => {
     });
   });
 
+  it("names the looked-up word, as the corpus cases it, in the tab title", async () => {
+    const user = userEvent.setup();
+    render(<Workspace />);
+    await screen.findByRole("region", { name: /meaning of water/i });
+    await waitFor(() => expect(document.title).toBe("eigenlex: water"));
+
+    await user.click(screen.getByRole("button", { name: "pick word" }));
+    await waitFor(() => expect(document.title).toBe("eigenlex: Plädoyer"));
+  });
+
   it("announces an unknown word through an alert", async () => {
     const user = userEvent.setup();
     render(<Workspace />);

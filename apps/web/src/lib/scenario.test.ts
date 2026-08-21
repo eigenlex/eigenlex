@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { readScenario, writeScenario } from "./scenario";
+import { pageTitle, readScenario, writeScenario } from "./scenario";
 
 afterEach(() => window.history.replaceState(null, "", "/"));
 
@@ -49,5 +49,22 @@ describe("writeScenario", () => {
     expect(p.has("band")).toBe(false);
     expect(p.get("source")).toBe("en");
     expect(p.get("view")).toBe("cefr");
+  });
+});
+
+describe("pageTitle", () => {
+  it("names the word", () => {
+    expect(pageTitle("Wasser")).toBe("eigenlex: Wasser");
+  });
+
+  it("falls back to the bare title when there is no word", () => {
+    expect(pageTitle(undefined)).toBe("eigenlex");
+    expect(pageTitle(null)).toBe("eigenlex");
+    expect(pageTitle(" ")).toBe("eigenlex");
+  });
+
+  // The word can arrive straight off the query string, so it is not a corpus word yet.
+  it("caps a word the query string made up", () => {
+    expect(pageTitle("x".repeat(500))).toBe(`eigenlex: ${"x".repeat(40)}`);
   });
 });

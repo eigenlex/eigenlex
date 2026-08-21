@@ -1,6 +1,18 @@
 import { headers } from "next/headers";
 import ThemeToggle from "@/components/ThemeToggle";
 import Workspace from "@/components/WorkspaceLazy";
+import { pageTitle } from "@/lib/scenario";
+
+// A shared deeplink names its word in the tab and in link previews, before any client
+// JS runs. `Workspace` recases it to the corpus's spelling once the lookup lands.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ word?: string | string[] }>;
+}) {
+  const { word } = await searchParams;
+  return { title: pageTitle(Array.isArray(word) ? word[0] : word) };
+}
 
 export default async function Home() {
   // Vercel resolves the client IP to a country, which seeds the source language for a

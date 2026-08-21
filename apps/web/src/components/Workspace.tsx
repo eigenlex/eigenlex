@@ -18,7 +18,7 @@ import {
 } from "@/lib/languages";
 import { sourceLang, targetLang } from "@/lib/geo";
 import { baseLang } from "@/lib/translate";
-import { readScenario, writeScenario } from "@/lib/scenario";
+import { pageTitle, readScenario, writeScenario } from "@/lib/scenario";
 import { PANEL, PANEL_LANG } from "@/components/panel";
 
 // Expanded forms for the abbreviations we show (WCAG 3.1.4).
@@ -307,6 +307,11 @@ export default function Workspace({ country }: { country?: string | null }) {
       band: band && band !== anchor ? band : null,
     });
   }, [source, target, view, band, info]);
+
+  // Name the word in the tab title too, so a pinned tab or a bookmark says which one.
+  useEffect(() => {
+    document.title = pageTitle(info?.word);
+  }, [info]);
 
   const chooseSource = (l: SourceLang) => {
     if (l === source) return;

@@ -34,6 +34,16 @@ export interface Scenario {
   band: string | null;
 }
 
+/**
+ * The document title for a scenario's word — the other place the scenario surfaces.
+ * Shared so the server-rendered title and the client's agree word for word.
+ */
+export function pageTitle(word: string | null | undefined): string {
+  // Sliced because the word can come straight off the query string, unlooked-up.
+  const w = word?.trim().slice(0, 40);
+  return w ? `eigenlex: ${w}` : "eigenlex";
+}
+
 /** The scenario encoded in the current URL, if any (client-only; empty on the server). */
 export function readScenario(): Partial<Scenario> {
   if (typeof window === "undefined") return {};

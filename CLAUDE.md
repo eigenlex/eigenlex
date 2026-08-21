@@ -38,7 +38,7 @@ ours. `source`/`target` map onto them at that one call.
 | `src/lib/languages.ts` | `SOURCE_LANGS`, `SourceLang`, `TargetLang`, `SOURCE_LANG_META` |
 | `src/lib/bands.ts` | Server registry, `getWord`, all word lookups |
 | `src/lib/geo.ts` | Country table, `sourceLang`, `targetLang` |
-| `src/lib/scenario.ts` | URL encode / decode |
+| `src/lib/scenario.ts` | URL encode / decode, `pageTitle` |
 | `src/lib/translate.ts` | Google Translate fetching and parsing |
 | `scripts/build-bands.ts` | Artifact build, the `LANGS` table |
 | `data/word-bands.<code>.json` | Committed artifact, one per language |
@@ -63,6 +63,12 @@ than in `WordCard`, and `band` rather than in `BandBrowser`, so both ride in the
 | `band` | Pinned band tab | Set only when it differs from the word's own band, which the word and view already imply |
 
 On mount the URL wins over the stored pick, which wins over the seed below.
+
+The tab title carries the word too: `eigenlex: <word>`, in the corpus's display casing
+(`eigenlex: Wasser`). `generateMetadata` renders it from `?word=` server-side, so a shared
+link names its word in the tab and in link previews before any client JS runs; `Workspace`
+recases it to the corpus's spelling once the lookup lands. Both call `pageTitle`, which caps
+the word, since a deeplink's has not been looked up.
 
 ## Which languages a first-time visitor lands on
 
