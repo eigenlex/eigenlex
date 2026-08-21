@@ -28,13 +28,14 @@ export const revalidate = 86400;
 function levelsOf(target: string, groups: SenseGroup[], translation: string) {
   // Levels come off the indexed word lists, so the target must be a source language too.
   if (!isSourceLang(target)) return {};
-  const levels: Record<string, WordLevel> = {};
+  // A Map, because `in` on an object is true for every Object.prototype key.
+  const levels = new Map<string, WordLevel>();
   for (const term of [...groups.flatMap((g) => g.terms), translation]) {
-    if (!term || term in levels) continue;
+    if (!term || levels.has(term)) continue;
     const level = getLevel(target, term);
-    if (level) levels[term] = level;
+    if (level) levels.set(term, level);
   }
-  return levels;
+  return Object.fromEntries(levels);
 }
 
 async function gtx(

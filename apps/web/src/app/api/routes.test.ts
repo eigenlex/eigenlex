@@ -160,6 +160,15 @@ describe("GET /api/translate/[word] levels", () => {
     expect(levels).toEqual({});
   });
 
+  // "constructor" is an ordinary English headword. Keyed on an object literal it looked
+  // already-seen, because `in` walks the prototype chain, and so never got a badge.
+  it("levels a term that shares a name with an Object.prototype key", async () => {
+    vi.stubGlobal("fetch", mockGtx("constructor", "noun", [["constructor", 0.6]]));
+    const { levels } = await (await translate("constructor", "source=es&target=en&dict=1")).json();
+    expect(Object.hasOwn(levels, "constructor")).toBe(true);
+    expect(levels.constructor.rank).toBeGreaterThan(0);
+  });
+
   // Phrases and words the list has no headword for are ordinary, and go unbadged.
   it("skips a term the target language has no entry for", async () => {
     vi.stubGlobal("fetch", mockGtx("naja", "noun", [["naja", 0.6], ["cuchillo", 0.5]]));
