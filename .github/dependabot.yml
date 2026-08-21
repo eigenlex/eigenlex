@@ -1,0 +1,26 @@
+# Dependency drift is a clock, not a mistake: the advisories that prompted this were a
+# lockfile left behind by a range that already allowed the fix. Weekly, grouped, so a
+# quiet week is one merge rather than a page of them.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    # pnpm workspace. The root holds the lockfile; apps/web holds next, react and fondue.
+    directories:
+      - "/"
+      - "/apps/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      # Routine churn, batched. Majors stay out of these on purpose — they are the ones
+      # that change behaviour, and they deserve a PR and a read of their own.
+      production:
+        dependency-type: "production"
+        update-types: ["minor", "patch"]
+      development:
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
