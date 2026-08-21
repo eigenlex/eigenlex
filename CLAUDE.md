@@ -39,7 +39,8 @@ ours. `source`/`target` map onto them at that one call.
 | `src/lib/bands.ts` | Server registry, `getWord`, all word lookups |
 | `src/lib/geo.ts` | Country table, `sourceLang`, `targetLang` |
 | `src/lib/scenario.ts` | URL encode / decode, `pageTitle` |
-| `src/lib/translate.ts` | Google Translate fetching and parsing |
+| `src/lib/translate.ts` | Google Translate fetching and parsing, and the relay gate |
+| `next.config.mjs` | Response headers, the CSP, `distDir` |
 | `scripts/build-bands.ts` | Artifact build, the `LANGS` table |
 | `data/word-bands.<code>.json` | Committed artifact, one per language |
 
@@ -247,6 +248,27 @@ Every word card fetches `dict=1`, which adds Google's `dt=bd` dictionary block.
 | Cut senses relative to their group's best (`MIN_RELATIVE_SCORE`), not at a fixed rank | Senses trail off into noise: en→de "dog" runs Hund .51, Rüde .0018, then "Schreckschraube" (battle-axe) at 3e-6 |
 | Treat an unscored entry as no-confidence | It goes the same way |
 
+### What the route agrees to relay
+
+`/api/translate/[word]` is the one route that answers by calling someone else. Whatever
+reaches it is forwarded to Google on our quota, so it checks that the request is one the
+card could have made before it makes the call. Without that it is a general-purpose
+translation API for anyone who finds it, and Google rate-limits by calling IP — which is
+our egress IP, so an abuser's flood lands on real lookups.
+
+| Gate | Rule | Where the bound comes from |
+| --- | --- | --- |
+| `isSingleWord` | One token, no whitespace, at most 64 characters | The longest word in the six artifacts is 28, `antidisestablishmentarianism`, and none holds whitespace. Hyphens and apostrophes are ordinary vocabulary — fr alone has 1,145 hyphenated headwords, `arc-en-ciel`, `quelqu'un` — so only whitespace splits a word |
+| `isSourceLang` | The source is one of the six | It is the language being studied, so it always is |
+| `isLangCode` | The target is shaped like `baseLang` output, 2–3 lowercase letters | The target is any language Google takes, not one of the six, so shape is all there is to check. It still separates `ja` and `haw` from a string to hand upstream |
+
+Every refusal answers 400, not the 404 the other routes use for an unknown language: those
+looked and there is no such word list, while these gate what this one will pass on. The
+tests assert that Google is never called — the status is not the point.
+
+Both predicates live in `lib/translate.ts`, next to `gtxUrl`, so the gate sits with the
+call it guards.
+
 ### English is Google's hub
 
 Only pairs touching English have a dictionary at all.
@@ -312,6 +334,35 @@ re-flows on its own when Diatype replaces the fallback.
 | Hide it when the word leaves no room | 27-char German at a 250px phone field. `fits` compares the overlay's scroll and client widths |
 | Hide with `visibility`, keeping the badge in the DOM | It keeps its slot, so the measurement cannot oscillate with its own answer |
 | The overlay is `pointer-events-none` except the badge | Clicking the badge puts the caret at the end of the word, which is what a click just past the text means |
+
+## Response headers
+
+`next.config.mjs` sends the same set on every path. `poweredByHeader: false` drops the
+framework name; Vercel adds HSTS on its own, so we do not.
+
+| Header | Value |
+| --- | --- |
+| `Content-Security-Policy` | See below |
+| `X-Content-Type-Options` | `nosniff` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `X-Frame-Options` | `DENY` — what `frame-ancestors` already says, for browsers that do not read it |
+| `Permissions-Policy` | Camera, microphone, geolocation and payment all off. The page asks for none of them |
+
+**The policy is `'self'` and nothing else.** Everything the page loads is same-origin —
+no CDN, no webfont host, no analytics. That is what makes a tight CSP possible, and it is
+also the thing to remember: a Google Font link, a CDN script or an outbound beacon is
+blocked, and blocked quietly. Add the host to the matching directive in the same change,
+or the resource simply never arrives.
+
+| Concession | Why |
+| --- | --- |
+| `script-src 'unsafe-inline'` | Next streams the RSC payload through inline `<script>` tags. Nonces would need middleware, which is a larger surface than this buys on a page with no HTML sink |
+| `style-src 'unsafe-inline'` | Fondue and the `style={{…}}` props |
+| Dev only: `'unsafe-eval'`, `connect-src ws:` | HMR evals and opens a socket back. Keyed off `NODE_ENV`, so production runs the stricter policy — check a CSP change against a production build, not just `pnpm dev` |
+
+The theme cookie takes `; secure` only over https. Unconditional would break a dev server
+reached over plain http on the LAN, where the browser drops a Secure cookie and the theme
+stops persisting between loads.
 
 ## Verifying a build while the web dev server is running
 
