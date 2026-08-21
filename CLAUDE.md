@@ -396,6 +396,18 @@ start returning 500s.
 | `pnpm --filter @eigenlex/web build:check` | Yes — builds into `.next-build` |
 | `pnpm build`, `turbo run build`, `next build` | No — stop the dev server first |
 
+`.githooks/pre-push` runs the typecheck and the suite before a push, which is why it runs
+neither of the bottom row: a hook that built would corrupt whatever dev server is up. It
+needs `git config core.hooksPath .githooks` once per clone, and `--no-verify` skips it.
+
+Two test files are nets rather than cases, and are worth extending rather than working
+around:
+
+| File | Holds |
+| --- | --- |
+| `src/app/api/hostile-input.test.ts` | Every route crossed with junk input, asserting no 5xx. A new route or param means a new row in `POSITIONS` |
+| `src/app/next-config.test.ts` | That the response headers are still sent, and that the CSP still names no host |
+
 `build:check` leaves one tracked file dirty: Next rewrites `next-env.d.ts` to import
 `./.next-build/types/routes.d.ts`. Check it out again afterwards, or the committed file
 points at a directory only that command builds.
