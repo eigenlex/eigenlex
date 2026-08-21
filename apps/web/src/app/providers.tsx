@@ -32,7 +32,9 @@ const systemTheme = (): Theme =>
   window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 
 const writeCookie = (name: string, value: string) => {
-  document.cookie = `${name}=${value}; path=/; max-age=31536000; samesite=lax`;
+  // Not over plain http, where the browser would drop a Secure cookie on the floor.
+  const secure = window.location.protocol === "https:" ? "; secure" : "";
+  document.cookie = `${name}=${value}; path=/; max-age=31536000; samesite=lax${secure}`;
 };
 
 // Fondue's components ship without a "use client" directive, so the ThemeProvider
