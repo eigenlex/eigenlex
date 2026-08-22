@@ -269,6 +269,34 @@ tests assert that Google is never called — the status is not the point.
 Both predicates live in `lib/translate.ts`, next to `gtxUrl`, so the gate sits with the
 call it guards.
 
+### The rate limit in front of it
+
+The gate is the second line of defence. The first is a Vercel firewall rule, which lives
+in the dashboard and nowhere in this repo — nothing here would tell you it exists.
+
+| Setting | Value |
+| --- | --- |
+| Where | `https://vercel.com/eigenlex/eigenlex-web/settings/firewall` |
+| Matches | Path starts with `/api/translate` |
+| Keyed by | IP |
+| Limit | 100 requests per 60s, then deny |
+
+A blocked request answers **403, not 429**: Vercel's rate-limit action is a deny, and a
+deny is a 403. It carries `x-vercel-mitigated: deny`, a plain-text `Forbidden` body and
+`server: Vercel`. No route here returns 403, so that header is what identifies the block
+as the edge rather than the app. The window clears itself.
+
+Exercising it costs nothing upstream, because the gate refuses a 200-character word
+before calling Google. Expect 100 × `400` and then `403`:
+
+```sh
+W=$(python3 -c 'print("a"*200)')
+for i in $(seq 1 130); do
+  curl -s -o /dev/null -w '%{http_code}\n' \
+    "https://eigenlex-web.vercel.app/api/translate/$W?source=en&target=es"
+done | sort | uniq -c
+```
+
 ### English is Google's hub
 
 Only pairs touching English have a dictionary at all.
