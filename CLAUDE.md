@@ -372,16 +372,32 @@ empty 500 where it should answer a 404.
 
 Take the param as given. Lowercase it where the lookup wants that, and nothing else.
 
-| Request | Answers | Why |
-| --- | --- | --- |
-| `/api/word/%` | 400 | Next's own router rejects malformed encoding; the handler never runs |
-| `/api/word/%25` | 404 | Decoded once to `%`, which is not a word |
-| `/api/word/%77ater` | 200 `water` | Decoded once, by Next |
-| `/api/word/%2577ater` | 404 | Decoded once to `%77ater`, which is not a word |
+Deployed, the param is decoded one more time than it is locally: Vercel's edge decodes the
+path before Next does. The same request answers differently in the two places, so the
+number of decodes is a property of where the code runs, not of the code.
 
-The last row is the check worth remembering: a 200 `water` there means something decoded
-twice. `routes.test.ts` pins the same thing with a `%` param, which 500s under a second
-decode and 404s without one.
+| Request | `next start` | Vercel |
+| --- | --- | --- |
+| `/api/word/%` | 500 | 400 |
+| `/api/word/%25` | 404 | 404 |
+| `/api/word/%2525` | 404 | 404 |
+| `/api/word/%77ater` | 200 `water` | 200 `water` |
+| `/api/word/%2577ater` | 404 | **200 `water`** |
+| `/api/word/%252577ater` | 404 | 404 |
+
+The rule is one extra decode: Vercel needs one more `%25` layer than a local server to land
+on a word. The exception is the malformed end of it. Where that extra decode would leave a
+bare `%`, the edge answers 400 or 404 rather than handing Next the 500.
+
+That 500 is Next's own, not ours. Every dynamic param does it — `/api/bands/%`,
+`/api/band/%/%`, `/api/translate/%` — while `/api/suggest?q=%` answers 200 and the static
+`/%` answers 404. It never ships, because the edge rejects a bare `%` first.
+
+No test sees any of this. `hostile-input.test.ts` and `routes.test.ts` call handlers
+directly with params already decoded, which is the right thing to test: `routes.test.ts`'s
+`%` param 500s under a second decode in the handler and 404s without one. Both guard the
+handler, neither guards what sits above it, so settle a decode question against the
+deployed URL and not against `next start`.
 
 ## Response headers
 
