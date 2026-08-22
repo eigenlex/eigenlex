@@ -59,8 +59,11 @@ export default function WordSearchBox({
    * Trailed just after the field's text, inside the box. Only pass it for something that
    * describes *this* text — it is laid out against the current value, so a caller must
    * withhold it while the two have drifted apart.
+   *
+   * Called with the id of the run holding the word, so a badge can point at it and say
+   * what it is a badge *of* when focus lands on it alone.
    */
-  badge?: ReactNode;
+  badge?: ((describedBy: string) => ReactNode) | undefined;
 }) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
@@ -72,6 +75,8 @@ export default function WordSearchBox({
   const suggestSeq = useRef(0);
   const listboxId = useId();
   const optionId = (i: number) => `${listboxId}-opt-${i}`;
+  // The mirror below holds the word, which is what the badge beside it annotates.
+  const wordId = `${listboxId}-word`;
 
   // The badge is laid out after a hidden copy of the text, so it lands where the text
   // ends without anything being measured — and re-flows by itself when the webfont
@@ -302,7 +307,9 @@ export default function WordSearchBox({
             {/* One inline run, so the badge takes the word's baseline rather than being
                 centred against it on its own — the flex row only centres the run. */}
             <div className="tw-whitespace-pre">
-              <span className="tw-invisible">{value}</span>
+              <span id={wordId} className="tw-invisible">
+                {value}
+              </span>
               {/* A mouse affordance over a native input, not a control: it puts the
                   caret where a click past the word means. The keyboard has End. */}
               {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
@@ -313,7 +320,7 @@ export default function WordSearchBox({
                   caretToEnd();
                 }}
               >
-                {badge}
+                {badge(wordId)}
               </span>
             </div>
           </div>

@@ -343,10 +343,12 @@ quiet `CefrBadge` carrying the band name and rank in its tooltip.
 
 | Rule | Why |
 | --- | --- |
-| Separators are bare text and the badges are the only elements | Nothing but the badge sits between one term and the next |
+| Separators are bare text | Nothing but the badge sits between one term and the next |
+| A badged term is wrapped in a `<span id>` | Somewhere for its badge to point at. Only a badged one — the wrapper exists to be pointed at, and a span carries no text either way |
 | The badge is `select-none` | A copied line is then the translation and nothing else. The margin keeps a space out of it; without this the letters stayed, and "water, aqua" copied as "waterA1, aquaB2" |
 | No whitespace between a term and its badge | A wrap can never split the two |
 | `role="img"` carries the detail as the badge's accessible name | Hidden text would say the same thing but ride along into anything copied out of the translation |
+| The word the badge is for is its **description**, not part of its name | Reading the line, the word and its badge are already adjacent, so a name holding both would say the word twice. Tabbing lands on the badge alone, where the level has no subject. A description is announced on focus and not while reading, which is the split exactly |
 
 ### The badge in the search field
 
@@ -379,7 +381,7 @@ tooltip is open.
 
 | Where | Rule |
 | --- | --- |
-| `CefrBadge` | The band and rank are the badge's `role="img"` name. `aria-describedby=""` empties the one Radix would point at its own tooltip |
+| `CefrBadge` | The band and rank are the name; the word they belong to is the description. `aria-describedby` is always ours, never Radix's — the name already says what its tooltip says. In the search field the description points at the `invisible` mirror of the value, which Chrome reads because a directly-referenced node counts even when hidden |
 | `SwapButton` | Same trade: disabled, the reason why is in the name, not only in the tooltip |
 | `AbbrLink` | `title` on the `<abbr>`, and no Fondue tooltip. A Fondue one needs its own focusable trigger, which made each credit two tab stops with the same name, and it would paint a second tooltip over the native one |
 | `WordSearchBox` | Named by its section heading (`labelledBy`), not by a second copy of the same string |

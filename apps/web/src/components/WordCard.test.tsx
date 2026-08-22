@@ -248,6 +248,17 @@ const B2 = { key: "B2", label: "B2 · Upper-intermediate", rank: 9002 };
 
 // Google orders the alternatives by confidence, not by difficulty, so "water" and
 // "aqua" arrive as equals. The level is what tells a learner which one is theirs.
+
+/** The line as it reads: the badges annotate it, they are not part of it. */
+function reading(): string {
+  const line = document.querySelector("[aria-live] span[lang]");
+  if (!line) throw new Error("no translation line");
+  return [...line.querySelectorAll('[role="img"]')].reduce(
+    (text, badge) => text.replace(badge.textContent ?? "", ""),
+    line.textContent ?? "",
+  );
+}
+
 describe("WordCard levels", () => {
   it("trails each alternative with its own CEFR level", async () => {
     vi.stubGlobal(
@@ -257,9 +268,28 @@ describe("WordCard levels", () => {
     render(<WordCard word="agua" forms={["agua"]} source="es" target="en" onTargetChange={() => {}} />);
 
     // The badges annotate the line; its text is still the translation itself.
-    expect(await screen.findByText("water, aqua")).toBeInTheDocument();
+    await screen.findByText("water");
+    expect(reading()).toBe("water, aqua");
     expect(screen.getByText("A1")).toBeInTheDocument();
     expect(screen.getByText("B2")).toBeInTheDocument();
+  });
+
+  // Tabbing lands on a badge on its own, where "A1 · Beginner" has no subject unless the
+  // badge says which word it is for. Reading the line, the two are already adjacent.
+  it("tells each badge which word it belongs to", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockGroups([{ pos: "noun", terms: ["water", "aqua"] }], "water", { water: A1, aqua: B2 }),
+    );
+    render(<WordCard word="agua" forms={["agua"]} source="es" target="en" onTargetChange={() => {}} />);
+    await screen.findByText("water");
+
+    for (const [term, band] of [["water", "A1"], ["aqua", "B2"]]) {
+      const badge = screen.getByText(band!);
+      const described = badge.getAttribute("aria-describedby");
+      expect(described).toBeTruthy();
+      expect(document.getElementById(described!)).toHaveTextContent(term!);
+    }
   });
 
   it("names the badge with its band and rank, for hover and for AT alike", async () => {
@@ -284,7 +314,8 @@ describe("WordCard levels", () => {
       mockGroups([{ pos: "noun", terms: ["knife", "usar naja"] }], "knife", { knife: A1 }),
     );
     render(<WordCard word="faca" forms={["faca"]} source="pt" target="en" onTargetChange={() => {}} />);
-    await screen.findByText("knife, usar naja");
+    await screen.findByText("knife");
+    expect(reading()).toBe("knife, usar naja");
     expect(screen.getAllByRole("img")).toHaveLength(1);
   });
 

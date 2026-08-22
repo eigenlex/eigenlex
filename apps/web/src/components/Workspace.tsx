@@ -437,9 +437,14 @@ export default function Workspace({ country }: { country?: string | null }) {
                 // Sitting against the text, it would otherwise read as a claim about
                 // whatever is being typed over it.
                 badge={
-                  info && query.trim().toLowerCase() === info.word.toLowerCase() ? (
-                    <CefrBadge level={{ ...info.cefr, rank: info.rank }} />
-                  ) : null
+                  info && query.trim().toLowerCase() === info.word.toLowerCase()
+                    ? (describedBy) => (
+                        <CefrBadge
+                          level={{ ...info.cefr, rank: info.rank }}
+                          describedBy={describedBy}
+                        />
+                      )
+                    : undefined
                 }
               />
               {/* Context-sensitive help for the field (WCAG 3.3.5). aria-hidden so it is

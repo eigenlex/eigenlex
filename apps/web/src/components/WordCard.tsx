@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useId, useState } from "react";
 import CefrBadge from "@/components/CefrBadge";
 import LangSelect from "@/components/LangSelect";
 import Loading from "@/components/Loading";
@@ -163,8 +163,11 @@ const STATUS_TYPE = { display: GLOSS_TYPE.display, lineHeight: GLOSS_TYPE.lineHe
 
 /**
  * One reading's alternatives, each trailed by its own CEFR level where the target language
- * is one we index. The separators are plain text and the badges are the only elements, so
- * the line's text content is still exactly the translation ("water, aqua").
+ * is one we index. The separators are plain text, so the line reads as the translation.
+ *
+ * A badged term is wrapped so its badge can point at it — see `CefrBadge`. Only a badged
+ * one: the wrapper exists to be pointed at, and a span carries no text of its own either
+ * way.
  */
 function Terms({
   terms,
@@ -175,15 +178,17 @@ function Terms({
   levels: Levels;
   target: TargetLang;
 }) {
+  const base = useId();
   return (
     <span lang={target} className="tw-body-large tw-text-primary" style={GLOSS_TYPE}>
       {terms.map((term, i) => {
         const level = levels[term];
+        const termId = `${base}-${i}`;
         return (
           <Fragment key={`${i}:${term}`}>
             {i > 0 && ", "}
-            {term}
-            {level && <CefrBadge level={level} />}
+            {level ? <span id={termId}>{term}</span> : term}
+            {level && <CefrBadge level={level} describedBy={termId} />}
           </Fragment>
         );
       })}

@@ -18,8 +18,20 @@ const BADGE =
  * aloud, and the alternative, hidden text, would ride along into anything copied out of the
  * translation. The name is the only channel that survives browse mode, where nothing is
  * focused and no tooltip is open, so it holds the detail rather than the tooltip.
+ *
+ * `describedBy` names the word this level belongs to. Reading the line, the two arrive
+ * next to each other and it is not needed; tabbing lands on the badge alone, where the
+ * level would otherwise have no subject. A description is the right channel for exactly
+ * that reason — it is announced on focus, and not while reading the line.
  */
-export default function CefrBadge({ level }: { level: WordLevel }) {
+export default function CefrBadge({
+  level,
+  describedBy,
+}: {
+  level: WordLevel;
+  /** Id of the element holding the word this level is for. */
+  describedBy?: string;
+}) {
   const detail = `${level.label} · rank ${level.rank.toLocaleString()}`;
   return (
     <Tooltip.Root>
@@ -30,9 +42,9 @@ export default function CefrBadge({ level }: { level: WordLevel }) {
           tabIndex={0}
           role="img"
           aria-label={detail}
-          // The name already says this, so the tooltip is visual only. Radix points this at
-          // its tooltip while open; a child prop wins Slot's merge, and this one empties it.
-          aria-describedby=""
+          // Never Radix's: the name already says what its tooltip says. A child prop wins
+          // Slot's merge, so this stands whether it points at the word or at nothing.
+          aria-describedby={describedBy ?? ""}
           className={BADGE}
         >
           {level.key}
