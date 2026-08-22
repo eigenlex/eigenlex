@@ -13,7 +13,9 @@
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
     "typecheck": "turbo run typecheck",
-    "dev": "turbo run dev"
+    "dev": "turbo run dev",
+    "skills:sync": "node scripts/sync-next-skills.mjs",
+    "skills:check": "node scripts/sync-next-skills.mjs --check"
   },
   "devDependencies": {
     "turbo": "^2.10.11",

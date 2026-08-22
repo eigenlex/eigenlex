@@ -411,3 +411,30 @@ around:
 `build:check` leaves one tracked file dirty: Next rewrites `next-env.d.ts` to import
 `./.next-build/types/routes.d.ts`. Check it out again afterwards, or the committed file
 points at a directory only that command builds.
+
+## Vendored Next.js skills
+
+`.claude/skills/` holds three skills copied from `vercel/next.js@canary/skills`:
+`next-cache-components-adoption`, `next-cache-components-optimizer` and `next-dev-loop`.
+Nothing in the repo pulls on them, so nothing would notice them rotting.
+
+| Command | Does |
+| --- | --- |
+| `pnpm skills:check` | Report drift against upstream, write nothing, exit 1 if any |
+| `pnpm skills:sync` | Write the upstream copies over ours |
+
+Which skills are vendored is read off the disk: any directory in `.claude/skills/` that
+also exists upstream is synced, and upstream skills absent here are listed as
+`not vendored`. So vendoring a fourth is a `cp`, with no edit to the script. `fondue` is
+ours and upstream has no such directory, so it is never touched.
+
+`.github/workflows/skills-freshness.yml` runs the sync weekly and opens a PR on the
+`chore/next-skills-sync` branch when upstream has moved. Keeping the copies rather than
+installing Vercel's plugin is a deliberate trade: the plugin would track `canary` on its
+own, but it clones a 2.42GB monorepo for three markdown files and pins nothing.
+
+| Trap | Detail |
+| --- | --- |
+| Rate limit | The script makes one GitHub API call. Unauthenticated that budget is 60/hour per IP, so a local run can fail on someone else's spending; `GITHUB_TOKEN` raises it |
+| Required check | A branch pushed with `github.token` fires no `pull_request` event, so `pr.yml` never runs and the required `check` status never reports. The workflow dispatches `pr.yml` on the branch to put that status on the same commit |
+| Scheduled runs stop | GitHub disables a cron workflow after 60 days of repo inactivity. `workflow_dispatch` restarts it |
