@@ -50,6 +50,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: pnpm --filter @eigenlex/web lint
+
       - run: pnpm --filter @eigenlex/web typecheck
 
       - run: pnpm --filter @eigenlex/web test

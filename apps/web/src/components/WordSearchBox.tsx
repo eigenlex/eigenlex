@@ -303,6 +303,9 @@ export default function WordSearchBox({
                 centred against it on its own — the flex row only centres the run. */}
             <div className="tw-whitespace-pre">
               <span className="tw-invisible">{value}</span>
+              {/* A mouse affordance over a native input, not a control: it puts the
+                  caret where a click past the word means. The keyboard has End. */}
+              {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
               <span
                 className={`tw-pointer-events-auto ${fits ? "" : "tw-invisible"}`}
                 onMouseDown={(e) => {
@@ -335,6 +338,9 @@ export default function WordSearchBox({
             className="tw-absolute tw-inset-x-0 tw-top-full tw-z-20 tw-mt-1 tw-max-h-64 tw-overflow-auto tw-rounded-large tw-border tw-border-line-subtle tw-bg-surface tw-py-1 tw-shadow-mid"
           >
             {suggestions.map((w, i) => (
+              // The combobox pattern keeps the keys on the input and points
+              // aria-activedescendant here, so an option needs no listener of its own.
+              // eslint-disable-next-line jsx-a11y/click-events-have-key-events
               <li
                 key={w}
                 id={optionId(i)}

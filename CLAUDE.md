@@ -386,6 +386,30 @@ tooltip is open.
 | Search help | `aria-hidden`, so it is read once as the field's description. A hidden element still contributes its text when `aria-describedby` names it directly |
 | Prose | A language is named in English (`englishName`) inside an English sentence. `SOURCE_LANG_META.name` is the endonym, which is the picker's job |
 
+### The lint rule, and what it cannot see
+
+`eslint.config.mjs` runs `jsx-a11y` over `src/**/*.tsx`. `pnpm --filter @eigenlex/web lint`,
+and it runs in the pre-push hook and in `pr.yml` alongside the typecheck.
+
+| Choice | Why |
+| --- | --- |
+| `recommended`, not `strict` | `strict` withdraws the escape hatches this app uses on purpose — among them `<ul role="listbox">` with `<li role="option">`, which is the ARIA combobox pattern as the APG writes it |
+| Two rules added on top | `control-has-associated-label` and `anchor-ambiguous-text`, both off in `recommended` and both on the subject of every control saying something |
+| `<abbr>` needs a `title` | A `no-restricted-syntax` selector. There is no `jsx-a11y` rule for it, and the failure it guards already happened here: the expansion was passed to a wrapper and never reached the element |
+| Unused disables are errors | An exemption that outlives its reason is a finding of its own |
+
+Six places disable a rule inline, each with the reason above it. Four are the same two
+blind spots: a composite using **roving tabindex** looks unfocusable to
+`interactive-supports-focus`, because the tabindex is on the children; and an ARIA
+combobox's options look inert to `click-events-have-key-events`, because the keys are on
+the input. The other two are the deliberate `autoFocus` and `CefrBadge`'s focusable
+`role="img"`.
+
+**Most of what this section documents is invisible to the linter.** It reads one element
+at a time, so it cannot see a name computed from two elements, a tablist with no panel, a
+string said twice in different components, or anything Fondue renders. The tests are what
+hold those; the linter catches the malformed single element.
+
 ### Where Fondue's markup has to be corrected
 
 Both are internals, matched by structure, because the CSS module's class is a build hash.

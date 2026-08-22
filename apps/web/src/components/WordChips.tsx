@@ -417,6 +417,8 @@ export default function WordChips({
 
   return (
     <div className="tw-relative">
+      {/* Roving tabindex again: the mounted chips are the focus targets. */}
+      {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus */}
       <div
         ref={scrollRef}
         onScroll={onScroll}

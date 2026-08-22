@@ -431,6 +431,7 @@ export default function Workspace({ country }: { country?: string | null }) {
                 placeholder="look up a word…"
                 busy={loading}
                 // The one thing the page is for: it opens ready to be typed into.
+                // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
                 // Only while the field still holds the word this level belongs to.
                 // Sitting against the text, it would otherwise read as a claim about

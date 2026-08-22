@@ -228,6 +228,9 @@ export default function BandBrowser({
                 ))}
               </Select>
             </div>
+            {/* The tabs carry the tabindex, not the tablist — that is what roving
+                tabindex is, and the rule cannot see across to the children. */}
+            {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus */}
             <div
               role="tablist"
               aria-label={bandsLabel}

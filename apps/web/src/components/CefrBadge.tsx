@@ -25,6 +25,8 @@ export default function CefrBadge({ level }: { level: WordLevel }) {
     <Tooltip.Root>
       <Tooltip.Trigger asChild>
         <span
+          // Focusable on purpose, so the tooltip is reachable without a mouse.
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
           tabIndex={0}
           role="img"
           aria-label={detail}
