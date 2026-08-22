@@ -17,7 +17,7 @@
 //
 // Needs a Chromium-family browser on PATH; set CHROME to name one.
 
-import { readFileSync, writeFileSync, mkdtempSync, rmSync, accessSync, constants } from "node:fs";
+import { readFileSync, writeFileSync, writeSync, mkdtempSync, rmSync, accessSync, constants } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
@@ -393,7 +393,10 @@ function diff(a, b, context = 2) {
 function annotate(title, body) {
   if (!process.env.GITHUB_ACTIONS) return;
   const esc = (t) => t.replaceAll("%", "%25").replaceAll("\n", "%0A").replaceAll("\r", "%0D");
-  console.log(`::error title=${esc(title)}::${esc(body.slice(0, 4000))}`);
+  // writeSync, not console.log: process.exit() below truncates a piped stdout mid-write,
+  // and in Actions stdout is always a pipe. The first attempt at this lost every
+  // annotation that way, which read as the command never having run.
+  writeSync(1, `::error title=${esc(title)}::${esc(body.slice(0, 4000))}\n`);
 }
 
 let browser;
@@ -415,7 +418,7 @@ try {
   // A check that could not check is not a pass.
   console.error(`could not transcribe ${TARGET}${SCENARIO}`);
   console.error(err.message);
-  annotate(`Could not transcribe ${TARGET}`, err.stack ?? err.message);
+  annotate("Could not transcribe the page", `${TARGET}${SCENARIO}\n\n${err.stack ?? err.message}`);
   process.exit(1);
 } finally {
   browser.child.kill();
@@ -445,7 +448,7 @@ if (expected === actual) {
 const lines = diff(expected.split("\n"), actual.split("\n"));
 console.error(`the page reads differently on ${TARGET}:\n`);
 for (const line of lines) console.error(line);
-annotate(`The page reads differently on ${TARGET}`, lines.join("\n"));
+annotate("The page reads differently", `${TARGET}\n\n${lines.join("\n")}`);
 console.error(`
 - is scripts/a11y-transcript.txt, + is ${TARGET} now.
 If the change is meant, re-run with --update and commit the diff.`);
