@@ -14,7 +14,7 @@
     "test:coverage": "turbo run test:coverage",
     "typecheck": "turbo run typecheck",
     "dev": "turbo run dev",
-    "skills:sync": "node scripts/sync-next-skills.mjs",
+    "skills:sync": "node scripts/sync-next-skills.mjs && npx -y skills@latest update -y",
     "skills:check": "node scripts/sync-next-skills.mjs --check"
   },
   "devDependencies": {

@@ -1,9 +1,10 @@
 name: Vendored skills freshness
 
-# The Next.js skills under .claude/skills/ are copies of vercel/next.js@canary/skills.
-# Nothing in the repo pulls on them, so they rot silently — this is the only thing that
-# looks. Drift arrives as a PR to review rather than as a silent swap, which is the same
-# bargain Dependabot makes for the npm deps.
+# Every skill under .claude/skills/ is vendored from somewhere else: three from
+# vercel/next.js@canary/skills, and fondue from Frontify. Nothing in the repo pulls on
+# them, so they rot silently — this is the only thing that looks. Drift arrives as a PR to
+# review rather than as a silent swap, which is the same bargain Dependabot makes for the
+# npm deps.
 #
 # Off the hour on purpose: GitHub queues cron runs at :00 and delays them under load.
 # GitHub also disables scheduled workflows after 60 days without repo activity, so a
@@ -24,7 +25,10 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  BRANCH: chore/next-skills-sync
+  BRANCH: chore/skills-sync
+  # Every path either sync can write. Used by the drift check and the commit alike, so
+  # the two can never disagree about what is being watched.
+  WATCH: .claude/skills .agents skills-lock.json
 
 jobs:
   sync:
@@ -48,10 +52,27 @@ jobs:
             echo REPORT
           } >> "$GITHUB_OUTPUT"
 
+      # Frontify's skill is not in the Next.js tree, so the script above cannot see it.
+      # Its own CLI is the upstream-blessed way to refresh it, and it is a no-op when
+      # nothing changed — verified by running it twice against a clean tree.
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DO_NOT_TRACK: "1"
+        run: npx -y skills@latest update -y
+
+      # .agents/ holds fondue's real files and .claude/skills/fondue is a symlink to them,
+      # so watching .claude/skills alone would miss every fondue update.
       - id: drift
         run: |
-          if [ -n "$(git status --porcelain .claude/skills)" ]; then
+          if [ -n "$(git status --porcelain $WATCH)" ]; then
             echo "found=true" >> "$GITHUB_OUTPUT"
+            # The script's own report covers the Next.js three. A week where only fondue
+            # moved would otherwise open a PR whose body reads "up to date".
+            {
+              echo 'changed<<CHANGED'
+              git status --porcelain $WATCH
+              echo CHANGED
+            } >> "$GITHUB_OUTPUT"
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
           fi
@@ -62,20 +83,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPORT: ${{ steps.sync.outputs.report }}
+          CHANGED: ${{ steps.drift.outputs.changed }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git switch -C "$BRANCH"
-          git add -A .claude/skills
-          git commit -m 'chore: update vendored Next.js skills from upstream' \
-            -m "Synced by .github/workflows/skills-freshness.yml from vercel/next.js@canary/skills." \
-            -m "$REPORT"
+          git add -A $WATCH
+          git commit -m 'chore: update vendored skills from upstream' \
+            -m "Synced by .github/workflows/skills-freshness.yml from vercel/next.js@canary/skills and Frontify/fondue." \
+            -m "$REPORT" \
+            -m "$CHANGED"
           git push --force origin "$BRANCH"
 
           if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
             gh pr create --head "$BRANCH" --base main \
-              --title 'chore: update vendored Next.js skills from upstream' \
-              --body "$(printf 'Upstream drift in the vendored skills. Reproduce locally with `pnpm skills:sync`.\n\n```\n%s\n```\n' "$REPORT")"
+              --title 'chore: update vendored skills from upstream' \
+              --body "$(printf 'Upstream drift in the vendored skills. Reproduce locally with `pnpm skills:sync`.\n\n```\n%s\n```\n\nChanged paths:\n\n```\n%s\n```\n' "$REPORT" "$CHANGED")"
           fi
 
       # A push made with github.token raises no pull_request event, so pr.yml never runs

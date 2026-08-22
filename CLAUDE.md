@@ -440,36 +440,62 @@ around:
 `./.next-build/types/routes.d.ts`. Check it out again afterwards, or the committed file
 points at a directory only that command builds.
 
-## Vendored Next.js skills
+## Vendored skills
 
-`.claude/skills/` holds three skills copied from `vercel/next.js@canary/skills`:
-`next-cache-components-adoption`, `next-cache-components-optimizer` and `next-dev-loop`.
-Nothing in the repo pulls on them, so nothing would notice them rotting.
+`.claude/skills/` holds four skills and none of them is ours. They come from two
+upstreams, and nothing in the repo pulls on them, so nothing would notice them rotting.
+
+| Skill | Upstream | Refreshed by |
+| --- | --- | --- |
+| `next-cache-components-adoption` | `vercel/next.js@canary`, `skills/` | `scripts/sync-next-skills.mjs` |
+| `next-cache-components-optimizer` | same | same |
+| `next-dev-loop` | same | same |
+| `fondue` | `Frontify/fondue@main`, `packages/sdk/skills/fondue/` | `npx skills update`, Vercel's skills CLI |
 
 | Command | Does |
 | --- | --- |
-| `pnpm skills:check` | Report drift against upstream, write nothing, exit 1 if any |
-| `pnpm skills:sync` | Write the upstream copies over ours |
+| `pnpm skills:check` | Report drift in the three Next.js skills, write nothing, exit 1 if any |
+| `pnpm skills:sync` | Write both upstreams over ours |
 
-Which skills are vendored is read off the disk: any directory in `.claude/skills/` that
-also exists upstream is synced, and upstream skills absent here are listed as
-`not vendored`. The directory name is the whole declaration, so vendoring a fourth is a
-`mkdir` plus `pnpm skills:sync`, with no edit to the script.
+`skills:check` covers only the Next.js three because the skills CLI has no dry run. Its
+`update` either changes fondue or does not, and it is a no-op when upstream has not moved.
 
-`fondue` is vendored too, but from Frontify rather than Vercel, so the sync never touches
-it and `skills:check` never reports its drift. It lives at `packages/sdk/skills/fondue/`
-in `Frontify/fondue`; refresh it with `npx skills add frontify/fondue/packages/sdk`, or by
-copying the two files. It names the `@frontify/fondue` version it was written against,
-while the SDK it queries is whichever version `apps/web` has installed, so the two drift
-apart on their own. Trust what the SDK returns over what the skill says.
+Which of the Next.js skills are vendored is read off the disk: any directory in
+`.claude/skills/` that also exists upstream is synced, and upstream skills absent here are
+listed as `not vendored`. The directory name is the whole declaration, so vendoring a
+fourth is a `mkdir` plus `pnpm skills:sync`, with no edit to the script.
 
-`.github/workflows/skills-freshness.yml` runs the sync weekly and opens a PR on the
-`chore/next-skills-sync` branch when upstream has moved. Keeping the copies rather than
-installing Vercel's plugin is a deliberate trade: the plugin would track `canary` on its
-own, but it clones a 2.42GB monorepo for three markdown files and pins nothing.
+### How fondue is laid out
+
+`skills-lock.json` at the repo root is what makes `npx skills update` able to find the
+skill at all. Without it nothing knows fondue is installed.
+
+| Path | Holds |
+| --- | --- |
+| `.agents/skills/fondue/` | The real files. The CLI treats this as the canonical copy |
+| `.claude/skills/fondue` | A relative symlink to it, which is where Claude Code looks |
+| `skills-lock.json` | Source, path and a content hash. No commit sha, so it pins nothing |
+
+The files are committed rather than left to the lock to restore. `experimental_install`
+rebuilds only `.agents/skills/`, never the agent directory, so a clone carrying just the
+lock would give Claude Code no skill at all.
+
+The skill names the `@frontify/fondue` version it was written against, while the SDK it
+queries is whichever version `apps/web` has installed. The two drift apart on their own,
+and the skill says so itself: trust what the SDK returns over what the skill says.
+
+### The weekly workflow
+
+`.github/workflows/skills-freshness.yml` runs both syncs weekly and opens a PR on the
+`chore/skills-sync` branch when either upstream has moved. Keeping copies rather than
+installing Vercel's Next.js plugin is a deliberate trade: the plugin would track `canary`
+on its own, but it clones a 2.42GB monorepo for three markdown files and pins nothing.
 
 | Trap | Detail |
 | --- | --- |
-| Rate limit | The script makes one GitHub API call. Unauthenticated that budget is 60/hour per IP, so a local run can fail on someone else's spending; `GITHUB_TOKEN` raises it |
+| Watching the wrong directory | fondue's real files live in `.agents/`, so `.claude/skills` alone misses every fondue update. `WATCH` names all three paths and both the drift check and the commit read it, so they cannot disagree |
+| Symlinks are not directories | `readdir` reports a symlink as a symlink, so `sync-next-skills.mjs` would silently stop covering any Next.js skill that got symlinked. It only ever sees real directories |
+| Rate limit | The sync script makes one GitHub API call. Unauthenticated that budget is 60/hour per IP, so a local run can fail on someone else's spending; `GITHUB_TOKEN` raises it |
 | Required check | A branch pushed with `github.token` fires no `pull_request` event, so `pr.yml` never runs and the required `check` status never reports. The workflow dispatches `pr.yml` on the branch to put that status on the same commit |
 | Scheduled runs stop | GitHub disables a cron workflow after 60 days of repo inactivity. `workflow_dispatch` restarts it |
+| Unpinned CLI in CI | The fondue step runs `npx skills@latest` in a job holding `contents: write`. Upstream's own install instructions are unpinned, and pinning would rot; the alternative is fetching the two files by URL and hand-editing the lock |
