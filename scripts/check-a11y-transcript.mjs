@@ -79,7 +79,7 @@ function launch() {
     "--lang=en-US",
     // CI runners have no display and no reason to keep the sandbox for a throwaway
     // browser that opens one page of ours. Left on everywhere else.
-    ...(process.env.CI ? ["--no-sandbox"] : []),
+    ...(process.env.CI ? ["--no-sandbox", "--disable-dev-shm-usage"] : []),
     "about:blank",
   ];
   const candidates = process.env.CHROME ? [process.env.CHROME] : BROWSERS;
@@ -92,40 +92,29 @@ function launch() {
     stdio: ["ignore", "ignore", "pipe"],
     env: { ...process.env, LANG: "en_US.UTF-8", LC_ALL: "en_US.UTF-8", TZ: "UTC" },
   });
-  child.on("error", () => {}); // surfaced by devtoolsUrl's exit handler instead
-  return { child, profile };
+  child.on("error", () => {}); // surfaced by the exit handler below instead
+  const log = [];
+  child.stderr.on("data", (d) => log.push(String(d)));
+  return { child, profile, log };
 }
 
-// Chrome prints the endpoint it chose to stderr, which is the only way to learn the port
-// with --remote-debugging-port=0. A fixed port would collide with whatever else is
-// debugging on this machine, and in CI with nothing at all — but this is also run locally.
-function debuggerPort(child) {
+// Chrome prints the endpoint it chose to stderr, which is the only way to learn it with
+// --remote-debugging-port=0. A fixed port would collide with whatever else is debugging on
+// this machine — and this runs locally as often as it runs in CI.
+//
+// The endpoint is the browser itself, which carries no Page domain. The tab is reached
+// through Target, over this same socket, rather than through the HTTP list on the port:
+// that list is guarded against DNS rebinding and its rules have moved between versions,
+// and a check that cannot open a tab on someone else's runner is not a check.
+function browserEndpoint({ child, log }) {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("browser reported no debugging port in 20s")), 20_000);
-    let buf = "";
-    child.stderr.on("data", (d) => {
-      buf += d;
-      const m = /ws:\/\/127\.0\.0\.1:(\d+)\//.exec(buf);
-      if (m) { clearTimeout(timer); resolve(Number(m[1])); }
+    const timer = setTimeout(() => reject(new Error(`browser reported no debugging endpoint in 20s\n${log.join("").slice(0, 600)}`)), 20_000);
+    child.stderr.on("data", () => {
+      const m = /ws:\/\/[^\s]+/.exec(log.join(""));
+      if (m) { clearTimeout(timer); resolve(m[0]); }
     });
-    child.on("exit", (code) => { clearTimeout(timer); reject(new Error(`browser exited (${code})\n${buf.slice(0, 400)}`)); });
+    child.on("exit", (code) => { clearTimeout(timer); reject(new Error(`browser exited (${code})\n${log.join("").slice(0, 600)}`)); });
   });
-}
-
-// That endpoint is the browser itself, which carries no Page domain. The tab is a separate
-// target, listed over HTTP.
-async function pageEndpoint(port) {
-  for (let i = 0; i < 40; i++) {
-    try {
-      const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-      const page = targets.find((t) => t.type === "page" && t.webSocketDebuggerUrl);
-      if (page) return page.webSocketDebuggerUrl;
-    } catch {
-      /* the port is up before the list is */
-    }
-    await sleep(250);
-  }
-  throw new Error("browser opened no page target");
 }
 
 function connect(url) {
@@ -141,13 +130,24 @@ function connect(url) {
       msg.error ? reject(new Error(JSON.stringify(msg.error))) : resolve(msg.result);
     } else if (msg.method) for (const l of listeners) l(msg);
   };
-  const send = (method, params = {}) =>
+  const raw = (method, params = {}, sessionId) =>
     new Promise((resolve, reject) => {
       const n = ++id;
       pending.set(n, { resolve, reject });
-      ws.send(JSON.stringify({ id: n, method, params }));
+      ws.send(JSON.stringify(sessionId ? { id: n, method, params, sessionId } : { id: n, method, params }));
     });
-  return { ws, send, on: (l) => listeners.push(l), open: new Promise((r) => (ws.onopen = r)) };
+  return { ws, raw, on: (l) => listeners.push(l), open: new Promise((r) => (ws.onopen = r)) };
+}
+
+// A flattened session, so the page's commands and its events ride the one socket the
+// browser already gave us.
+async function attachToPage(cdp) {
+  const { targetId } = await cdp.raw("Target.createTarget", { url: "about:blank" });
+  const { sessionId } = await cdp.raw("Target.attachToTarget", { targetId, flatten: true });
+  return {
+    send: (method, params) => cdp.raw(method, params, sessionId),
+    on: (l) => cdp.on((msg) => msg.sessionId === sessionId && l(msg)),
+  };
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -397,9 +397,10 @@ try {
 
 let actual;
 try {
-  const cdp = connect(await pageEndpoint(await debuggerPort(browser.child)));
+  const cdp = connect(await browserEndpoint(browser));
   await cdp.open;
-  actual = await transcribe(cdp.send, cdp.on);
+  const page = await attachToPage(cdp);
+  actual = await transcribe(page.send, page.on);
   cdp.ws.close();
 } catch (err) {
   // A check that could not check is not a pass.
