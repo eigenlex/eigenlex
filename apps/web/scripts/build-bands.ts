@@ -479,7 +479,11 @@ function buildLang(cfg: LangConfig) {
   const lines = readFileSync(data(cfg.freq.file), "utf8").split(/\r?\n/);
   let wCol: number, fCol: number, start: number;
   if (cfg.freq.format === "csv") {
-    const head = lines[0].split(",");
+    const [header] = lines;
+    // An empty input is a broken download, not a language with no words. Say so here
+    // rather than letting indexOf return -1 and every row come out blank.
+    if (header === undefined) throw new Error(`${cfg.freq.file} is empty`);
+    const head = header.split(",");
     wCol = head.indexOf(cfg.freq.wordCol as string);
     fCol = head.indexOf(cfg.freq.freqCol as string);
     start = 1;
@@ -492,8 +496,11 @@ function buildLang(cfg: LangConfig) {
 
   const freq = new Map<string, number>();
   let declitMerged = 0, declitDropped = 0;
-  for (let i = start; i < lines.length; i++) {
-    const r = split(lines[i]);
+  // entries() rather than an index: it hands over a `string`, where lines[i] is
+  // `string | undefined` to the compiler and copies nothing the way slice(start) would.
+  for (const [i, line] of lines.entries()) {
+    if (i < start) continue;
+    const r = split(line);
     const w = clean(r[wCol]); const wf = Number(r[fCol]);
     if (!w || !(wf > 0)) continue;
     if (cfg.freq.minCount !== undefined && wf < cfg.freq.minCount) continue;
