@@ -399,6 +399,13 @@ directly with params already decoded, which is the right thing to test: `routes.
 handler, neither guards what sits above it, so settle a decode question against the
 deployed URL and not against `next start`.
 
+`pnpm decode:check` is what does that. It probes the Vercel column above and exits 1 on any
+row that moved, pointing at this table. `.github/workflows/deployed-decodes.yml` runs it
+after every production deploy and again weekly — weekly because the edge is Vercel's, so
+the column can move with no commit of ours to trigger on. It takes a target as an argument:
+`pnpm decode:check http://localhost:3111` flags the `%` and `%2577ater` rows, which is the
+check discriminating between the two columns rather than failing.
+
 ## Response headers
 
 `next.config.mjs` sends the same set on every path. `poweredByHeader: false` drops the

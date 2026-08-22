@@ -1,0 +1,51 @@
+name: Deployed route-param decoding
+
+# CLAUDE.md's table under "API route params" has two columns, and only one of them is
+# reachable from the suite. hostile-input.test.ts and routes.test.ts call handlers directly
+# with params already decoded, which is the right unit to test — so nothing in the repo
+# would notice the deployed column moving. This is the only thing that looks at it.
+#
+# Two triggers, because the column can move from either side:
+#   - after a production deploy, for a change of ours (a rewrite, middleware, a Next major)
+#   - weekly, for a change of Vercel's, which lands whether or not we commit
+#
+# Off the hour for the same reason skills-freshness.yml is: GitHub queues cron runs at :00
+# and delays them under load, and disables a schedule after 60 days of repo quiet —
+# workflow_dispatch is the way back.
+on:
+  deployment_status:
+  schedule:
+    - cron: "41 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    # deployment_status fires on every state, and on preview deployments too. Only a
+    # succeeded Production one has anything to say about the production alias.
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment_status.environment == 'Production')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # No pnpm install: the script is plain Node with no dependencies.
+      #
+      # It probes the production alias rather than the deployment's own URL, which
+      # Deployment Protection answers with a 302 to a Vercel login — that would read as
+      # every row changing at once. After a deploy the alias can lag the success event by a
+      # moment, which does not matter here: the property is the edge's, so the outgoing
+      # deployment answers these six rows the same way the incoming one does.
+      - run: node scripts/check-deployed-decodes.mjs
