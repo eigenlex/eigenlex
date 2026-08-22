@@ -1,0 +1,58 @@
+name: Deployed accessibility transcript
+
+# The other two checks each read one thing at a time. `jsx-a11y` reads one element, so a
+# name computed from two of them is invisible to it. The suite reads one component in
+# jsdom, so the assembled page, real CSS and Fondue's own markup are invisible to it. Both
+# also only catch what someone thought to assert, and the two real problems found so far
+# were both things nobody had thought of.
+#
+# This asserts nothing. It writes the page down as what a screen reader would say and
+# fails when that changes, so the diff is the thing reviewed.
+#
+# Two triggers, because the transcript can move from either side:
+#   - after a production deploy, for a change of ours
+#   - weekly, for a change of Fondue's or the browser's, which lands with no commit here
+#
+# Not on pull_request: this reads a deployed page, and a preview deployment sits behind
+# Deployment Protection, which answers with a 302 to a Vercel login. So it reports after
+# the deploy, like the decode check, and for the same reason.
+#
+# Off the hour, and away from deployed-decodes.yml's slot: GitHub queues cron runs at :00
+# and delays them under load, and disables a schedule after 60 days of repo quiet —
+# workflow_dispatch is the way back.
+on:
+  deployment_status:
+  schedule:
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    # deployment_status fires on every state, and on preview deployments too. Only a
+    # succeeded Production one has anything to say about the production alias.
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment_status.environment == 'Production')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # No pnpm install: the script is plain Node driving a browser over CDP, with no
+      # dependencies. It needs a Chromium-family browser, which the runner image ships —
+      # named here so a runner image that stops shipping one fails on this line, with its
+      # version in the log, rather than inside the script.
+      - run: google-chrome --version
+
+      - run: node scripts/check-a11y-transcript.mjs

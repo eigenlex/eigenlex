@@ -409,8 +409,50 @@ the input. The other two are the deliberate `autoFocus` and `CefrBadge`'s focusa
 
 **Most of what this section documents is invisible to the linter.** It reads one element
 at a time, so it cannot see a name computed from two elements, a tablist with no panel, a
-string said twice in different components, or anything Fondue renders. The tests are what
-hold those; the linter catches the malformed single element.
+string said twice in different components, or anything Fondue renders. The tests hold some
+of those; the transcript below holds the rest.
+
+### The transcript
+
+`scripts/a11y-transcript.txt` is the deployed page written down as what a screen reader
+would say: the outline, the tab order, the two composite widgets under their arrow keys,
+and how the translation reads against how it copies.
+
+| Command | Does |
+| --- | --- |
+| `pnpm a11y:check [url]` | Transcribe the page and diff it against the file. Exits 1 on any difference |
+| `pnpm a11y:update [url]` | Rewrite the file |
+
+Both take a target, and `pnpm a11y:check http://localhost:3000` against a running `pnpm
+dev` reads the same as production — so a change of ours can be seen before it is pushed.
+Unlike `decode:check`, the two targets are not expected to differ: nothing here is a
+property of the edge. It stays out of the pre-push hook all the same, since it needs a
+browser and a server and takes about forty seconds against the hook's ten.
+
+It **asserts nothing**, which is the point. The three layers divide like this:
+
+| Layer | Reads | Catches |
+| --- | --- | --- |
+| `jsx-a11y` | One element, statically | A malformed element — a role missing its required props, an invalid `aria-*` |
+| The suite | One component, in jsdom | A named fact someone thought to assert |
+| The transcript | The whole deployed page | A change in what is heard, including in what nobody thought to assert |
+
+That third row is where both real findings came from. The doubled `CEFRCEFR` name, six tab
+stops for one tablist, a credit reachable twice under the same name, and six CEFR badges
+announcing a level with no word attached — none of those is a property of one element or
+one component, and none of them was on anyone's list.
+
+| Detail | Why |
+| --- | --- |
+| It runs against the deployed page | Fondue builds part of the markup and CSS decides what is in the tree at all. jsdom has neither |
+| `/api/translate` is stubbed | Google can reword a translation any afternoon, and the subject here is our markup, not today's dictionary |
+| Each section that presses a key reloads first | Arrowing the cloud queues a lookup that lands 300ms later and opens that word's band — mid-way through the next section, reverting the tab it had just moved |
+| Every wait is keyed on the page, never on a number of seconds | A tab takes focus in its key handler and its `aria-selected` a render later, and its panel is a fetch after that. Reading straight away catches it selected on some runs and not others |
+| Post-deploy and weekly, not on a PR | It reads a deployed page, and a preview sits behind Deployment Protection, which answers a 302 to a Vercel login |
+
+Its honest limit is that it catches **change, not badness**. The first read is what finds a
+problem; after that it only guards. An intended change makes it fail, and the fix is to
+re-run with `--update` and let the diff be reviewed — that reading is the whole check.
 
 ### Where Fondue's markup has to be corrected
 

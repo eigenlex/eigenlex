@@ -1,0 +1,58 @@
+THE DOCUMENT — before anything is touched
+------------------------------------------------------------------------
+  title        "eigenlex: Wasser"
+  description  "Which words to learn first — every word's frequency rank and CEFR level, in English, Spanish, French, German, Portuguese and Italian."
+  lang         "en"
+
+THE OUTLINE — landmarks and headings, in the order they are met
+------------------------------------------------------------------------
+  main (unnamed)
+    h1 "eigenlex"
+    region "Choose a language to study"
+      h2 "Choose a language to study"
+    region "Look up a word"
+      h2 "Look up a word"
+      search (unnamed)
+    region "Meaning of Wasser"
+    region "Browse the vocabulary"
+      h2 "Browse the vocabulary"
+  contentinfo (unnamed)
+
+READING THE TRANSLATION, rather than tabbing to it
+------------------------------------------------------------------------
+  water (A1 · Beginner · rank 391), aqua (C1 · Advanced · rank 18,422)
+  copied as    "water, aqua"
+
+TAB THROUGH THE PAGE
+------------------------------------------------------------------------
+   1. A1 · Beginner · rank 399, image, — Wasser
+   2. Swap the source and target languages, button
+   3. Target language, combobox, collapsed
+   4. A1 · Beginner · rank 391, image, — water
+   5. C1 · Advanced · rank 18,422, image, — aqua
+   6. Google Translate, link
+   7. CEFR, radio, checked, — Common European Framework of Reference for Languages (CEFR) level
+   8. A1 · Beginner, 1,000 words, tab, selected
+   9. Wasser, option, selected, 399 of 1000
+  10. OpenSubtitles frequencies, link
+  11. lemmatization list, link
+  12. CEFR-J, link
+  13. Leipzig Corpora, link
+  14. Google Translate, link
+  15. samuelgomezcrespo@gmail.com, link
+
+THE WORD CLOUD — a listbox of the band's words
+------------------------------------------------------------------------
+  on entry     Wasser, option, selected, 399 of 1000
+  ArrowRight   ernst, option, 400 of 1000
+  ArrowDown    gekommen, option, 413 of 1000
+
+THE BAND TABS — one stop, arrows inside it
+------------------------------------------------------------------------
+  on entry     A1 · Beginner, 1,000 words, tab, selected
+  ArrowRight   A2 · Elementary, 2,000 words, tab, selected
+                 panel: A2 · Elementary · most frequent first
+  End          C2 · Proficiency, 15,192 words, tab, selected
+                 panel: C2 · Proficiency · most frequent first
+  Home         A1 · Beginner, 1,000 words, tab, selected
+                 panel: A1 · Beginner · most frequent first

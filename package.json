@@ -17,7 +17,9 @@
     "dev": "turbo run dev",
     "skills:sync": "node scripts/sync-next-skills.mjs && npx -y skills@latest update -y",
     "skills:check": "node scripts/check-fondue-install.mjs && node scripts/sync-next-skills.mjs --check",
-    "decode:check": "node scripts/check-deployed-decodes.mjs"
+    "decode:check": "node scripts/check-deployed-decodes.mjs",
+    "a11y:check": "node scripts/check-a11y-transcript.mjs",
+    "a11y:update": "node scripts/check-a11y-transcript.mjs --update"
   },
   "devDependencies": {
     "turbo": "^2.10.11",
