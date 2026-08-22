@@ -453,8 +453,15 @@ Nothing in the repo pulls on them, so nothing would notice them rotting.
 
 Which skills are vendored is read off the disk: any directory in `.claude/skills/` that
 also exists upstream is synced, and upstream skills absent here are listed as
-`not vendored`. So vendoring a fourth is a `cp`, with no edit to the script. `fondue` is
-ours and upstream has no such directory, so it is never touched.
+`not vendored`. The directory name is the whole declaration, so vendoring a fourth is a
+`mkdir` plus `pnpm skills:sync`, with no edit to the script.
+
+`fondue` is vendored too, but from Frontify rather than Vercel, so the sync never touches
+it and `skills:check` never reports its drift. It lives at `packages/sdk/skills/fondue/`
+in `Frontify/fondue`; refresh it with `npx skills add frontify/fondue/packages/sdk`, or by
+copying the two files. It names the `@frontify/fondue` version it was written against,
+while the SDK it queries is whichever version `apps/web` has installed, so the two drift
+apart on their own. Trust what the SDK returns over what the skill says.
 
 `.github/workflows/skills-freshness.yml` runs the sync weekly and opens a PR on the
 `chore/next-skills-sync` branch when upstream has moved. Keeping the copies rather than
