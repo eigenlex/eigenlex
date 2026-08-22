@@ -14,11 +14,9 @@ on:
     - cron: "17 6 * * 1"
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
-  # Only to dispatch pr.yml on the branch this opens — see the last step.
-  actions: write
+# Nothing here is granted at the top: `sync` runs third-party code and `propose` writes,
+# and they are split so no job does both. See the note on `propose`.
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}
@@ -26,13 +24,23 @@ concurrency:
 
 env:
   BRANCH: chore/skills-sync
-  # Every path either sync can write. Used by the drift check and the commit alike, so
-  # the two can never disagree about what is being watched.
+  # Every path either sync can write. Used by the drift check, the artifact and the commit
+  # alike, so they cannot disagree about what is being watched.
   WATCH: .claude/skills .agents skills-lock.json
 
 jobs:
+  # Runs `npx skills@latest`, which is unpinned third-party code from npm. Upstream's own
+  # install instructions are unpinned and pinning would rot, so the exposure is accepted —
+  # but it is accepted in a job whose token cannot write. What comes out of here is a
+  # tarball, and the job that can push never runs the CLI.
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      found: ${{ steps.drift.outputs.found }}
+      report: ${{ steps.sync.outputs.report }}
+      changed: ${{ steps.drift.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -84,13 +92,54 @@ jobs:
             echo "found=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # tar, not the artifact action's own file walk: .claude/skills/fondue is a symlink,
+      # and an uploader that follows it would hand `propose` a directory where the repo
+      # keeps a link — which is exactly the broken layout check-fondue-install.mjs exists
+      # to catch. tar stores the link itself.
+      - if: steps.drift.outputs.found == 'true'
+        run: tar -cf skills.tar $WATCH
+
+      - if: steps.drift.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: synced-skills
+          path: skills.tar
+          retention-days: 1
+
+  # The only job that can write, and it runs no third-party code. It still commits what
+  # the CLI produced, so a compromised CLI can still put files in front of a reviewer —
+  # what it can no longer do is push to a branch, open a PR, or dispatch a workflow on
+  # its own.
+  propose:
+    needs: sync
+    if: needs.sync.outputs.found == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      # Only to dispatch pr.yml on the branch this opens — see the last step.
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: synced-skills
+
+      # Delete before untarring: a tar of the synced tree carries what upstream added and
+      # changed, but nothing records what it removed. Restoring onto an emptied path makes
+      # the working tree match the sync exactly, deletions included.
+      - run: |
+          rm -rf $WATCH
+          tar -xf skills.tar
+          rm -f skills.tar
+
       # One long-lived branch, force-pushed: a second week of drift updates the open PR
       # instead of opening a rival one against the same files.
-      - if: steps.drift.outputs.found == 'true'
-        env:
+      - env:
           GH_TOKEN: ${{ github.token }}
-          REPORT: ${{ steps.sync.outputs.report }}
-          CHANGED: ${{ steps.drift.outputs.changed }}
+          REPORT: ${{ needs.sync.outputs.report }}
+          CHANGED: ${{ needs.sync.outputs.changed }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -113,7 +162,6 @@ jobs:
       # would sit unmergeable. Dispatching pr.yml on the branch puts a `check` run on the
       # same head commit, which is what the rule reads. If it still does not report,
       # closing and reopening the PR by hand fires the events from a human actor.
-      - if: steps.drift.outputs.found == 'true'
-        env:
+      - env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run pr.yml --ref "$BRANCH"
