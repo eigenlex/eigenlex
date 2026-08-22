@@ -421,8 +421,20 @@ try {
   annotate("Could not transcribe the page", `${TARGET}${SCENARIO}\n\n${err.stack ?? err.message}`);
   process.exit(1);
 } finally {
-  browser.child.kill();
-  rmSync(browser.profile, { recursive: true, force: true });
+  // kill() only asks. Deleting the profile while the browser is still flushing into it
+  // fails with ENOTEMPTY, which `force` does not cover — and a throw in here escapes
+  // before the comparison, so the check dies of housekeeping with the transcript already
+  // in hand. Wait for the exit, retry the delete, and never let either be the verdict.
+  await new Promise((resolve) => {
+    const done = setTimeout(resolve, 5_000);
+    browser.child.once("exit", () => { clearTimeout(done); resolve(); });
+    browser.child.kill();
+  });
+  try {
+    rmSync(browser.profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
+  } catch {
+    /* a directory left in tmp is the OS's to reap, and no reason to fail a check */
+  }
 }
 
 if (UPDATE) {
