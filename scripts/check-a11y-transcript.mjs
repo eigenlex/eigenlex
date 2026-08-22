@@ -387,6 +387,15 @@ function diff(a, b, context = 2) {
   return out;
 }
 
+// GitHub renders one of these as an annotation on the run itself, so a failure says what
+// changed where it is read — the log is behind a click, and behind admin rights for anyone
+// reading over the API.
+function annotate(title, body) {
+  if (!process.env.GITHUB_ACTIONS) return;
+  const esc = (t) => t.replaceAll("%", "%25").replaceAll("\n", "%0A").replaceAll("\r", "%0D");
+  console.log(`::error title=${esc(title)}::${esc(body.slice(0, 4000))}`);
+}
+
 let browser;
 try {
   browser = launch();
@@ -406,6 +415,7 @@ try {
   // A check that could not check is not a pass.
   console.error(`could not transcribe ${TARGET}${SCENARIO}`);
   console.error(err.message);
+  annotate(`Could not transcribe ${TARGET}`, err.stack ?? err.message);
   process.exit(1);
 } finally {
   browser.child.kill();
@@ -432,8 +442,10 @@ if (expected === actual) {
   process.exit(0);
 }
 
+const lines = diff(expected.split("\n"), actual.split("\n"));
 console.error(`the page reads differently on ${TARGET}:\n`);
-for (const line of diff(expected.split("\n"), actual.split("\n"))) console.error(line);
+for (const line of lines) console.error(line);
+annotate(`The page reads differently on ${TARGET}`, lines.join("\n"));
 console.error(`
 - is scripts/a11y-transcript.txt, + is ${TARGET} now.
 If the change is meant, re-run with --update and commit the diff.`);
