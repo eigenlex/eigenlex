@@ -15,7 +15,7 @@
     "typecheck": "turbo run typecheck",
     "dev": "turbo run dev",
     "skills:sync": "node scripts/sync-next-skills.mjs && npx -y skills@latest update -y",
-    "skills:check": "node scripts/sync-next-skills.mjs --check"
+    "skills:check": "node scripts/check-fondue-install.mjs && node scripts/sync-next-skills.mjs --check"
   },
   "devDependencies": {
     "turbo": "^2.10.11",

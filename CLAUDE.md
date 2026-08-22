@@ -454,11 +454,12 @@ upstreams, and nothing in the repo pulls on them, so nothing would notice them r
 
 | Command | Does |
 | --- | --- |
-| `pnpm skills:check` | Report drift in the three Next.js skills, write nothing, exit 1 if any |
+| `pnpm skills:check` | Verify the fondue install, then report drift in the Next.js three. Writes nothing, exits 1 on either |
 | `pnpm skills:sync` | Write both upstreams over ours |
 
-`skills:check` covers only the Next.js three because the skills CLI has no dry run. Its
-`update` either changes fondue or does not, and it is a no-op when upstream has not moved.
+`skills:check` reports *drift* only for the Next.js three, because the skills CLI has no
+dry run: its `update` either changes fondue or does not. What it checks for fondue is that
+the install is intact, which is the half a clone can get wrong.
 
 Which of the Next.js skills are vendored is read off the disk: any directory in
 `.claude/skills/` that also exists upstream is synced, and upstream skills absent here are
@@ -484,6 +485,20 @@ The skill names the `@frontify/fondue` version it was written against, while the
 queries is whichever version `apps/web` has installed. The two drift apart on their own,
 and the skill says so itself: trust what the SDK returns over what the skill says.
 
+### What a fresh clone needs
+
+Nothing. The files, the lock and the symlink are all committed, and the weekly workflow
+runs on GitHub rather than on anyone's laptop, so the skills keep updating across a new
+machine or a reformatted disk. `pnpm skills:check` is the command that says so, and
+`scripts/check-fondue-install.mjs` is what it runs.
+
+| It refuses | Because |
+| --- | --- |
+| A clone with `core.symlinks` off | The link arrives as a regular file holding its target, leaving Claude Code a skill that is one line of text |
+| An absolute symlink | It would resolve on the machine that wrote it and nowhere else |
+| A missing `.agents/`, lock entry, or either file | Named individually, with the path |
+| `SKILL.md` without `name: fondue` | No agent would load it |
+
 ### The weekly workflow
 
 `.github/workflows/skills-freshness.yml` runs both syncs weekly and opens a PR on the
@@ -495,6 +510,7 @@ on its own, but it clones a 2.42GB monorepo for three markdown files and pins no
 | --- | --- |
 | Watching the wrong directory | fondue's real files live in `.agents/`, so `.claude/skills` alone misses every fondue update. `WATCH` names all three paths and both the drift check and the commit read it, so they cannot disagree |
 | Symlinks are not directories | `readdir` reports a symlink as a symlink, so `sync-next-skills.mjs` would silently stop covering any Next.js skill that got symlinked. It only ever sees real directories |
+| A green fondue step means nothing on its own | `npx skills update` exits 0 whether it refreshed the skill or never found it. The workflow runs the check either side of it, so "saw nothing" cannot pass as success |
 | Rate limit | The sync script makes one GitHub API call. Unauthenticated that budget is 60/hour per IP, so a local run can fail on someone else's spending; `GITHUB_TOKEN` raises it |
 | Required check | A branch pushed with `github.token` fires no `pull_request` event, so `pr.yml` never runs and the required `check` status never reports. The workflow dispatches `pr.yml` on the branch to put that status on the same commit |
 | Scheduled runs stop | GitHub disables a cron workflow after 60 days of repo inactivity. `workflow_dispatch` restarts it |

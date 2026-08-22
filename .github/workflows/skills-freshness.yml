@@ -55,10 +55,17 @@ jobs:
       # Frontify's skill is not in the Next.js tree, so the script above cannot see it.
       # Its own CLI is the upstream-blessed way to refresh it, and it is a no-op when
       # nothing changed — verified by running it twice against a clean tree.
+      #
+      # `skills update` exits 0 whether it refreshed the skill or never found it, so the
+      # check runs either side: before, so a green step cannot mean "saw nothing", and
+      # after, so a layout the update rewrote is caught before it reaches a commit.
       - env:
           GITHUB_TOKEN: ${{ github.token }}
           DO_NOT_TRACK: "1"
-        run: npx -y skills@latest update -y
+        run: |
+          node scripts/check-fondue-install.mjs
+          npx -y skills@latest update -y
+          node scripts/check-fondue-install.mjs
 
       # .agents/ holds fondue's real files and .claude/skills/fondue is a symlink to them,
       # so watching .claude/skills alone would miss every fondue update.
