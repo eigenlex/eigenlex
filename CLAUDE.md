@@ -489,15 +489,12 @@ and the skill says so itself: trust what the SDK returns over what the skill say
 
 Nothing. The files, the lock and the symlink are all committed, and the weekly workflow
 runs on GitHub rather than on anyone's laptop, so the skills keep updating across a new
-machine or a reformatted disk. `pnpm skills:check` is the command that says so, and
-`scripts/check-fondue-install.mjs` is what it runs.
+machine or a reformatted disk. `pnpm skills:check` is the command that says so.
 
-| It refuses | Because |
-| --- | --- |
-| A clone with `core.symlinks` off | The link arrives as a regular file holding its target, leaving Claude Code a skill that is one line of text |
-| An absolute symlink | It would resolve on the machine that wrote it and nowhere else |
-| A missing `.agents/`, lock entry, or either file | Named individually, with the path |
-| `SKILL.md` without `name: fondue` | No agent would load it |
+`scripts/check-fondue-install.mjs` reads the lock, then reads `SKILL.md` through
+`.claude/skills/` rather than through `.agents/`. That path is the one an agent uses, so
+the single read covers every way a clone can be wrong: no lock, no `.agents/`, or a
+checkout that wrote the symlink as text because `core.symlinks` was off.
 
 ### The weekly workflow
 
