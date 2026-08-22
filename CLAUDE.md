@@ -39,6 +39,7 @@ ours. `source`/`target` map onto them at that one call.
 | `src/lib/bands.ts` | Server registry, `getWord`, all word lookups |
 | `src/lib/geo.ts` | Country table, `sourceLang`, `targetLang` |
 | `src/lib/scenario.ts` | URL encode / decode, `pageTitle` |
+| `src/lib/site.ts` | `SITE_URL`, `SITE_NAME`, `SITE_DESCRIPTION` — what names the site to a machine |
 | `src/lib/translate.ts` | Google Translate fetching and parsing, and the relay gate |
 | `next.config.mjs` | Response headers, the CSP, `distDir` |
 | `scripts/build-bands.ts` | Artifact build, the `LANGS` table |
@@ -342,7 +343,8 @@ quiet `CefrBadge` carrying the band name and rank in its tooltip.
 
 | Rule | Why |
 | --- | --- |
-| Separators are bare text and the badges are the only elements | A line's text content stays exactly the translation, so what a reader copies is clean |
+| Separators are bare text and the badges are the only elements | Nothing but the badge sits between one term and the next |
+| The badge is `select-none` | A copied line is then the translation and nothing else. The margin keeps a space out of it; without this the letters stayed, and "water, aqua" copied as "waterA1, aquaB2" |
 | No whitespace between a term and its badge | A wrap can never split the two |
 | `role="img"` carries the detail as the badge's accessible name | Hidden text would say the same thing but ride along into anything copied out of the translation |
 
@@ -362,6 +364,57 @@ re-flows on its own when Diatype replaces the fallback.
 | Hide it when the word leaves no room | 27-char German at a 250px phone field. `fits` compares the overlay's scroll and client widths |
 | Hide with `visibility`, keeping the badge in the DOM | It keeps its slot, so the measurement cannot oscillate with its own answer |
 | The overlay is `pointer-events-none` except the badge | Clicking the badge puts the caret at the end of the word, which is what a click just past the text means |
+
+## What the page says to a machine
+
+The accessibility tree is the app's other output, and it is not readable off the source —
+Fondue builds part of the markup, and a name is computed rather than written. Settle a
+question about it by dumping the tree from a running browser, the way a decode question is
+settled against the deployed URL.
+
+Two rules run through the whole page: **one string, one place**, and **a name has to
+survive browse mode** — nothing focused, no tooltip open. That second one is why detail
+lives in a name rather than in a tooltip's `aria-describedby`, which exists only while the
+tooltip is open.
+
+| Where | Rule |
+| --- | --- |
+| `CefrBadge` | The band and rank are the badge's `role="img"` name. `aria-describedby=""` empties the one Radix would point at its own tooltip |
+| `SwapButton` | Same trade: disabled, the reason why is in the name, not only in the tooltip |
+| `AbbrLink` | `title` on the `<abbr>`, and no Fondue tooltip. A Fondue one needs its own focusable trigger, which made each credit two tab stops with the same name, and it would paint a second tooltip over the native one |
+| `WordSearchBox` | Named by its section heading (`labelledBy`), not by a second copy of the same string |
+| Search help | `aria-hidden`, so it is read once as the field's description. A hidden element still contributes its text when `aria-describedby` names it directly |
+| Prose | A language is named in English (`englishName`) inside an English sentence. `SOURCE_LANG_META.name` is the endonym, which is the picker's job |
+
+### Where Fondue's markup has to be corrected
+
+Both are internals, matched by structure, because the CSS module's class is a build hash.
+
+| Component | What it does | What we do |
+| --- | --- | --- |
+| `SegmentedControl.Item` | Stacks an active and an inactive copy of the label to reserve the bold width, hiding neither | Pass `aria-label` — spread through, since it is not on Item's typed surface. Without it the name reads "CEFRCEFR" |
+| `TextInput.Root` | Paints the placeholder into a sibling div and leaves the native one transparent | A layout effect marks that div `aria-hidden`, or its text is read as loose content inside the search landmark |
+
+### The band tabs and the word cloud
+
+| Widget | Contract |
+| --- | --- |
+| Band tabs | A real tablist: one tab stop, arrow keys and Home/End inside it, `aria-controls` on each tab and `role="tabpanel"` on the words below. Activation follows focus, since the band is fetched or cached by then |
+| Tab name | Spelled out with `aria-label`. The label and the count are separate elements and join with no separator, which read as "A1 · Beginner1,000 words" |
+| Word cloud | A `listbox` of `option`s, not a group — that is what says the arrow keys are there. The row wrappers are `role="presentation"` so the options stay owned by it |
+| `aria-setsize` / `aria-posinset` | Stated, not counted. Only the rows near the viewport are in the DOM, so a chip's place in the band cannot be inferred from it |
+
+### Crawlers and link previews
+
+`lib/site.ts` holds the three values, and `layout.tsx`, `page.tsx`, `robots.ts`,
+`sitemap.ts` and `manifest.ts` read them. `app/icon.svg` is the favicon.
+
+Next merges metadata **shallowly**: a child naming `openGraph` replaces the parent's whole
+object rather than adding to it. So `page.tsx` restates the Open Graph and Twitter fields
+around the word-specific title. Setting only `title` there leaves a shared deeplink
+previewing as "eigenlex" while its tab says the word.
+
+The sitemap lists one URL. Every word is query state on the same page.
 
 ## API route params
 

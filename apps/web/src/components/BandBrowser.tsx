@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { Select } from "@frontify/fondue/components";
 import Loading from "@/components/Loading";
 import WordChips from "@/components/WordChips";
@@ -101,6 +109,11 @@ export default function BandBrowser({
   const [band, setBand] = useState<Band | null>(null);
   // Warm-cache bands by `view:key` so re-selecting is instant.
   const cache = useRef<Record<string, Band>>({});
+  // The tabs name the panel they open, so both need stable ids.
+  const baseId = useId();
+  const tabId = (key: string) => `${baseId}-tab-${key}`;
+  const panelId = `${baseId}-panel`;
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   // Load the summary (the tabs) whenever the view or source language changes.
   useEffect(() => {
@@ -131,6 +144,27 @@ export default function BandBrowser({
   const pickBand = (key: string) => {
     setSelectedKey(key);
     onBandChange?.(key);
+  };
+
+  // A tablist is one tab stop with arrow keys inside it, not a row of separate stops —
+  // which is what the role promises a screen reader. Activation follows focus, since the
+  // band is already fetched or cached by the time the next key lands.
+  const onTabsKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (!summary) return;
+    const keys = summary.map((b) => b.key);
+    const i = keys.indexOf(selectedKey ?? "");
+    if (i < 0) return;
+    let next = i;
+    if (e.key === "ArrowRight") next = (i + 1) % keys.length;
+    else if (e.key === "ArrowLeft") next = (i - 1 + keys.length) % keys.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = keys.length - 1;
+    else return;
+    e.preventDefault();
+    const key = keys[next];
+    if (!key) return;
+    pickBand(key);
+    tabRefs.current[key]?.focus();
   };
 
   const fetchBand = useCallback(
@@ -180,7 +214,6 @@ export default function BandBrowser({
                 aria-label={bandsLabel}
                 value={selectedKey ?? ""}
                 onSelect={(v) => v && pickBand(v)}
-                placeholder={bandsLabel}
                 showStringValue
               >
                 {summary.map((b) => (
@@ -199,6 +232,7 @@ export default function BandBrowser({
               role="tablist"
               aria-label={bandsLabel}
               aria-orientation="horizontal"
+              onKeyDown={onTabsKeyDown}
               className="tw-hidden tw-flex-row tw-flex-wrap tw-gap-1.5 min-[700px]:tw-flex"
             >
               {summary.map((b) => {
@@ -208,7 +242,16 @@ export default function BandBrowser({
                     key={b.key}
                     type="button"
                     role="tab"
+                    id={tabId(b.key)}
                     aria-selected={active}
+                    aria-controls={panelId}
+                    // The two lines below join with no separator in the name computation
+                    // ("A1 · Beginner1,000 words"), so the name is spelled out instead.
+                    aria-label={`${b.label}, ${b.count.toLocaleString()} words`}
+                    tabIndex={active ? 0 : -1}
+                    ref={(node) => {
+                      tabRefs.current[b.key] = node;
+                    }}
                     onClick={() => pickBand(b.key)}
                     className={
                       "tw-flex tw-min-h-[44px] tw-flex-col tw-items-start tw-justify-center tw-gap-0.5 tw-rounded-[8px] tw-px-3 tw-py-1.5 tw-text-left tw-transition-colors " +
@@ -231,7 +274,12 @@ export default function BandBrowser({
         )}
       </div>
 
-      <div className="tw-min-w-0 tw-px-3 tw-py-4 min-[700px]:tw-px-5">
+      <div
+        role="tabpanel"
+        id={panelId}
+        aria-labelledby={selectedKey ? tabId(selectedKey) : undefined}
+        className="tw-min-w-0 tw-px-3 tw-py-4 min-[700px]:tw-px-5"
+      >
         {band ? (
           <>
             <p className="tw-mb-3 tw-body-small text-muted-aaa">

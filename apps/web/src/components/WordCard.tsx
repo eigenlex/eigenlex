@@ -323,7 +323,7 @@ export default function WordCard({
           rel="noopener noreferrer"
           className="tw-inline-flex tw-min-h-[44px] tw-shrink-0 tw-items-center tw-justify-center tw-gap-1 tw-rounded-full tw-border tw-border-line-subtle tw-px-4 tw-py-1.5 tw-body-large tw-text-secondary tw-no-underline hover:tw-border-line hover:tw-text-primary"
         >
-          Google Translate ↗
+          Google Translate <span aria-hidden="true">↗</span>
         </a>
       </div>
     </section>

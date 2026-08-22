@@ -336,7 +336,48 @@ describe("Workspace", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  const swapButton = () => screen.getByRole("button", { name: /swap the source and target/i });
+  // Fondue builds part of this markup, and each of these was wrong until it was corrected
+  // by hand. None is visible in our own JSX, so nothing else would notice them coming back.
+  describe("what is said once, and only once", () => {
+    it("does not let Fondue's stacked label double the view switch's name", async () => {
+      render(<Workspace />);
+      expect(await screen.findByRole("radio", { name: "CEFR" })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: "Frequency" })).toBeInTheDocument();
+    });
+
+    it("hides Fondue's painted placeholder, which is not the field's name", async () => {
+      const { container } = render(<Workspace />);
+      await screen.findByRole("combobox", { name: /look up a word/i });
+      const painted = container.querySelector("form[role=search] div:has(> input) > div:first-child");
+      expect(painted).toHaveTextContent("look up a word");
+      expect(painted).toHaveAttribute("aria-hidden", "true");
+    });
+
+    it("names the field from its heading rather than a second copy of the string", async () => {
+      render(<Workspace />);
+      const box = await screen.findByRole("combobox", { name: /look up a word/i });
+      expect(box).not.toHaveAttribute("aria-label");
+      expect(box).toHaveAttribute("aria-labelledby", "search-heading");
+    });
+
+    // Referenced directly by aria-describedby it still describes the field; without this
+    // it is also read as page content on the way past.
+    it("keeps the field's help out of the reading order", async () => {
+      render(<Workspace />);
+      await screen.findByRole("combobox", { name: /look up a word/i });
+      expect(document.getElementById("search-help")).toHaveAttribute("aria-hidden", "true");
+    });
+
+    it("names the language in English in English prose, not with its endonym", async () => {
+      window.history.replaceState(null, "", "/?source=de&word=wasser");
+      render(<Workspace />);
+      await screen.findByRole("combobox", { name: /look up a word/i });
+      expect(document.getElementById("search-help")).toHaveTextContent(/Type a German word/);
+      expect(document.getElementById("search-help")).not.toHaveTextContent(/Deutsch/);
+    });
+  });
+
+  const swapButton = () => screen.getByRole("button", { name: /^swap/i });
 
   it("swaps the pair and carries the word over as its own translation", async () => {
     window.history.replaceState(null, "", "/?source=de&word=wasser&target=en");

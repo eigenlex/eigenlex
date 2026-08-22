@@ -109,6 +109,10 @@ interface Metrics {
  * the viewport isn't in the DOM, moving focus first scrolls the target into the
  * render window, and the active chip's row is always kept mounted — so keyboard
  * focus can never fall out of the cloud (WCAG 2.1.1 / 2.1.3).
+ *
+ * A listbox, not a group: that is what tells assistive tech the arrow keys are
+ * there, and it gives each chip a place in the set — which matters when 276 of a
+ * band's 1,000 chips are mounted and counting them is not an option.
  */
 export default function WordChips({
   words,
@@ -347,7 +351,12 @@ export default function WordChips({
           if (isAnchor) anchorRef.current = node;
         }}
         className={isAnchor ? anchorClass : chipClass}
-        aria-current={isAnchor ? "true" : undefined}
+        role="option"
+        aria-selected={isAnchor}
+        // The DOM holds only the rows near the viewport, so the set size and this
+        // chip's place in it have to be stated rather than counted.
+        aria-setsize={words.length}
+        aria-posinset={index + 1}
         tabIndex={isActive ? 0 : -1}
         onClick={() => {
           cancelSelect();
@@ -362,7 +371,11 @@ export default function WordChips({
 
   let content: ReactNode;
   if (mode === "fallback") {
-    content = <div className="tw-flex tw-flex-wrap tw-gap-2">{words.map(chip)}</div>;
+    content = (
+      <div role="presentation" className="tw-flex tw-flex-wrap tw-gap-2">
+        {words.map(chip)}
+      </div>
+    );
   } else if (rows && stride > 0) {
     const first = Math.max(0, Math.floor(scrollTop / stride) - OVERSCAN);
     const last = Math.min(rows.length, Math.ceil((scrollTop + viewport) / stride) + OVERSCAN);
@@ -376,6 +389,7 @@ export default function WordChips({
       return (
         <div
           key={start}
+          role="presentation"
           className="tw-absolute tw-left-0 tw-right-0 tw-flex tw-gap-2"
           style={{ top: r * stride }}
         >
@@ -384,7 +398,7 @@ export default function WordChips({
       );
     });
     content = (
-      <div className="tw-relative" style={{ height: rows.length * stride - GAP }}>
+      <div role="presentation" className="tw-relative" style={{ height: rows.length * stride - GAP }}>
         {rowEls}
       </div>
     );
@@ -408,7 +422,7 @@ export default function WordChips({
         onScroll={onScroll}
         onKeyDown={onKeyDown}
         className={CLOUD}
-        role="group"
+        role="listbox"
         aria-label={label}
         lang={lang}
       >

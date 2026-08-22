@@ -33,22 +33,6 @@ const LEMMA_URL = "https://github.com/michmech/lemmatization-lists";
 const LEIPZIG_URL = "https://wortschatz.uni-leipzig.de/en/download";
 const TRANSLATE_URL = "https://translate.google.com/";
 
-// Abbreviation whose expansion shows in a Fondue tooltip. The <abbr> stays for its
-// expansion semantics (WCAG 3.1.4); tabIndex makes it a focus target so the tooltip
-// also opens on keyboard focus, not just hover.
-function Abbr({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <Tooltip.Root>
-      <Tooltip.Trigger asChild>
-        <abbr tabIndex={0} className="tw-cursor-help tw-decoration-dotted">
-          {children}
-        </abbr>
-      </Tooltip.Trigger>
-      <Tooltip.Content>{title}</Tooltip.Content>
-    </Tooltip.Root>
-  );
-}
-
 // Persisted picks, so a returning learner lands back where they left off. A shareable
 // URL (see lib/scenario) takes precedence over these when present; where neither says
 // anything, the client's country seeds the source language (see lib/geo).
@@ -59,6 +43,16 @@ const TARGET_KEY_ALT = "eigenlex:lang";
 
 const browserLang = () =>
   baseLang(typeof navigator !== "undefined" ? navigator.language : "en");
+
+// The UI's prose is English, so a language is named in English inside it. The endonym in
+// SOURCE_LANG_META is for the picker, which shows each language to its own speakers.
+function englishName(code: SourceLang) {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? SOURCE_LANG_META[code].name;
+  } catch {
+    return SOURCE_LANG_META[code].name;
+  }
+}
 
 // The workspace is client-only (see WorkspaceLazy), so localStorage is available at
 // first render — read it in the state initializers to avoid a default-value flash.
@@ -117,6 +111,7 @@ const SOURCE_NAMES = SOURCE_LANGS.map((c) => SOURCE_LANG_META[c].name).join(", "
  * as the target changes is harder to understand than one that explains.
  */
 function SwapButton({ enabled, onSwap }: { enabled: boolean; onSwap: () => void }) {
+  const reason = `Only ${SOURCE_NAMES} can be a source language`;
   return (
     <Tooltip.Root>
       <Tooltip.Trigger asChild>
@@ -124,7 +119,13 @@ function SwapButton({ enabled, onSwap }: { enabled: boolean; onSwap: () => void 
         <button
           type="button"
           aria-disabled={!enabled}
-          aria-label="Swap the source and target languages"
+          // The reason rides in the name, the one channel that survives browse mode —
+          // the same trade CefrBadge makes. Radix would otherwise point aria-describedby
+          // at a tooltip that only says the label again; this empties it.
+          aria-label={
+            enabled ? "Swap the source and target languages" : `Swap languages — ${reason}`
+          }
+          aria-describedby=""
           className={SWAP}
           onClick={() => enabled && onSwap()}
         >
@@ -133,9 +134,7 @@ function SwapButton({ enabled, onSwap }: { enabled: boolean; onSwap: () => void 
           </span>
         </button>
       </Tooltip.Trigger>
-      <Tooltip.Content>
-        {enabled ? "Swap languages" : `Only ${SOURCE_NAMES} can be a source language`}
-      </Tooltip.Content>
+      <Tooltip.Content>{enabled ? "Swap languages" : reason}</Tooltip.Content>
     </Tooltip.Root>
   );
 }
@@ -145,18 +144,25 @@ function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView
     <div>
       <SegmentedControl.Root aria-label="Band view" value={view} onValueChange={(v) => onChange(v as BandView)}>
         {/* Tooltip wraps the item itself — nesting a focusable inside the radio would
-            be invalid, so we follow Fondue's SegmentedControl + Tooltip pattern. */}
+            be invalid, so we follow Fondue's SegmentedControl + Tooltip pattern.
+            `aria-label` is not on Item's typed surface but is spread onto the button;
+            without it the name doubles, since Fondue stacks an active and an inactive
+            copy of the label to reserve the bold width and hides neither from AT. */}
         <Tooltip.Root>
           <Tooltip.Trigger asChild>
-            <SegmentedControl.Item value="cefr">CEFR</SegmentedControl.Item>
+            <SegmentedControl.Item value="cefr" {...({ "aria-label": "CEFR" } as object)}>
+              CEFR
+            </SegmentedControl.Item>
           </Tooltip.Trigger>
           <Tooltip.Content>{`${CEFR_TITLE} (CEFR) level`}</Tooltip.Content>
         </Tooltip.Root>
         <Tooltip.Root>
           <Tooltip.Trigger asChild>
-            <SegmentedControl.Item value="freq">Frequency</SegmentedControl.Item>
+            <SegmentedControl.Item value="freq" {...({ "aria-label": "Frequency" } as object)}>
+              Frequency
+            </SegmentedControl.Item>
           </Tooltip.Trigger>
-          <Tooltip.Content>Raw frequency</Tooltip.Content>
+          <Tooltip.Content>Rank by how often the word appears in the corpus</Tooltip.Content>
         </Tooltip.Root>
       </SegmentedControl.Root>
     </div>
@@ -168,14 +174,40 @@ function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView
 // lemmatization), the CEFR calibration, German display casing, and the word translations.
 const CORPUS_LINK = "tw-underline hover:tw-text-primary";
 
+/**
+ * An abbreviation that is also a link — which all three of ours are. `title` on the
+ * <abbr> is the whole mechanism: it draws the browser's own tooltip on hover, and it
+ * sits in the accessibility tree whether or not anything is open or focused.
+ *
+ * No Fondue tooltip here, unlike elsewhere. One needs its own focusable trigger, which
+ * made each credit two tab stops carrying the same name, and it would paint a second
+ * tooltip over the native one saying the same words.
+ */
+function AbbrLink({ title, href, children }: { title: string; href: string; children: ReactNode }) {
+  return (
+    <a className={CORPUS_LINK} href={href} target="_blank" rel="noreferrer">
+      <abbr title={title} className="tw-cursor-help tw-decoration-dotted">
+        {children}
+      </abbr>
+    </a>
+  );
+}
+
 function CorpusCredit({ source }: { source: SourceLang }) {
-  const { corpus, name } = SOURCE_LANG_META[source];
+  const { corpus } = SOURCE_LANG_META[source];
+  const name = englishName(source);
   return (
     <>
       Word frequencies from{" "}
-      <a className={CORPUS_LINK} href={corpus.url} target="_blank" rel="noreferrer">
-        {source === "en" ? <Abbr title={SUBTLEX_TITLE}>SUBTLEX-US</Abbr> : corpus.name}
-      </a>
+      {source === "en" ? (
+        <AbbrLink title={SUBTLEX_TITLE} href={corpus.url}>
+          SUBTLEX-US
+        </AbbrLink>
+      ) : (
+        <a className={CORPUS_LINK} href={corpus.url} target="_blank" rel="noreferrer">
+          {corpus.name}
+        </a>
+      )}
       {source === "en" ? " (Brysbaert & New, 2009)" : null}, with inflections merged onto
       their base form via a{" "}
       <a className={CORPUS_LINK} href={LEMMA_URL} target="_blank" rel="noreferrer">
@@ -185,16 +217,16 @@ function CorpusCredit({ source }: { source: SourceLang }) {
           is the one abbreviation the UI labels words with. */}
       . CEFR ({CEFR_TITLE}) levels are estimated from frequency, with band
       boundaries calibrated to the{" "}
-      <a className={CORPUS_LINK} href="https://www.cefr-j.org/" target="_blank" rel="noreferrer">
-        <Abbr title={CEFRJ_TITLE}>CEFR-J</Abbr>
-      </a>{" "}
+      <AbbrLink title={CEFRJ_TITLE} href="https://www.cefr-j.org/">
+        CEFR-J
+      </AbbrLink>{" "}
       vocabulary profile{source !== "en" ? <> — an English-derived heuristic reused for {name}</> : null}.{" "}
       {source === "de" ? (
         <>
           Display casing is measured from the{" "}
-          <a className={CORPUS_LINK} href={LEIPZIG_URL} target="_blank" rel="noreferrer">
-            <Abbr title={LEIPZIG_TITLE}>Leipzig Corpora</Abbr>
-          </a>
+          <AbbrLink title={LEIPZIG_TITLE} href={LEIPZIG_URL}>
+            Leipzig Corpora
+          </AbbrLink>
           .{" "}
         </>
       ) : null}
@@ -359,7 +391,7 @@ export default function Workspace({ country }: { country?: string | null }) {
     setBand(null);
   };
 
-  const sourceName = SOURCE_LANG_META[source].name;
+  const sourceName = englishName(source);
 
   return (
     <div className="Workspace">
@@ -392,7 +424,9 @@ export default function Workspace({ country }: { country?: string | null }) {
                 onValueChange={setQuery}
                 onSubmit={(w) => void lookup(w, source)}
                 source={source}
-                ariaLabel="Look up a word"
+                // Named by the heading above it rather than by a second copy of the same
+                // string, which would then be free to drift from it.
+                labelledBy="search-heading"
                 describedBy="search-help"
                 placeholder="look up a word…"
                 busy={loading}
@@ -407,8 +441,11 @@ export default function Workspace({ country }: { country?: string | null }) {
                   ) : null
                 }
               />
-              {/* Context-sensitive help for the field (WCAG 3.3.5). */}
-              <p id="search-help" className="visually-hidden">
+              {/* Context-sensitive help for the field (WCAG 3.3.5). aria-hidden so it is
+                  read once, as the field's description — a hidden paragraph referenced by
+                  aria-describedby still contributes its text, but stops being page content
+                  a browse-mode reader meets a second time on the way past. */}
+              <p id="search-help" className="visually-hidden" aria-hidden="true">
                 Type a {sourceName} word to see its frequency and CEFR level. It is looked
                 up as soon as you stop typing; press Enter or choose a suggestion to look
                 one up at once.

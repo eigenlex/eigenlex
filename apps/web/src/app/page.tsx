@@ -3,16 +3,33 @@ import FeedbackLink from "@/components/FeedbackLink";
 import ThemeToggle from "@/components/ThemeToggle";
 import Workspace from "@/components/WorkspaceLazy";
 import { pageTitle } from "@/lib/scenario";
+import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 
 // A shared deeplink names its word in the tab and in link previews, before any client
 // JS runs. `Workspace` recases it to the corpus's spelling once the lookup lands.
+//
+// `openGraph` and `twitter` are restated rather than inherited: Next merges metadata
+// shallowly, so a child that names either one replaces the layout's whole object. Left
+// to `title` alone the preview would keep saying "eigenlex" while the tab said the word.
 export async function generateMetadata({
   searchParams,
 }: {
   searchParams: Promise<{ word?: string | string[] }>;
 }) {
   const { word } = await searchParams;
-  return { title: pageTitle(Array.isArray(word) ? word[0] : word) };
+  const title = pageTitle(Array.isArray(word) ? word[0] : word);
+  return {
+    title,
+    openGraph: {
+      type: "website" as const,
+      siteName: SITE_NAME,
+      title,
+      description: SITE_DESCRIPTION,
+      url: "/",
+      locale: "en",
+    },
+    twitter: { card: "summary" as const, title, description: SITE_DESCRIPTION },
+  };
 }
 
 // Same gutter for the footer as for the content it sits under. The footer is outside

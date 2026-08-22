@@ -35,7 +35,7 @@ export default function WordSearchBox({
   onValueChange,
   onSubmit,
   source,
-  ariaLabel,
+  labelledBy,
   describedBy,
   placeholder,
   busy = false,
@@ -47,7 +47,8 @@ export default function WordSearchBox({
   onSubmit: (word: string) => void;
   /** Source language whose vocabulary to suggest from. */
   source: string;
-  ariaLabel: string;
+  /** Id of the element naming the field — its section heading, rather than a second copy. */
+  labelledBy: string;
   describedBy?: string;
   placeholder: string;
   /** Lookup in flight: shows the field's spinner. */
@@ -88,6 +89,15 @@ export default function WordSearchBox({
   useEffect(() => {
     void document.fonts?.ready.then(measure);
   }, [measure]);
+
+  // Fondue paints the placeholder into a sibling div (see globals.css) and hides it from
+  // no one, so its text was read as loose content inside the search landmark. Matched by
+  // structure, like the stylesheet does — the CSS module's class is a build hash.
+  useLayoutEffect(() => {
+    wrapRef.current
+      ?.querySelector("div:has(> input) > div:first-child")
+      ?.setAttribute("aria-hidden", "true");
+  });
 
   // The badge covers the few pixels just past the word — where a click means "put the
   // caret at the end". Do that, rather than swallowing it.
@@ -264,10 +274,12 @@ export default function WordSearchBox({
             // the tw-w-fit wrapper then hugs it instead of stretching to the row.
             // `size` is forwarded to the <input> at runtime but absent from Fondue's types.
             size: 40,
+            // The word in the field is the source language's, not the page's.
+            lang: source,
             onMouseDown: onInputMouseDown,
             onMouseUp: onInputMouseUp,
           } as object)}
-          aria-label={ariaLabel}
+          aria-labelledby={labelledBy}
           value={value}
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={onInputKeyDown}

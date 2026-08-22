@@ -66,10 +66,23 @@ function setup() {
       label="Words"
     />,
   );
-  return { onPick, group: screen.getByRole("group", { name: "Words" }) };
+  return { onPick, group: screen.getByRole("listbox", { name: "Words" }) };
 }
 
 afterEach(cleanup);
+
+// Only the rows near the viewport are in the DOM, so a chip's place in the band is
+// stated rather than countable.
+describe("set semantics", () => {
+  it("gives every chip the band's size and its own position", () => {
+    setup();
+    const opts = screen.getAllByRole("option");
+    expect(opts[0]).toHaveAttribute("aria-setsize", String(opts.length));
+    expect(opts.map((o) => o.getAttribute("aria-posinset"))).toEqual(
+      opts.map((_, i) => String(i + 1)),
+    );
+  });
+});
 
 describe("keyboard selection", () => {
   it("looks the focused word up after a 300ms debounce", () => {
@@ -111,7 +124,7 @@ describe("keyboard selection", () => {
     try {
       const { onPick, group } = setup();
       fireEvent.keyDown(group, { key: "ArrowRight" }); // queues "be"
-      fireEvent.click(screen.getByRole("button", { name: "water" }));
+      fireEvent.click(screen.getByRole("option", { name: "water" }));
       expect(onPick).toHaveBeenCalledTimes(1);
       expect(onPick).toHaveBeenCalledWith("water");
       vi.advanceTimersByTime(300); // the queued "be" must not fire

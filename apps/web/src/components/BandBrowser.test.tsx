@@ -49,7 +49,48 @@ describe("BandBrowser", () => {
     render(<BandBrowser view="freq" source="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
     expect(await screen.findByRole("tab", { name: /Top 1,000/ })).toBeInTheDocument();
     // First band opens by default; its words render as chips.
-    expect(await screen.findByRole("button", { name: "water" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "water" })).toBeInTheDocument();
+  });
+
+  // The role promises a screen reader one stop with arrow keys inside it, and a panel
+  // the tabs open. Both halves were announced long before either was true.
+  describe("the tabs are a real tablist", () => {
+    const tabs = () => screen.getAllByRole("tab");
+
+    it("is one tab stop, on the selected tab", async () => {
+      render(<BandBrowser view="cefr" source="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+      await screen.findByRole("tab", { name: /A1/ });
+      expect(tabs().map((t) => t.tabIndex)).toEqual([0, -1]);
+      expect(tabs()[0]).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("moves between tabs on arrow keys, and wraps", async () => {
+      render(<BandBrowser view="cefr" source="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+      (await screen.findByRole("tab", { name: /A1/ })).focus();
+
+      await userEvent.keyboard("{ArrowRight}");
+      await waitFor(() => expect(tabs()[1]).toHaveAttribute("aria-selected", "true"));
+      expect(tabs()[1]).toHaveFocus();
+      expect(await screen.findByRole("option", { name: "govern" })).toBeInTheDocument();
+
+      await userEvent.keyboard("{ArrowRight}"); // past the end, back to the first
+      await waitFor(() => expect(tabs()[0]).toHaveAttribute("aria-selected", "true"));
+      await userEvent.keyboard("{End}");
+      await waitFor(() => expect(tabs()[1]).toHaveAttribute("aria-selected", "true"));
+    });
+
+    it("names the panel the words sit in, and points each tab at it", async () => {
+      render(<BandBrowser view="cefr" source="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+      const panel = await screen.findByRole("tabpanel");
+      for (const tab of tabs()) expect(tab).toHaveAttribute("aria-controls", panel.id);
+      expect(panel).toHaveAccessibleName("A1 · Beginner, 1,000 words");
+    });
+
+    // The two lines join with no separator of their own ("A1 · Beginner1,000 words").
+    it("spells the count out in the tab's name", async () => {
+      render(<BandBrowser view="freq" source="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
+      expect(await screen.findByRole("tab", { name: "Top 1,000, 1,000 words" })).toBeInTheDocument();
+    });
   });
 
   // Neither control announces its own wait; the spinner covers both.
@@ -69,26 +110,26 @@ describe("BandBrowser", () => {
     render(
       <BandBrowser view="cefr" source="en" anchorWord="water" anchorBandKey="A1" onSelect={onSelect} />,
     );
-    await screen.findByRole("button", { name: "water" });
-    await userEvent.click(screen.getByRole("button", { name: "be" }));
+    await screen.findByRole("option", { name: "water" });
+    await userEvent.click(screen.getByRole("option", { name: "be" }));
     expect(onSelect).toHaveBeenCalledWith("be");
   });
 
   it("switches bands when another tab is selected", async () => {
     render(<BandBrowser view="freq" source="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
-    await screen.findByRole("button", { name: "water" });
+    await screen.findByRole("option", { name: "water" });
     await userEvent.click(await screen.findByRole("tab", { name: /1,001/ }));
-    expect(await screen.findByRole("button", { name: "engine" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "engine" })).toBeInTheDocument();
   });
 
   // The narrow-viewport dropdown. Both it and the tablist are always in the DOM —
   // a media query picks one — so jsdom, which applies no CSS, can drive either.
   it("switches bands from the band dropdown too", async () => {
     render(<BandBrowser view="freq" source="en" anchorWord={null} anchorBandKey={null} onSelect={() => {}} />);
-    await screen.findByRole("button", { name: "water" });
+    await screen.findByRole("option", { name: "water" });
     await userEvent.click(screen.getByRole("combobox", { name: /frequency bands/i }));
     await userEvent.click(await screen.findByRole("option", { name: /1,001/ }));
-    expect(await screen.findByRole("button", { name: "engine" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "engine" })).toBeInTheDocument();
   });
 
   // Mobile-only prev/next. Like the dropdown, always in the DOM — CSS alone hides it.
@@ -97,7 +138,7 @@ describe("BandBrowser", () => {
     render(
       <BandBrowser view="freq" source="en" anchorWord="be" anchorBandKey="1" onSelect={onSelect} />,
     );
-    await screen.findByRole("button", { name: "water" }); // words: the, be, water
+    await screen.findByRole("option", { name: "water" }); // words: the, be, water
     await userEvent.click(screen.getByRole("button", { name: /next word/i }));
     expect(onSelect).toHaveBeenCalledWith("water");
     await userEvent.click(screen.getByRole("button", { name: /previous word/i }));
@@ -108,7 +149,7 @@ describe("BandBrowser", () => {
     render(
       <BandBrowser view="freq" source="en" anchorWord="the" anchorBandKey="1" onSelect={() => {}} />,
     );
-    await screen.findByRole("button", { name: "water" }); // "the" is the band's first word
+    await screen.findByRole("option", { name: "water" }); // "the" is the band's first word
     expect(screen.getByRole("button", { name: /previous word/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /next word/i })).toBeEnabled();
   });
@@ -117,7 +158,7 @@ describe("BandBrowser", () => {
   it("enters at the first word when the band holds no current word", async () => {
     const onSelect = vi.fn();
     render(<BandBrowser view="freq" source="en" anchorWord={null} anchorBandKey={null} onSelect={onSelect} />);
-    await screen.findByRole("button", { name: "water" });
+    await screen.findByRole("option", { name: "water" });
     expect(screen.getByRole("button", { name: /previous word/i })).toBeDisabled();
     await userEvent.click(screen.getByRole("button", { name: /next word/i }));
     expect(onSelect).toHaveBeenCalledWith("the");
