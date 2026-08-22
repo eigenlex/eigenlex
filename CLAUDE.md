@@ -400,7 +400,10 @@ handler, neither guards what sits above it, so settle a decode question against 
 deployed URL and not against `next start`.
 
 `pnpm decode:check` is what does that. It probes the Vercel column above and exits 1 on any
-row that moved, pointing at this table. `.github/workflows/deployed-decodes.yml` runs it
+row that moved, pointing at this table. It **reads the rows out of the table** rather than
+restating them, so the table is the source and cannot drift from what is asserted — the
+cost is that reformatting it breaks the check, which it reports as `parsed 0 rows` instead
+of quietly passing. `.github/workflows/deployed-decodes.yml` runs it
 after every production deploy and again weekly — weekly because the edge is Vercel's, so
 the column can move with no commit of ours to trigger on. It takes a target as an argument:
 `pnpm decode:check http://localhost:3111` flags the `%` and `%2577ater` rows, which is the

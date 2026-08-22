@@ -29,6 +29,9 @@ describe("isSingleWord", () => {
     expect(isSingleWord("arc-en-ciel")).toBe(true);
     expect(isSingleWord("l'eau")).toBe(true);
     expect(isSingleWord("Wasser")).toBe(true);
+    // The reject side pins 65 below. Without this, narrowing MAX_WORD goes unnoticed:
+    // a 65-char string stays rejected whatever the limit shrinks to.
+    expect(isSingleWord("a".repeat(64))).toBe(true);
   });
 
   it("rejects anything that is text to relay rather than a word to look up", () => {

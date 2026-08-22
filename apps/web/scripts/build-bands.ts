@@ -68,6 +68,12 @@ const CEFR_BANDS: BandDef[] = [
 // 33–40k words each, about where English's curated SUBTLEX ends on its own.
 const DICT_GATE = 25000;
 
+// The frequency floor for the OpenSubtitles lists, where below ~10 occurrences the tail
+// is mostly hapax noise. Stated in occurrences rather than rank so it means the same in
+// every language — which is also why it is one constant and not a per-language literal.
+// English has no entry: its SUBTLEX column is per-million, not a raw count.
+const MIN_COUNT = 10;
+
 interface FreqSource {
   file: string;
   /** "csv" = comma-separated with a header row, columns by name;
@@ -150,7 +156,7 @@ const LANGS: Record<string, LangConfig> = {
   },
   es: {
     code: "es",
-    freq: { file: "freq-es.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
+    freq: { file: "freq-es.txt", format: "list", wordCol: 0, freqCol: 1, minCount: MIN_COUNT },
     lemmaFile: "lemma-es.txt",
     dictGate: DICT_GATE,
     singleLetterOk: new Set(["a", "y", "o", "e", "u"]),
@@ -165,7 +171,7 @@ const LANGS: Record<string, LangConfig> = {
   },
   fr: {
     code: "fr",
-    freq: { file: "freq-fr.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
+    freq: { file: "freq-fr.txt", format: "list", wordCol: 0, freqCol: 1, minCount: MIN_COUNT },
     lemmaFile: "lemma-fr.txt",
     dictGate: DICT_GATE,
     singleLetterOk: new Set(["à", "a", "y"]),
@@ -190,7 +196,7 @@ const LANGS: Record<string, LangConfig> = {
   },
   de: {
     code: "de",
-    freq: { file: "freq-de.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
+    freq: { file: "freq-de.txt", format: "list", wordCol: 0, freqCol: 1, minCount: MIN_COUNT },
     lemmaFile: "lemma-de.txt",
     dictGate: DICT_GATE,
     singleLetterOk: new Set(),
@@ -207,7 +213,7 @@ const LANGS: Record<string, LangConfig> = {
   },
   pt: {
     code: "pt",
-    freq: { file: "freq-pt.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
+    freq: { file: "freq-pt.txt", format: "list", wordCol: 0, freqCol: 1, minCount: MIN_COUNT },
     lemmaFile: "lemma-pt.txt",
     dictGate: DICT_GATE,
     singleLetterOk: new Set(["a", "o", "e", "é", "à", "á"]),
@@ -234,7 +240,7 @@ const LANGS: Record<string, LangConfig> = {
   },
   it: {
     code: "it",
-    freq: { file: "freq-it.txt", format: "list", wordCol: 0, freqCol: 1, minCount: 10 },
+    freq: { file: "freq-it.txt", format: "list", wordCol: 0, freqCol: 1, minCount: MIN_COUNT },
     lemmaFile: "lemma-it.txt",
     dictGate: DICT_GATE,
     singleLetterOk: new Set(["a", "e", "è", "i", "o"]),

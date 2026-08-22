@@ -8,21 +8,57 @@
 // decoded, which is the right unit to test — so this is the only thing that would notice
 // the edge changing under us, or a rewrite or middleware changing it from our side.
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
 // The production alias, not a deployment's own URL: Deployment Protection answers those
 // with a 302 to a Vercel login, which would read here as every row having changed at once.
 const TARGET = process.argv[2] ?? process.env.EIGENLEX_URL ?? "https://eigenlex-web.vercel.app";
 
-// The Vercel column of the table under "API route params". `word` is asserted wherever a
-// row answers 200, because the point of %2577ater is not that it succeeds but that it
-// lands on "water" two decodes down.
-const ROWS = [
-  { param: "%", status: 400 },
-  { param: "%25", status: 404 },
-  { param: "%2525", status: 404 },
-  { param: "%77ater", status: 200, word: "water" },
-  { param: "%2577ater", status: 200, word: "water" },
-  { param: "%252577ater", status: 404 },
-];
+// The rows are read out of CLAUDE.md rather than restated here. They were written in
+// both places at first, and the script's own failure message tells you to go edit the
+// table — so a corrected table would leave this asserting the old values and still
+// passing. One source, and this parses it.
+//
+// It reads the Vercel column. `word` is asserted wherever a row answers 200, because the
+// point of %2577ater is not that it succeeds but that it lands on "water" two decodes
+// down.
+const DOC = join(dirname(fileURLToPath(import.meta.url)), "..", "CLAUDE.md");
+const SECTION = "API route params";
+
+function readRows() {
+  const doc = readFileSync(DOC, "utf8");
+  const from = doc.indexOf(`## ${SECTION}`);
+  if (from < 0) throw new Error(`no "## ${SECTION}" section`);
+
+  const rows = [];
+  for (const line of doc.slice(from).split("\n")) {
+    // The section ends at the next heading; the table is the only one in it.
+    if (rows.length && !line.startsWith("|")) break;
+    const cells = line.split("|").slice(1, -1).map((c) => c.replaceAll("`", "").replaceAll("*", "").trim());
+    if (cells.length !== 3) continue;
+
+    const param = cells[0].startsWith("/api/word/") ? cells[0].slice("/api/word/".length) : null;
+    const [, status, word] = /^(\d{3})(?:\s+(\S+))?$/.exec(cells[2]) ?? [];
+    if (param === null || !status) continue;
+    rows.push(word === undefined ? { param, status: Number(status) } : { param, status: Number(status), word });
+  }
+  // A reformatted table must fail loudly rather than silently assert nothing.
+  if (rows.length < 2) throw new Error(`parsed ${rows.length} rows from the ${SECTION} table`);
+  return rows;
+}
+
+let ROWS;
+try {
+  ROWS = readRows();
+} catch (err) {
+  // Reading the table is half the check. A reformatted one must say so in a line, not
+  // arrive as a stack trace over a green-looking exit.
+  console.error(`cannot read the decode table: ${err.message}`);
+  console.error(`Expected a | Request | ... | Vercel | table under "## ${SECTION}" in CLAUDE.md.`);
+  process.exit(1);
+}
 
 // Not curl: it refuses to send the bare `%` row at all. Node's URL leaves a path exactly
 // as written, which is the whole point of these rows.
