@@ -449,6 +449,9 @@ one component, and none of them was on anyone's list.
 | Each section that presses a key reloads first | Arrowing the cloud queues a lookup that lands 300ms later and opens that word's band — mid-way through the next section, reverting the tab it had just moved |
 | Every wait is keyed on the page, never on a number of seconds | A tab takes focus in its key handler and its `aria-selected` a render later, and its panel is a fetch after that. Reading straight away catches it selected on some runs and not others |
 | Post-deploy and weekly, not on a PR | It reads a deployed page, and a preview sits behind Deployment Protection, which answers a 302 to a Vercel login |
+| Names and descriptions come from Chrome; **roles and states do not** | A name is computed, and half the markup is Fondue's, so there is no reading it off the source. A role is authored — and Chrome renames them between versions (`img` became `image`), which would make this a transcript of whichever Chrome the runner shipped that week |
+| The browser's locale is pinned to `en-US` | The page formats ranks and counts with `toLocaleString()`. Unpinned, the same page reads `rank 18,422` on one machine and `18 422` on another |
+| The desktop shape is asserted before transcribing | Below 700px the band tabs are a dropdown. A window that came up the wrong size would otherwise arrive as a pile of unexplained differences rather than as the environment being wrong |
 
 Its honest limit is that it catches **change, not badness**. The first read is what finds a
 problem; after that it only guards. An intended change makes it fail, and the fix is to

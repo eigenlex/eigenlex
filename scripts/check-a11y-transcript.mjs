@@ -73,6 +73,10 @@ function launch() {
     "--no-first-run",
     "--disable-gpu",
     "--window-size=1440,1200",
+    // The page formats ranks and counts with toLocaleString(), which follows the browser's
+    // locale. Unpinned, the same page reads "rank 18,422" on one machine and "18 422" on
+    // another, and the transcript would be of the runner rather than of the app.
+    "--lang=en-US",
     // CI runners have no display and no reason to keep the sandbox for a throwaway
     // browser that opens one page of ours. Left on everywhere else.
     ...(process.env.CI ? ["--no-sandbox"] : []),
@@ -84,7 +88,10 @@ function launch() {
     rmSync(profile, { recursive: true, force: true });
     throw new Error(`no browser on PATH; tried ${candidates.join(", ")}. Set CHROME to name one.`);
   }
-  const child = spawn(bin, flags, { stdio: ["ignore", "ignore", "pipe"] });
+  const child = spawn(bin, flags, {
+    stdio: ["ignore", "ignore", "pipe"],
+    env: { ...process.env, LANG: "en_US.UTF-8", LC_ALL: "en_US.UTF-8", TZ: "UTC" },
+  });
   child.on("error", () => {}); // surfaced by devtoolsUrl's exit handler instead
   return { child, profile };
 }
@@ -201,20 +208,42 @@ async function transcribe(send, on) {
   };
   await reset();
 
+  // The page is responsive, and below 700px the band tabs are a dropdown instead. A window
+  // that came up the wrong size would otherwise transcribe as a pile of unexplained
+  // differences rather than as the environment being wrong.
+  for (const [sel, what] of [
+    ["[role=tablist] [role=tab]", "the desktop band tabs"],
+    ["form[role=search] [role=img]", "the badge in the search field"],
+  ]) {
+    if (!(await val(`!!document.querySelector(${JSON.stringify(sel)})`)))
+      throw new Error(`${what} did not render — is the window 1440 wide and the font loaded?`);
+  }
+
   const V = (a) => (a ? a.value : undefined);
   const out = [];
   const say = (s = "") => out.push(s);
   const rule = (t) => { say(); say(t); say("-".repeat(72)); };
 
-  // Name, role and description come from Chrome, because they are computed and half of
-  // this page's markup is Fondue's. States come from the attributes, because those are
-  // what we author and Chrome does not report every one of them.
+  // Names and descriptions come from Chrome, because they are computed and half of this
+  // page's markup is Fondue's — there is no reading them off the source.
+  //
+  // Roles and states do not. Both are authored, and Chrome has renamed roles between
+  // versions ("img" became "image"), which would make this a transcript of whichever
+  // Chrome the runner shipped that week rather than of the page.
   const speak = async () => {
+    // Focus resting on <body> is the page having none — where a tab walk ends up once it
+    // has passed the last control and been round the browser's own chrome.
+    if (await val(`(() => { const a = document.activeElement;
+      return !a || a === document.body || a === document.documentElement; })()`)) return null;
     const { result } = await send("Runtime.evaluate", { expression: "document.activeElement" });
-    if (!result.objectId) return "(document)";
+    if (!result.objectId) return null;
     const { nodes } = await send("Accessibility.getPartialAXTree", { objectId: result.objectId, fetchRelatives: false });
     const n = nodes?.[0];
-    if (!n) return "(no node)";
+    if (!n) return null;
+    const role = await val(`(() => { const a = document.activeElement;
+      return a.getAttribute("role")
+        ?? ({ A: "link", BUTTON: "button", INPUT: "textbox", SELECT: "combobox", SUMMARY: "button" })[a.tagName]
+        ?? a.tagName.toLowerCase(); })()`);
     const states = await val(`(() => { const a = document.activeElement, s = [], g = (k) => a.getAttribute(k);
       if (g("aria-selected") === "true") s.push("selected");
       if (g("aria-checked") === "true") s.push("checked");
@@ -223,7 +252,7 @@ async function transcribe(send, on) {
       if (g("aria-expanded")) s.push(g("aria-expanded") === "true" ? "expanded" : "collapsed");
       if (g("aria-posinset")) s.push(g("aria-posinset") + " of " + g("aria-setsize"));
       return s; })()`);
-    const bits = [V(n.name) || "(unnamed)", V(n.role), ...states];
+    const bits = [V(n.name) || "(unnamed)", role, ...states];
     if (V(n.description)) bits.push(`— ${V(n.description)}`);
     return bits.join(", ");
   };
@@ -279,8 +308,8 @@ async function transcribe(send, on) {
     await key("Tab", "Tab", 9);
     const line = await speak();
     // Past the last control, focus leaves for the browser's own chrome and comes back on
-    // the document. Anything after that is the walk going round again.
-    if (line === "(document)" || line.endsWith(", generic")) break;
+    // the body. Anything after that is the walk going round a second time.
+    if (line === null) break;
     say(`  ${String(i + 1).padStart(2)}. ${line}`);
   }
 

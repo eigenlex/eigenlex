@@ -25,11 +25,11 @@ READING THE TRANSLATION, rather than tabbing to it
 
 TAB THROUGH THE PAGE
 ------------------------------------------------------------------------
-   1. A1 · Beginner · rank 399, image, — Wasser
+   1. A1 · Beginner · rank 399, img, — Wasser
    2. Swap the source and target languages, button
    3. Target language, combobox, collapsed
-   4. A1 · Beginner · rank 391, image, — water
-   5. C1 · Advanced · rank 18,422, image, — aqua
+   4. A1 · Beginner · rank 391, img, — water
+   5. C1 · Advanced · rank 18,422, img, — aqua
    6. Google Translate, link
    7. CEFR, radio, checked, — Common European Framework of Reference for Languages (CEFR) level
    8. A1 · Beginner, 1,000 words, tab, selected
