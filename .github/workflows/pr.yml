@@ -1,20 +1,33 @@
 name: PR checks
 
-# Pull requests only. A push from a clone already runs .githooks/pre-push, and a
-# push-triggered run would report after the deploy rather than before it. The gap this
-# fills is the other path: a Dependabot PR merged from the GitHub UI never touches the
-# hook, and a dependency bump is exactly where a silent behaviour change hides.
+# Pull requests, and pushes to main.
+#
+# A PR is where this earns its keep, because it reports before the merge. The gap it
+# fills there is the Dependabot PR merged from the GitHub UI, which never touches
+# .githooks/pre-push, and a dependency bump is exactly where a silent behaviour change
+# hides.
+#
+# Pushing to main reports after the deploy, which is worse than a PR and better than the
+# nothing that was here before. Branch protection's required `check` only reports from a
+# pull_request event, so a direct push to main is bypassed with a warning and gets no run
+# at all. The hook is the only other gate, and it is opt-in per clone
+# (`git config core.hooksPath .githooks`) and skipped by --no-verify — so on a fresh clone
+# or a second machine, untested code reached production with nothing run.
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# A new commit on the PR makes the run in flight irrelevant.
+# A new commit on the PR makes the run in flight irrelevant. A push to main does not
+# work that way: keying those by sha lets a run of pushes check every commit in parallel,
+# rather than each one cancelling the verdict on the one before it.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # `check` is load-bearing beyond this file: branch protection on main requires a status

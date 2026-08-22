@@ -451,6 +451,12 @@ start returning 500s.
 neither of the bottom row: a hook that built would corrupt whatever dev server is up. It
 needs `git config core.hooksPath .githooks` once per clone, and `--no-verify` skips it.
 
+Because both of those make the hook opt-in, `pr.yml` also runs on pushes to `main`. That
+reports after the deploy rather than before it, which is the weaker half of the trade —
+branch protection's required `check` only reports from a `pull_request` event, so a direct
+push is bypassed with a warning and would otherwise get no run at all. On a PR it still
+reports before the merge, which is where it is worth the most.
+
 Two test files are nets rather than cases, and are worth extending rather than working
 around:
 
