@@ -82,6 +82,7 @@ export function isView(v: string): v is BandView {
   return v === "freq" || v === "cefr";
 }
 
+// @spec BAND-3, BAND-5, BAND-6
 export function getWord(source: SourceLang, word: string): WordBands | null {
   const d = REGISTRY[source];
   const rank = d.rankOf.get(word.toLowerCase());
@@ -106,6 +107,7 @@ export function getWord(source: SourceLang, word: string): WordBands | null {
  * `isSourceLang` first — only the six indexed languages have levels. Unlike `getWord` it
  * is asked about a translated term, which is often a phrase or a word the language doesn't
  * have; a miss is ordinary, and simply goes unbadged.
+ * @spec BAND-7, BAND-8
  */
 export function getLevel(target: SourceLang, word: string): WordLevel | null {
   const d = REGISTRY[target];
@@ -139,6 +141,7 @@ export function getBand(source: SourceLang, view: BandView, key: string): Band |
  * it past `limit` — "ban" trails bank, band, bang, banana, bandit and banker — and
  * the search box reads the head of this list to decide whether what was typed is
  * itself a word, and so worth looking up unasked.
+ * @spec BAND-10
  */
 export function getSuggestions(source: SourceLang, prefix: string, limit = 8): string[] {
   const p = prefix.trim().toLowerCase();

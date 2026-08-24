@@ -11,6 +11,7 @@ import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 // `openGraph` and `twitter` are restated rather than inherited: Next merges metadata
 // shallowly, so a child that names either one replaces the layout's whole object. Left
 // to `title` alone the preview would keep saying "eigenlex" while the tab said the word.
+// @spec URL-7
 export async function generateMetadata({
   searchParams,
 }: {

@@ -9,6 +9,7 @@ const MAX_LIMIT = 50;
 /**
  * How many suggestions to return. Clamped, because the count is only ever a dropdown's
  * worth: unbounded, one lookup hands back the query's whole prefix bucket instead.
+ * @spec ROUTE-11
  */
 function limitOf(raw: string | null): number {
   const n = Number(raw || DEFAULT_LIMIT);

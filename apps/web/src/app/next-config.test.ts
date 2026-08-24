@@ -47,8 +47,8 @@ describe("the content security policy", () => {
    * The whole policy rests on the page loading nothing off-origin. This is the assertion
    * that notices when that stops being true: a webfont stylesheet, a CDN script or an
    * outbound beacon has to name a host, and a host is not one of these.
+   * @spec HEAD-2
    */
-  // @spec HEAD-2
   it("names no host anywhere", async () => {
     const csp = (await sentHeaders())["Content-Security-Policy"]!;
     const allowed = new Set(["'self'", "'none'", "'unsafe-inline'", "data:"]);

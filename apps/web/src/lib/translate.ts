@@ -17,6 +17,7 @@ const MAX_WORD = 64;
  * Whether a lookup param is one word. What reaches this endpoint is forwarded to Google,
  * so it has to be something we would look up rather than arbitrary text to relay. No
  * artifact holds a word with whitespace in it, and the card only ever asks for one.
+ * @spec GATE-1, GATE-2
  */
 export function isSingleWord(word: string): boolean {
   return word.length > 0 && word.length <= MAX_WORD && !/\s/.test(word);
@@ -26,6 +27,7 @@ export function isSingleWord(word: string): boolean {
  * Whether a tag is shaped like the base language code `baseLang` yields — "es", "haw".
  * The target is any language Google takes, not one of the six, so shape is all there is
  * to check; it is still what separates a language code from a string to hand upstream.
+ * @spec GATE-4
  */
 export function isLangCode(tag: string): boolean {
   return /^[a-z]{2,3}$/.test(tag);

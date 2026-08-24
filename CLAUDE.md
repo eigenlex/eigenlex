@@ -15,12 +15,15 @@ learner can see where a word sits and browse the vocabulary in order.
 
 Every rule there carries an ID, and the test proving it names that ID in an `@spec`
 comment. That comment is the only link between the two, so neither file has to restate the
-other.
+other. The code a rule governs carries the same comment — a **mark**, not a proof, so that
+opening a file to change it tells you which rule binds it. Code cannot witness itself, so a
+mark never satisfies a rule.
 
 | Command | Does |
 | --- | --- |
-| `pnpm spec:check` | Fail on a rule nothing proves, and on a proof naming a rule that no longer exists |
-| `pnpm spec:list` | Print every rule with the files that prove it |
+| `pnpm spec:check` | Fail on a rule nothing proves, and on an annotation naming a rule that no longer exists |
+| `pnpm spec:list` | Every rule by area, with its proofs and its marks |
+| `pnpm spec:files` | The reverse: a file at a time, the rules it carries |
 
 It runs in `pr.yml` and in the pre-push hook, parses text and needs no network. Where this
 file needs to talk about a rule it names the ID and says why the rule is what it is; the

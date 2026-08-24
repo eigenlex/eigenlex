@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Checks that SPEC.md and the tests still agree about what this app must do.
+// Checks that SPEC.md and the code still agree about what this app must do.
 //
 // The spec is written from prompts and the code is written from the spec, both by the
 // same hand. That hand can restate its own mistake in both places and notice nothing, so
@@ -8,9 +8,9 @@
 //
 // Two directions, because a spec rots from either end:
 //   - a rule nothing asserts is a wish, not a rule
-//   - a proof naming a rule the spec no longer defines is a leftover asserting a ghost
+//   - an annotation naming a rule the spec no longer defines is a leftover
 //
-//   node scripts/check-spec.mjs [--list]
+//   node scripts/check-spec.mjs [--list | --file]
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -18,19 +18,25 @@ import { dirname, join, relative } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SPEC = join(ROOT, "SPEC.md");
-const LIST = process.argv.includes("--list");
+const MODE = process.argv.includes("--file") ? "file" : process.argv.includes("--list") ? "list" : null;
 
 // A rule is defined by being the first cell of a table row. That keeps the definition and
 // its statement on one line, and leaves an ID mentioned in prose as a mention.
 const RULE_ROW = /^\|\s*`?([A-Z]+-\d+)`?\s*\|(.*)$/;
-// `// @spec GATE-1, GATE-2` — one annotation may carry several.
+// `@spec GATE-1, GATE-2` — one annotation may carry several.
 const ANNOTATION = /@spec\s+([A-Z]+-\d+(?:\s*[,\s]\s*[A-Z]+-\d+)*)/g;
 
-// Only these count as proof. An `@spec` anywhere else is a comment, not a claim — this
-// file included, or the IDs in the annotation syntax above would prove themselves.
+// Two kinds of annotation, and only one of them is proof. A rule cannot be proven by the
+// code implementing it — that is the tautology this whole file exists to prevent. An
+// annotation in the source says "this rule governs this code", which is what you want to
+// see when you open the file to change it, and nothing more.
 const SELF = "scripts/check-spec.mjs";
-const isProof = (path) =>
-  path !== SELF && (/\.test\.tsx?$/.test(path) || (path.startsWith("scripts/") && path.endsWith(".mjs")));
+const isProof = (p) => /\.test\.tsx?$/.test(p) || (p.startsWith("scripts/") && p.endsWith(".mjs"));
+const isCode = (p) =>
+  (p.startsWith("apps/web/src/") && /\.tsx?$/.test(p) && !/\.test\.tsx?$/.test(p)) ||
+  p === "apps/web/next.config.mjs" ||
+  (p.startsWith("apps/web/scripts/") && p.endsWith(".ts"));
+
 const SKIP = new Set(["node_modules", ".git", ".next", ".next-build", ".turbo", "data", ".agents"]);
 
 function walk(dir, out = []) {
@@ -46,7 +52,10 @@ function walk(dir, out = []) {
 function readRules() {
   const rules = new Map();
   const dupes = [];
+  let area = null;
   for (const line of readFileSync(SPEC, "utf8").split("\n")) {
+    const heading = /^## ([A-Z]+) /.exec(line);
+    if (heading) area = heading[1];
     const m = RULE_ROW.exec(line);
     if (!m) continue;
     const [, id, rest] = m;
@@ -54,26 +63,9 @@ function readRules() {
     // rule, the whole row for the decode table, which states itself in columns.
     const text = rest.split("|").map((c) => c.trim()).filter(Boolean).join(" · ");
     if (rules.has(id)) dupes.push(id);
-    else rules.set(id, text);
+    else rules.set(id, { area: area ?? id.split("-")[0], text, proof: [], code: [] });
   }
   return { rules, dupes };
-}
-
-function readProofs(files) {
-  const proofs = new Map(); // id -> [file, ...]
-  const cited = [];         // { id, file }
-  for (const file of files) {
-    if (!isProof(file)) continue;
-    const src = readFileSync(join(ROOT, file), "utf8");
-    for (const m of src.matchAll(ANNOTATION)) {
-      for (const id of m[1].split(/[,\s]+/).filter(Boolean)) {
-        cited.push({ id, file });
-        const at = proofs.get(id);
-        if (at) { if (!at.includes(file)) at.push(file); } else proofs.set(id, [file]);
-      }
-    }
-  }
-  return { proofs, cited };
 }
 
 const { rules, dupes } = readRules();
@@ -84,19 +76,52 @@ if (rules.size < 10) {
   process.exit(1);
 }
 
-const { proofs, cited } = readProofs(walk(ROOT));
-const unproven = [...rules.keys()].filter((id) => !proofs.has(id));
-const unknown = cited.filter(({ id }) => !rules.has(id));
+const unknown = [];
+const byFile = new Map();
+for (const file of walk(ROOT)) {
+  if (file === SELF) continue;
+  const kind = isProof(file) ? "proof" : isCode(file) ? "code" : null;
+  if (!kind) continue;
+  for (const m of readFileSync(join(ROOT, file), "utf8").matchAll(ANNOTATION)) {
+    for (const id of m[1].split(/[,\s]+/).filter(Boolean)) {
+      const rule = rules.get(id);
+      if (!rule) { unknown.push({ id, file }); continue; }
+      if (!rule[kind].includes(file)) rule[kind].push(file);
+      const seen = byFile.get(file) ?? { kind, ids: [] };
+      if (!seen.ids.includes(id)) seen.ids.push(id);
+      byFile.set(file, seen);
+    }
+  }
+}
 
-if (LIST) {
-  for (const [id, text] of rules) {
-    const at = proofs.get(id);
-    console.log(`${id.padEnd(10)} ${at ? at.join(", ") : "—"}\n${" ".repeat(11)}${text}`);
+const unproven = [...rules].filter(([, r]) => !r.proof.length).map(([id]) => id);
+const marked = [...rules.values()].filter((r) => r.code.length).length;
+const short = (f) => f.replace("apps/web/src/", "").replace("apps/web/", "");
+
+if (MODE === "list") {
+  let area = null;
+  for (const [id, r] of rules) {
+    if (r.area !== area) console.log(`${(area = r.area)}\n`);
+    console.log(`  ${id.padEnd(9)} ${r.text}`);
+    console.log(`  ${" ".repeat(9)} proof  ${r.proof.map(short).join(", ") || "—"}`);
+    console.log(`  ${" ".repeat(9)} code   ${r.code.map(short).join(", ") || "—"}\n`);
+  }
+}
+
+if (MODE === "file") {
+  const rows = [...byFile].sort(([a], [b]) => a.localeCompare(b));
+  const w = Math.max(...rows.map(([f]) => short(f).length));
+  // Sorted by area then number, so a file's rules read in the spec's own order rather
+  // than in whatever order the annotations happen to sit in it.
+  const order = (id) => { const [a, n] = id.split("-"); return [a, Number(n)]; };
+  for (const [file, { kind, ids }] of rows) {
+    ids.sort((x, y) => { const [a, i] = order(x), [b, j] = order(y); return a === b ? i - j : a.localeCompare(b); });
+    console.log(`${short(file).padEnd(w)}  ${kind.padEnd(5)}  ${ids.join(", ")}`);
   }
   console.log();
 }
 
-console.log(`spec: ${rules.size} rules, ${rules.size - unproven.length} proven`);
+console.log(`spec: ${rules.size} rules, ${rules.size - unproven.length} proven, ${marked} marked in code`);
 
 const say = (title, lines) => {
   if (!lines.length) return;
@@ -105,7 +130,7 @@ const say = (title, lines) => {
 };
 
 say("defined twice — an ID is for one rule and stays with it:", dupes);
-say("unproven — no test names these:", unproven.map((id) => `${id.padEnd(10)} ${rules.get(id)}`));
+say("unproven — no test names these:", unproven.map((id) => `${id.padEnd(10)} ${rules.get(id).text}`));
 say(
   "unknown — these name a rule SPEC.md does not define:",
   [...new Set(unknown.map(({ id, file }) => `${file} names ${id}`))],

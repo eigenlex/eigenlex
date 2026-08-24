@@ -5,6 +5,7 @@ const dev = process.env.NODE_ENV === "development";
 // streams the RSC payload through inline <script> tags; nonces would need middleware,
 // which is a bigger surface than the one this buys. Dev additionally evals (HMR) and
 // opens a websocket back.
+// @spec HEAD-2, HEAD-3, HEAD-4
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}`,
@@ -18,6 +19,7 @@ const csp = [
   "object-src 'none'",
 ].join("; ");
 
+// @spec HEAD-1
 const SECURITY_HEADERS = [
   { key: "Content-Security-Policy", value: csp },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -36,6 +38,7 @@ const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   // bands.ts imports data/word-bands.json directly, so the tracer bundles it
   // automatically — no outputFileTracingIncludes needed.
+  // @spec HEAD-5
   poweredByHeader: false,
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];

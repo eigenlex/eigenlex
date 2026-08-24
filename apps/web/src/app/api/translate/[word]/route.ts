@@ -24,6 +24,7 @@ export const revalidate = 86400;
  * A1 and "abrevar" C2 arrive as equals — so the level is what tells a learner which
  * alternative is theirs. Only the six indexed languages have levels; a term that is a
  * phrase, or a word the list doesn't carry, is simply absent.
+ * @spec BAND-9
  */
 function levelsOf(target: string, groups: SenseGroup[], translation: string) {
   // Levels come off the indexed word lists, so the target must be a source language too.
@@ -60,6 +61,7 @@ export async function GET(
   // Unlike the other routes, this one answers by calling Google rather than by reading our
   // own data, so it forwards only what the card asks it for: one word, between two language
   // codes. Anything else is refused here instead of being relayed upstream on our quota.
+  // @spec GATE-1, GATE-3, GATE-4, GATE-5
   if (!isSingleWord(word)) return new Response("not a word", { status: 400 });
   if (!isSourceLang(source) || !isLangCode(target)) {
     return new Response("unknown language", { status: 400 });
@@ -67,6 +69,7 @@ export async function GET(
   // `dict` mode translates one casing of a case-homograph: casing is significant, so keep
   // it; otherwise lowercase for a stable, lowercase result and better cache hits.
   const dict = q.get("dict") === "1";
+  // @spec GATE-7
   const text = dict ? word : word.toLowerCase();
 
   try {
@@ -98,6 +101,7 @@ export async function GET(
       levels: levelsOf(target, groups, translation),
     });
   } catch {
+    // @spec GATE-6
     return new Response("upstream error", { status: 502 });
   }
 }

@@ -18,15 +18,21 @@ both directions and fails on either.
 | Piece | Rule |
 | --- | --- |
 | ID | `AREA-n`. Stable for the life of the rule. Never renumbered, never reused after a rule is deleted |
-| The link | An `@spec` comment in the proving file: `// @spec GATE-1`, or several — `// @spec GATE-1, GATE-2` |
-| A proof | A `*.test.ts` / `*.test.tsx` under `apps/web/src`, or a checker under `scripts/` |
+| The link | An `@spec` comment: `// @spec GATE-1`, or several — `// @spec GATE-1, GATE-2` |
+| A proof | A `*.test.ts` / `*.test.tsx` under `apps/web/src`, or a checker under `scripts/`. Only a proof satisfies a rule |
+| A mark | The same comment on the code a rule governs, so opening the file tells you which rule binds it. It never counts as proof — code cannot witness itself |
 | Unproven rule | An error. A rule nothing asserts is a wish |
-| Unknown ID | An error. A proof naming a rule this file does not define is a leftover |
+| Unknown ID | An error, in a proof or a mark alike. One naming a rule this file does not define is a leftover |
 | Where it runs | `pnpm spec:check`, `pr.yml`, and `.githooks/pre-push`. It parses text and needs no network |
 
-One test may prove several rules, and one rule may be proven in several places. What the
-check will not do is judge whether the test is any good — it verifies the claim exists,
-not that it bites.
+`pnpm spec:list` prints every rule by area with its proofs and marks; `pnpm spec:files`
+prints the reverse, a file at a time. Neither is stored — both are derived on the read, so
+neither can go stale.
+
+One test may prove several rules, and one rule may be proven in several places. A rule that
+is a property of the edge, or of every route at once, has no single place to mark and
+carries none. What the check will not do is judge whether the test is any good — it
+verifies the claim exists, not that it bites.
 
 ## Areas
 

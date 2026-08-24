@@ -52,6 +52,7 @@ const FREQ_BANDS: BandDef[] = [
 // asserts a band exists at every rank — a future language whose lemma list is weak
 // enough to leave a long tail lands here instead of crashing. Bands with no words are
 // filtered per language, so an unreached `rare` never renders as an empty tab.
+// @spec BAND-1, BAND-2
 const CEFR_BANDS: BandDef[] = [
   { key: "A1", label: "A1 · Beginner", min: 1, max: 1000 },
   { key: "A2", label: "A2 · Elementary", min: 1001, max: 3000 },
@@ -66,6 +67,7 @@ const CEFR_BANDS: BandDef[] = [
 // arbiter (see `dictGate`). Chosen from measured dictionary coverage, which runs ~45%
 // at 12k–25k and then halves to 26% by 40k. It lands the five subtitle languages at
 // 33–40k words each, about where English's curated SUBTLEX ends on its own.
+// @spec FILTER-4
 const DICT_GATE = 25000;
 
 // The frequency floor for the OpenSubtitles lists, where below ~10 occurrences the tail
@@ -276,6 +278,7 @@ function makeClean(cfg: LangConfig) {
  * "a-t-il" -> "a". Portuguese mesoclisis wraps the pronoun inside the verb
  * ("contar-te-ia"), so a known verb ending trailing a clitic is stripped with it.
  * Returns null when there is nothing to strip — including every ordinary compound.
+ * @spec FILTER-1, FILTER-2
  */
 function declitic(w: string, cfg: LangConfig): string | null {
   if (!cfg.clitics || !w.includes("-") || cfg.cliticExceptions?.has(w)) return null;
@@ -331,6 +334,7 @@ const HOMOGRAPH_MIN_SHARE = 0.1;
 const NAMES_FILE = "names.txt";
 // Above this rank a hit is far likelier to be a loanword noun missing from the lemma
 // list ("Boss", "Sheriff") than a name, so leave the head alone.
+// @spec FILTER-5
 const NAME_RANK_FLOOR = 1000;
 const NAME_CAP_SHARE = 0.9;
 const NAME_MIN_OBS = 5;
@@ -410,6 +414,7 @@ function dictCasing(spellings: Map<string, Set<string>>): Map<string, string> {
 }
 
 // Casing display forms + case-homograph variants for a language.
+// @spec FILTER-6, FILTER-7
 function buildCasing(cfg: LangConfig): {
   casing: Map<string, string>;
   variants: Map<string, string[]>;
@@ -460,6 +465,7 @@ function buildLang(cfg: LangConfig) {
     isHeadword.add(l);
     if (!form2lemma.has(f)) form2lemma.set(f, l);
   }
+  // @spec FILTER-3
   // A word heading its own entry keeps it — else first-wins silently swallows it.
   const lemmaOf = (w: string) => (isHeadword.has(w) ? w : form2lemma.get(w) ?? w);
 
@@ -552,6 +558,7 @@ function buildLang(cfg: LangConfig) {
 
   const bandCount = (d: BandDef) =>
     Math.max(0, (d.max === null ? ranked.length : Math.min(d.max, ranked.length)) - d.min + 1);
+  // @spec BAND-4
   // A band the list never reaches would render as an empty tab, so drop it.
   const reached = (defs: BandDef[]) => defs.filter((d) => bandCount(d) > 0);
   const freqBands = reached(FREQ_BANDS);

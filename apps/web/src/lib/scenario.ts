@@ -10,6 +10,7 @@ const isView = (v: string): v is BandView => v === "freq" || v === "cefr";
 
 // The spellings each language is accepted under, canonical first. Only the canonical one
 // is ever written, so a link carrying another is rewritten the moment it is opened.
+// @spec URL-2
 const SOURCE_PARAMS = ["source", "lang"] as const;
 const TARGET_PARAMS = ["target", "tl"] as const;
 
@@ -37,6 +38,7 @@ export interface Scenario {
 /**
  * The document title for a scenario's word — the other place the scenario surfaces.
  * Shared so the server-rendered title and the client's agree word for word.
+ * @spec URL-6
  */
 export function pageTitle(word: string | null | undefined): string {
   // Sliced because the word can come straight off the query string, unlooked-up.
@@ -45,6 +47,7 @@ export function pageTitle(word: string | null | undefined): string {
 }
 
 /** The scenario encoded in the current URL, if any (client-only; empty on the server). */
+// @spec URL-1, URL-3
 export function readScenario(): Partial<Scenario> {
   if (typeof window === "undefined") return {};
   const p = new URLSearchParams(window.location.search);
@@ -65,6 +68,7 @@ export function readScenario(): Partial<Scenario> {
 /**
  * Reflect the scenario into the URL. Uses replaceState — we're mirroring live state
  * for sharing, not adding a history entry for every language flip or band click.
+ * @spec URL-4
  */
 export function writeScenario(s: Scenario): void {
   if (typeof window === "undefined") return;

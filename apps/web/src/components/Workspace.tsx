@@ -242,6 +242,7 @@ function CorpusCredit({ source }: { source: SourceLang }) {
 export default function Workspace({ country }: { country?: string | null }) {
   // A scenario carried in the URL wins over stored/default picks, so a shared deeplink
   // restores exactly what the sender saw. Read once, on mount.
+  // @spec URL-5
   const initial = useRef(readScenario()).current;
   const browser = browserLang();
 
