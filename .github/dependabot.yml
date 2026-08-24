@@ -14,10 +14,26 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 5
+    # Was 5, which is per directory — so dropping "/apps/web" halved the real budget at
+    # the same time as the majors started arriving. The root hit 5 exactly on 24 Aug.
+    open-pull-requests-limit: 8
     commit-message:
       prefix: "chore"
       include: "scope"
+    # Majors that cannot install here, because something else pins the peer range. Left
+    # alone Dependabot re-proposes them on every patch release — a red PR a week for a
+    # bump that fails `pnpm install` before anything runs.
+    #
+    # Each entry states the peer that blocks it, and `pnpm ignores:check` reads that claim
+    # out of this file and compares it against pnpm-lock.yaml. So when the peer widens,
+    # the check fails and says so; without it an ignore is a thing nothing pulls on.
+    ignore:
+      # blocked-by: @frontify/fondue-tokens peers tailwindcss ^3.4.17
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      # blocked-by: @typescript-eslint/parser peers typescript >=4.8.4 <6.1.0
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       # Routine churn, batched. Majors stay out of these on purpose — they are the ones
       # that change behaviour, and they deserve a PR and a read of their own.

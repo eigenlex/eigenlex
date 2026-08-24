@@ -604,6 +604,33 @@ around:
 `./.next-build/types/routes.d.ts`. Check it out again afterwards, or the committed file
 points at a directory only that command builds.
 
+## Dependency updates
+
+`.github/dependabot.yml` runs weekly, groups minor and patch, and leaves every major a PR
+of its own. Two things about it are load-bearing.
+
+| Detail | Why |
+| --- | --- |
+| One directory, and it is the root | pnpm workspace: the lockfile is at the root, and an update from there rewrites `apps/web/package.json` and `pnpm-lock.yaml` together. Listing `/apps/web` as a second directory opens a duplicate PR per dependency that edits the manifest alone — there is no lockfile in that directory — and every one fails `pnpm install --frozen-lockfile`, in CI and on Vercel alike |
+| The limit is per directory | `open-pull-requests-limit: 8`, counted per directory rather than across the config |
+
+Two majors are ignored, because a peer range in a package we do not control forbids them:
+
+| Ignored | Blocked by |
+| --- | --- |
+| `tailwindcss` ≥ 4 | `@frontify/fondue-tokens` peers `^3.4.17` |
+| `typescript` ≥ 6 | `@typescript-eslint/parser` peers `>=4.8.4 <6.1.0` |
+
+An ignore is a decision to stop hearing about something, and nothing pulls on it — so each
+entry states its reason as a `# blocked-by:` line, and `pnpm ignores:check` reads that
+claim out of the file and compares it against `pnpm-lock.yaml`. It fails when a blocker
+stops peering the way the entry says, which is the moment the major may be takeable. It
+runs in `pr.yml` and the pre-push hook.
+
+Reading the installed lockfile is the whole scope on purpose: an upstream release we have
+not taken cannot unblock anything, so this fires on the commit that upgrades the blocker
+and needs no schedule of its own.
+
 ## Vendored skills
 
 `.claude/skills/` holds four skills and none of them is ours. They come from two

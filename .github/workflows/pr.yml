@@ -53,6 +53,10 @@ jobs:
       # wrong to find out about first.
       - run: node scripts/check-spec.mjs
 
+      # Fires when a dependency bump widens the peer range that justifies an ignore —
+      # which is exactly the commit where the answer changed.
+      - run: node scripts/check-dependabot-ignores.mjs
+
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @eigenlex/web lint
