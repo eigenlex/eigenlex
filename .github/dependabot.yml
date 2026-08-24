@@ -4,10 +4,13 @@
 version: 2
 updates:
   - package-ecosystem: "npm"
-    # pnpm workspace. The root holds the lockfile; apps/web holds next, react and fondue.
+    # One entry, and it is the root. This is a pnpm workspace, so the lockfile lives there
+    # and an update from it rewrites apps/web/package.json and pnpm-lock.yaml together.
+    # Listing "/apps/web" as well opened a second PR per dependency that edited the
+    # manifest alone — there is no lockfile in that directory to update — and every one of
+    # those failed `pnpm install --frozen-lockfile`, in CI and on Vercel alike.
     directories:
       - "/"
-      - "/apps/web"
     schedule:
       interval: "weekly"
       day: "monday"
