@@ -121,6 +121,7 @@ const POSITIONS: { name: string; call: (bad: string) => Promise<Response> }[] = 
   },
 ];
 
+// @spec ROUTE-10
 describe("no caller-controlled value produces a 5xx", () => {
   // Translate is the one route that calls out. Stub it so the sweep never leaves the process.
   beforeEach(() => {

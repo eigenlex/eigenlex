@@ -207,12 +207,14 @@ describe("Workspace", () => {
       await settlesOn("en", "es");
     });
 
+    // @spec URL-5
     it("yields to a language the visitor picked before", async () => {
       localStorage.setItem("eigenlex:source", "it");
       render(<Workspace country="ES" />);
       expect(await screen.findByRole("region", { name: /meaning of acqua/i })).toBeInTheDocument();
     });
 
+    // @spec URL-5
     it("yields to a shared deeplink", async () => {
       window.history.replaceState(null, "", "/?source=de&word=wasser&target=en");
       render(<Workspace country="ES" />);

@@ -14,6 +14,7 @@ const req = (url: string) => new Request(`http://test${url}`);
 const promise = <T>(v: T) => Promise.resolve(v);
 
 describe("GET /api/word/[word]", () => {
+  // @spec ROUTE-8
   it("returns the word's bands and lowercases the param", async () => {
     const res = await wordGET(req("/api/word/X"), { params: promise({ word: REAL.toUpperCase() }) });
     expect(res.status).toBe(200);
@@ -24,6 +25,7 @@ describe("GET /api/word/[word]", () => {
     expect(info.cefr.key).toBe("A1");
   });
 
+  // @spec ROUTE-9
   it("404s for an unknown word", async () => {
     const res = await wordGET(req("/api/word/x"), { params: promise({ word: MISSING }) });
     expect(res.status).toBe(404);
@@ -35,6 +37,7 @@ describe("GET /api/word/[word]", () => {
     expect((await res.json()).word).toBe(REAL_ES);
   });
 
+  // @spec ROUTE-9
   it("404s for an unknown source language", async () => {
     const res = await wordGET(req("/api/word/x?source=zz"), { params: promise({ word: REAL }) });
     expect(res.status).toBe(404);
@@ -42,6 +45,7 @@ describe("GET /api/word/[word]", () => {
 
   // Next decodes the param before the handler sees it, so a decode here would be a second
   // one — and would throw on anything holding a stray percent.
+  // @spec ROUTE-7
   it("treats the param as already decoded", async () => {
     const res = await wordGET(req("/api/word/x"), { params: promise({ word: "%" }) });
     expect(res.status).toBe(404);
@@ -57,11 +61,13 @@ describe("GET /api/suggest", () => {
   });
 
   // Unbounded, one lookup hands back the query's whole prefix bucket.
+  // @spec ROUTE-11
   it("clamps a limit asking for more than a dropdown's worth", async () => {
     const res = await suggestGET(req("/api/suggest?q=a&limit=1000000000"));
     expect(((await res.json()) as string[]).length).toBeLessThanOrEqual(50);
   });
 
+  // @spec ROUTE-11
   it("falls back to the default for a limit that is not a count", async () => {
     for (const qs of ["limit=abc", "limit=-1", "limit="]) {
       const res = await suggestGET(req(`/api/suggest?q=a&${qs}`));
@@ -83,6 +89,7 @@ describe("GET /api/bands/[view]", () => {
     }
   });
 
+  // @spec ROUTE-9
   it("404s for an unknown view", async () => {
     const res = await bandsGET(req("/api/bands/x"), { params: promise({ view: "nope" }) });
     expect(res.status).toBe(404);
@@ -106,6 +113,7 @@ afterEach(() => vi.unstubAllGlobals());
 // This route answers by calling Google, so what it declines to forward matters as much as
 // what it returns: unguarded it is a general-purpose translation relay on our own quota.
 describe("GET /api/translate/[word] input", () => {
+  // @spec GATE-5
   const refuses = async (word: string, qs: string) => {
     const upstream = vi.fn(async () => new Response("[]"));
     vi.stubGlobal("fetch", upstream);
@@ -114,22 +122,27 @@ describe("GET /api/translate/[word] input", () => {
     expect(upstream).not.toHaveBeenCalled();
   };
 
+  // @spec GATE-1
   it("refuses arbitrary text, which is what a word is not", async () => {
     await refuses("the quick brown fox jumps over the lazy dog", "source=en&target=es");
   });
 
+  // @spec GATE-1
   it("refuses a word longer than any the corpora hold", async () => {
     await refuses("a".repeat(65), "source=en&target=es");
   });
 
+  // @spec GATE-4
   it("refuses a target that is not a language code", async () => {
     await refuses("water", "source=en&target=notalanguage");
   });
 
+  // @spec GATE-3
   it("refuses a source outside the six we index", async () => {
     await refuses("water", "source=zz&target=es");
   });
 
+  // @spec GATE-4
   it("still takes any language Google does as a target", async () => {
     vi.stubGlobal("fetch", mockGtx("水", "noun", [["水", 0.6]]));
     expect((await translate("water", "source=en&target=ja&dict=1")).status).toBe(200);
@@ -154,6 +167,7 @@ describe("GET /api/translate/[word] levels", () => {
   });
 
   // Only the six indexed languages have a word list to place a term in.
+  // @spec BAND-9
   it("leaves the terms unlevelled for a language we don't index", async () => {
     vi.stubGlobal("fetch", mockGtx("水", "noun", [["水", 0.6]]));
     const { levels } = await (await translate("water", "source=en&target=ja&dict=1")).json();
@@ -178,6 +192,40 @@ describe("GET /api/translate/[word] levels", () => {
   });
 });
 
+// The gate decides what is forwarded; these two are what the route does with what it
+// forwarded, and with what came back.
+describe("GET /api/translate/[word] output", () => {
+  const urlOf = (f: ReturnType<typeof vi.fn>) => new URL(String(f.mock.calls[0]![0]));
+
+  // Google failing is not this app failing. hostile-input.test.ts sweeps for 5xx with a
+  // healthy upstream, so nothing else here looks at an unhealthy one.
+  // @spec GATE-6
+  it("answers 502 when the upstream call fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 500 })));
+    expect((await translate("water", "source=en&target=es")).status).toBe(502);
+  });
+
+  // @spec GATE-7
+  it("lowercases the word, for a stable answer and a warmer cache", async () => {
+    const upstream = mockGtx("agua", "noun", [["agua", 0.6]]);
+    vi.stubGlobal("fetch", upstream);
+    const res = await translate("Water", "source=en&target=es");
+    expect(urlOf(upstream).searchParams.get("q")).toBe("water");
+    expect((await res.json()).word).toBe("water");
+  });
+
+  // dt=bd is casing-sensitive — "Essen" is food, "essen" is to eat — so the casing is
+  // the question being asked.
+  // @spec GATE-7
+  it("keeps the casing when asking for the dictionary block", async () => {
+    const upstream = mockGtx("food", "noun", [["food", 0.6]]);
+    vi.stubGlobal("fetch", upstream);
+    const res = await translate("Essen", "source=de&target=en&dict=1");
+    expect(urlOf(upstream).searchParams.get("q")).toBe("Essen");
+    expect((await res.json()).word).toBe("Essen");
+  });
+});
+
 describe("GET /api/band/[view]/[key]", () => {
   it("returns a band's words in frequency order", async () => {
     const res = await bandGET(req("/api/band/x/x"), { params: promise({ view: "cefr", key: "A1" }) });
@@ -187,6 +235,7 @@ describe("GET /api/band/[view]/[key]", () => {
     expect(band.words.length).toBe(1000);
   });
 
+  // @spec ROUTE-9
   it("404s for an unknown band or view", async () => {
     const bad = await bandGET(req("/api/band/x/x"), { params: promise({ view: "cefr", key: "Z9" }) });
     expect(bad.status).toBe(404);

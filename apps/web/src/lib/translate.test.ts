@@ -22,6 +22,7 @@ describe("baseLang", () => {
 });
 
 describe("isSingleWord", () => {
+  // @spec GATE-1, GATE-2
   it("accepts the shapes the corpora actually hold", () => {
     expect(isSingleWord("water")).toBe(true);
     expect(isSingleWord("antidisestablishmentarianism")).toBe(true);
@@ -34,6 +35,7 @@ describe("isSingleWord", () => {
     expect(isSingleWord("a".repeat(64))).toBe(true);
   });
 
+  // @spec GATE-1
   it("rejects anything that is text to relay rather than a word to look up", () => {
     expect(isSingleWord("the quick brown fox")).toBe(false);
     expect(isSingleWord("two\nlines")).toBe(false);
@@ -43,12 +45,14 @@ describe("isSingleWord", () => {
 });
 
 describe("isLangCode", () => {
+  // @spec GATE-4
   it("takes any base code, not just the six we index", () => {
     expect(isLangCode("es")).toBe(true);
     expect(isLangCode("ja")).toBe(true);
     expect(isLangCode("haw")).toBe(true);
   });
 
+  // @spec GATE-4
   it("rejects what is not a code", () => {
     expect(isLangCode("notalanguage")).toBe(false);
     expect(isLangCode("e")).toBe(false);

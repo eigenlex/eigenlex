@@ -4,6 +4,28 @@ pnpm + turbo monorepo with one app. `apps/web` is the Next.js site and the hoste
 It is a vocabulary learning tool. Every word gets a frequency band and a CEFR band, so a
 learner can see where a word sits and browse the vocabulary in order.
 
+## The spec
+
+`SPEC.md` is what this app must do. This file is how to work on it.
+
+| Says | Goes in |
+| --- | --- |
+| "must", "never", "always" — a fact about the running app | `SPEC.md`, under an ID |
+| "how", "why", "watch out" — a command, a rationale, a trap | Here |
+
+Every rule there carries an ID, and the test proving it names that ID in an `@spec`
+comment. That comment is the only link between the two, so neither file has to restate the
+other.
+
+| Command | Does |
+| --- | --- |
+| `pnpm spec:check` | Fail on a rule nothing proves, and on a proof naming a rule that no longer exists |
+| `pnpm spec:list` | Print every rule with the files that prove it |
+
+It runs in `pr.yml` and in the pre-push hook, parses text and needs no network. Where this
+file needs to talk about a rule it names the ID and says why the rule is what it is; the
+statement itself stays in `SPEC.md`.
+
 ## Source and target
 
 Two languages. They are `source` and `target` everywhere — symbols, URL, storage keys,
@@ -58,13 +80,14 @@ than in `WordCard`, and `band` rather than in `BandBrowser`, so both ride in the
 
 | Param | Holds | Notes |
 | --- | --- | --- |
-| `source` | Source language | One of the six. `lang` is read too, never written |
+| `source` | Source language | One of the six |
 | `word` | The looked-up word | |
-| `target` | Target language | Any language, not just the six. `tl` is read too, never written |
+| `target` | Target language | Any language, not just the six |
 | `view` | `freq` or `cefr` | `cefr` is the default, and sits first in the toggle |
 | `band` | Pinned band tab | Set only when it differs from the word's own band, which the word and view already imply |
 
-On mount the URL wins over the stored pick, which wins over the seed below.
+`URL-1` to `URL-7` are the rules: the older spellings, what is written and when, and the
+precedence on mount — the URL wins over the stored pick, which wins over the seed below.
 
 The tab title carries the word too: `eigenlex: <word>`, in the corpus's display casing
 (`eigenlex: Wasser`). `generateMetadata` renders it from `?word=` server-side, so a shared
@@ -213,15 +236,8 @@ six have one.
 Bands are frequency-rank thresholds calibrated against CEFR-J. They are English-derived
 and reused for every language. No graph and no external dictionary is involved.
 
-| Band | Top rank |
-| --- | --- |
-| A1 | 1,000 |
-| A2 | 3,000 |
-| B1 | 6,000 |
-| B2 | 12,000 |
-| C1 | 25,000 |
-| C2 | 50,000 |
-| `rare` ("Rare · beyond C2") | none — `max: null` |
+The thresholds are `BAND-1`, and `BAND-2` is that every language uses them unchanged.
+Past C2 sits `rare` ("Rare · beyond C2"), open-ended at `max: null`.
 
 Tops roughly double, so C2 ends at 50k instead of running open-ended to the end of the
 list. `rare` is a backstop, not an expected band: with the gate no language reaches 50k, so
@@ -259,9 +275,9 @@ our egress IP, so an abuser's flood lands on real lookups.
 
 | Gate | Rule | Where the bound comes from |
 | --- | --- | --- |
-| `isSingleWord` | One token, no whitespace, at most 64 characters | The longest word in the six artifacts is 28, `antidisestablishmentarianism`, and none holds whitespace. Hyphens and apostrophes are ordinary vocabulary — fr alone has 1,145 hyphenated headwords, `arc-en-ciel`, `quelqu'un` — so only whitespace splits a word |
-| `isSourceLang` | The source is one of the six | It is the language being studied, so it always is |
-| `isLangCode` | The target is shaped like `baseLang` output, 2–3 lowercase letters | The target is any language Google takes, not one of the six, so shape is all there is to check. It still separates `ja` and `haw` from a string to hand upstream |
+| `isSingleWord` | `GATE-1`, `GATE-2` | The longest word in the six artifacts is 28, `antidisestablishmentarianism`, and none holds whitespace. Hyphens and apostrophes are ordinary vocabulary — fr alone has 1,145 hyphenated headwords, `arc-en-ciel`, `quelqu'un` — so only whitespace splits a word |
+| `isSourceLang` | `GATE-3` | It is the language being studied, so it always is |
+| `isLangCode` | `GATE-4` | The target is any language Google takes, not one of the six, so shape is all there is to check. It still separates `ja` and `haw` from a string to hand upstream |
 
 Every refusal answers 400, not the 404 the other routes use for an unknown language: those
 looked and there is no such word list, while these gate what this one will pass on. The
@@ -498,16 +514,8 @@ Take the param as given. Lowercase it where the lookup wants that, and nothing e
 
 Deployed, the param is decoded one more time than it is locally: Vercel's edge decodes the
 path before Next does. The same request answers differently in the two places, so the
-number of decodes is a property of where the code runs, not of the code.
-
-| Request | `next start` | Vercel |
-| --- | --- | --- |
-| `/api/word/%` | 500 | 400 |
-| `/api/word/%25` | 404 | 404 |
-| `/api/word/%2525` | 404 | 404 |
-| `/api/word/%77ater` | 200 `water` | 200 `water` |
-| `/api/word/%2577ater` | 404 | **200 `water`** |
-| `/api/word/%252577ater` | 404 | 404 |
+number of decodes is a property of where the code runs, not of the code. `ROUTE-1` to
+`ROUTE-6` in `SPEC.md` are the six rows, both columns, and `ROUTE-7` is the rule above.
 
 The rule is one extra decode: Vercel needs one more `%25` layer than a local server to land
 on a word. The exception is the malformed end of it. Where that extra decode would leave a
@@ -523,11 +531,11 @@ directly with params already decoded, which is the right thing to test: `routes.
 handler, neither guards what sits above it, so settle a decode question against the
 deployed URL and not against `next start`.
 
-`pnpm decode:check` is what does that. It probes the Vercel column above and exits 1 on any
-row that moved, pointing at this table. It **reads the rows out of the table** rather than
-restating them, so the table is the source and cannot drift from what is asserted — the
-cost is that reformatting it breaks the check, which it reports as `parsed 0 rows` instead
-of quietly passing. `.github/workflows/deployed-decodes.yml` runs it
+`pnpm decode:check` is what does that. It probes the Vercel column and exits 1 on any row
+that moved, naming it. It **reads the rows out of `SPEC.md`** rather than restating them,
+so the table is the source and cannot drift from what is asserted — the cost is that
+reformatting it breaks the check, which it reports as `parsed 0 rows` instead of quietly
+passing. `.github/workflows/deployed-decodes.yml` runs it
 after every production deploy and again weekly — weekly because the edge is Vercel's, so
 the column can move with no commit of ours to trigger on. It takes a target as an argument:
 `pnpm decode:check http://localhost:3111` flags the `%` and `%2577ater` rows, which is the
@@ -538,13 +546,10 @@ check discriminating between the two columns rather than failing.
 `next.config.mjs` sends the same set on every path. `poweredByHeader: false` drops the
 framework name; Vercel adds HSTS on its own, so we do not.
 
-| Header | Value |
-| --- | --- |
-| `Content-Security-Policy` | See below |
-| `X-Content-Type-Options` | `nosniff` |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `X-Frame-Options` | `DENY` — what `frame-ancestors` already says, for browsers that do not read it |
-| `Permissions-Policy` | Camera, microphone, geolocation and payment all off. The page asks for none of them |
+`HEAD-1` names the five. Two are worth knowing the reason for: `X-Frame-Options` says what
+`frame-ancestors` already says, for browsers that do not read it, and `Permissions-Policy`
+turns off camera, microphone, geolocation and payment because the page asks for none of
+them.
 
 **The policy is `'self'` and nothing else.** Everything the page loads is same-origin —
 no CDN, no webfont host, no analytics. That is what makes a tight CSP possible, and it is

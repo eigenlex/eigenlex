@@ -26,6 +26,7 @@ const directives = (csp: string) =>
   );
 
 describe("response headers", () => {
+  // @spec HEAD-1
   it("sends the set on every path", async () => {
     const headers = await sentHeaders();
     expect(headers["X-Content-Type-Options"]).toBe("nosniff");
@@ -35,6 +36,7 @@ describe("response headers", () => {
     expect(headers["Content-Security-Policy"]).toBeTruthy();
   });
 
+  // @spec HEAD-5
   it("does not name the framework", () => {
     expect(nextConfig.poweredByHeader).toBe(false);
   });
@@ -46,6 +48,7 @@ describe("the content security policy", () => {
    * that notices when that stops being true: a webfont stylesheet, a CDN script or an
    * outbound beacon has to name a host, and a host is not one of these.
    */
+  // @spec HEAD-2
   it("names no host anywhere", async () => {
     const csp = (await sentHeaders())["Content-Security-Policy"]!;
     const allowed = new Set(["'self'", "'none'", "'unsafe-inline'", "data:"]);
@@ -56,6 +59,7 @@ describe("the content security policy", () => {
     }
   });
 
+  // @spec HEAD-3
   it("closes the directives an unlisted one would fall back to", async () => {
     const d = directives((await sentHeaders())["Content-Security-Policy"]!);
     expect(d.get("default-src")).toEqual(["'self'"]);
@@ -66,6 +70,7 @@ describe("the content security policy", () => {
   });
 
   // Dev adds these for HMR; production must not carry them.
+  // @spec HEAD-4
   it("keeps eval and the websocket out of production", async () => {
     const csp = (await sentHeaders())["Content-Security-Policy"]!;
     expect(csp).not.toContain("unsafe-eval");

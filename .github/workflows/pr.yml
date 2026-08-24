@@ -48,6 +48,11 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # Before the install, because it parses text and needs no dependencies. It is also
+      # the check that fails on a rule nobody implemented, which is the cheapest kind of
+      # wrong to find out about first.
+      - run: node scripts/check-spec.mjs
+
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @eigenlex/web lint
