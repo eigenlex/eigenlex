@@ -15,8 +15,9 @@ import {
   type SenseGroup,
 } from "@/lib/translate";
 
-// A word's translation is stable — let Next's data cache hold it for a day.
-export const revalidate = 86400;
+// A word's translation is stable, and the rare tail is looked up too seldom to survive a
+// short TTL — so the data cache holds it for a quarter.
+export const revalidate = 7776000; // 90 days; a literal, since Next cannot evaluate arithmetic here
 
 /**
  * Each translated term's CEFR level in the language it's written in, keyed by the term as
