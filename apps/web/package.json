@@ -14,8 +14,8 @@
     "build:bands": "tsx scripts/build-bands.ts"
   },
   "dependencies": {
-    "@frontify/fondue": "^13.7.5",
-    "next": "^16.3.2",
+    "@frontify/fondue": "^13.7.7",
+    "next": "^16.3.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "server-only": "^0.0.1"
