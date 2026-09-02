@@ -116,6 +116,23 @@ describe("spell gate", () => {
   });
 });
 
+// German spells compounding inside one word, and compounding is productive, so no lemma
+// list will ever hold "Gletscherspalte". The gate asked the list to vouch and German lost
+// most by it; re-deriving the rule is what buys those words back.
+// @spec FILTER-10
+describe("morphology past the gate", () => {
+  it("keeps a compound or derivation the lemma list does not hold", () => {
+    for (const w of ["Vergabe", "Blutspritzer", "Gletscherspalte", "Schneemaschine",
+      "Appetitlosigkeit", "Nobelpreisträger", "Geiselrettung"]) expect(held("de", w), w).toBe(true);
+  });
+
+  it("still drops what the deep tail is actually made of", () => {
+    for (const w of ["ryûji", "rrr", "lslam", "blabla", "connaughton", "gosheven"]) {
+      expect(held("de", w), w).toBe(false);
+    }
+  });
+});
+
 // The merge folds every inflection onto its lemma, so "branched" is not an entry — though
 // the build knew it was "branch" all along.
 // @spec FORM-1

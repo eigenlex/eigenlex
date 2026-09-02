@@ -119,12 +119,13 @@ re-runs the build.
 | FILTER-1 | No clitic surface form survives in Portuguese or French |
 | FILTER-2 | Hyphenated vocabulary survives, because clitic segments are matched whole |
 | FILTER-3 | A surface word that heads its own lemma entry keeps it rather than merging into another |
-| FILTER-4 | No language's list reaches rank 50,001 |
+| FILTER-4 | However deep a list runs, its deepest word still falls in a band, and the tail band is offered exactly where a list runs past rank 50,000 |
 | FILTER-5 | A personal name that is also an ordinary word of the language survives |
 | FILTER-6 | Display casing is measured mid-sentence, not ruled: German nouns and proper nouns are capitalized, weekdays and months are not |
 | FILTER-7 | A word measured lowercase mid-sentence is stored lowercase, in every language |
 | FILTER-8 | A lemma headword that is not a word of the language holds no entry; its frequency sits under the form that is written |
 | FILTER-9 | Below the dictionary gate, German holds no word its own spell checker rejects |
+| FILTER-10 | Past the dictionary gate, German keeps a word its own compounding or derivation accounts for, and still drops what the corpus tail is made of |
 
 ## FORM — looking a word up by an inflected form
 

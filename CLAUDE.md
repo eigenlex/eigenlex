@@ -160,6 +160,7 @@ it to `SOURCE_LANG_META`, and add the registry import in `bands.ts`.
 | Dictionary gate | `dictGate` | Past rank 25,000, keep a word only if the lemma list vouches for it | Drops about 80 junk words per real one. Lands the five subtitle languages at 33–40k words each, near where English's SUBTLEX ends on its own |
 | Spell gate | `spellDict` | *Below* rank 25,000, drop a word the language's own spell checker rejects | −4,561 in German. The other half of the same list — see below |
 | Truncated stems | `spellDict`, `STEM_MIN_FORM` | Move an entry off a lemma headword that is not a word of the language | 14 in German. `jed` → `jeder`, `mehrer` → `mehrere` |
+| Morphology | `morphology` | Past `dictGate`, keep a word the language's own compounding or derivation accounts for | +17,887 in German, taking it 35.6k → 53.5k. See below |
 | Personal names | `determiners`, `NAME_RANK_FLOOR` | Drop a word meeting all four tests below | See the per-language counts below |
 | Display casing | `casingFile` | Measure each word's mid-sentence capitalization and store that casing | Sentence-initial position is ignored, since it capitalizes everything |
 | Case-homographs | — | Keep both casings of one entry under `variants` | `"essen" -> ["Essen","essen"]`, most frequent first. `getWord` returns them as `forms` |
@@ -201,6 +202,36 @@ no entry for `ryûji` or `rrr`. The dictionary can, which is what `dictGate` use
 | Where they cluster | Productive morphology the lists do not headword: `-mente`/`-ment` adverbs, `-ità`/`-ité` nouns, superlatives — `logicamente`, `unanimità`, `rigoureusement`, `Geborgenheit` |
 | Spot-check | Italian's list has no `entropia`, so the build's spot-check for it reports `—` |
 | 12k–25k untouched | The gate starts at 25k, and 12k–25k is still about half names and English: `Nami`, `Calcutta`, `because`, `corn`, `truck` all sit near rank 13,000 |
+
+### Morphology, the second way past the gate
+
+The gate asks the lemma list to vouch for a word, and German loses most by it. German
+spells compounding **inside one word**, and compounding is productive: `Bananenbrotrezept`
+is ordinary German that no list will ever hold, because the rule makes words faster than
+anyone can enumerate them. English writes the same thing as three words and needs three
+entries; German needs one per combination, forever. So the rule is re-derived rather than
+looked up, and `FILTER-10` is the result — **+17,887 words, 35.6k → 53.5k**.
+
+| Signal | Catches |
+| --- | --- |
+| Compound split, on `links` | `Gletscherspalte`, `Schneemaschine`, `Geiselrettung` |
+| Derivational suffix | `Appetitlosigkeit`, `Beurlaubung`, `Gutherzigkeit` |
+| Prefix | `Vergabe` = ver + gabe |
+
+| Load-bearing detail | Why |
+| --- | --- |
+| The head of a compound and the stem of a derivation must be a **lemma**, not any known form | Otherwise inflections walk in as base words: `rettungsbooten` splits on `booten`, `bundeskanzlers` on `kanzlers` |
+| A part in the gazetteer that the lemma list lacks poisons the split | German compounding licenses names freely — `carleton` is carl+ton, `paulchen` is paul+chen. Costs ~1,083 words, and cleared the sample |
+| The split is a yes/no vouch and is never shown | So a wrong analysis of a real word costs nothing: `gaststube` splits as gasts+tube and is admitted anyway |
+| Only German supplies `morphology` | The Romance five compound phrasally (`arc-en-ciel`), so there is nothing for them to re-derive |
+
+**This is the one thing in the build that is not language-agnostic**, against a file whose
+design is "per language this is pure data". It earns the exception by being worth 20k
+German words; it is still the first place to look when the build stops generalising.
+
+It does not touch loanwords: `Semikolon` and `polyglott` have no German morphology to grab,
+and only a dictionary would admit them. That was the measured trade — the combined
+hunspell variant would have taken them at roughly a third of the precision.
 
 ### The head of the list, and the spell gate
 
@@ -304,11 +335,12 @@ The thresholds are `BAND-1`, and `BAND-2` is that every language uses them uncha
 Past C2 sits `rare` ("Rare · beyond C2"), open-ended at `max: null`.
 
 Tops roughly double, so C2 ends at 50k instead of running open-ended to the end of the
-list. `rare` is a backstop, not an expected band: with the gate no language reaches 50k, so
-every artifact ends at C2. It stays because `getWord` asserts that a band exists at every
-rank, so the last band must be open-ended — keep `max: null` on whichever band is last.
-Both band lists are filtered per language to bands that hold words, so an unreached `rare`
-never renders as an empty tab.
+list. `rare` past it is open-ended, which is what lets `getWord` assert that a band exists
+at every rank — keep `max: null` on whichever band is last. **German reaches it and the
+other five do not**: the morphology vouch buys back ~18k compounds, taking the list past
+50k, while `dictGate` keeps the Romance five inside C2. Both band lists are filtered per
+language to bands that hold words, so an unreached `rare` renders no empty tab, and German
+alone shows a seventh tab.
 
 Comparing one language against another through the bands is the weaker reading. The six
 agree almost everywhere, and where they disagree it is usually a word within 20% of a

@@ -47,12 +47,11 @@ const FREQ_BANDS: BandDef[] = [
 // (1k, 3k, 6k, 12k, 25k, 50k), so C2 ends where the trend says it ends rather than
 // swallowing the rest of the list.
 //
-// `rare` is a backstop, not an expected band. `dictGate` now removes the junk tail at
-// its source rather than banding it, so no language reaches 50k and every artifact
-// currently ends at C2. It stays because it is the open-ended last band, and `getWord`
-// asserts a band exists at every rank — a future language whose lemma list is weak
-// enough to leave a long tail lands here instead of crashing. Bands with no words are
-// filtered per language, so an unreached `rare` never renders as an empty tab.
+// `rare` is the open-ended last band, which is what lets `getWord` assert a band exists
+// at every rank. German reaches it: the morphology vouch buys back ~18k compounds the
+// lemma list never held, and the list runs past 50k. The other five stop inside C2,
+// because `dictGate` removes their junk tail at its source rather than banding it. Bands
+// with no words are filtered per language, so an unreached `rare` renders no empty tab.
 // @spec BAND-1, BAND-2
 const CEFR_BANDS: BandDef[] = [
   { key: "A1", label: "A1 · Beginner", min: 1, max: 1000 },
@@ -145,6 +144,19 @@ interface LangConfig {
    * `dictGate` — see `spellRejects`. Absent = the head of the list is not checked.
    */
   spellDict?: string;
+  /**
+   * Word-formation this language spells inside a single word, for `vouchMorphology`:
+   * the linking morphemes a compound joins with, and the prefixes and suffixes a
+   * derivation takes. Absent = past `dictGate` the lemma list is the only judge, which
+   * is right for the Romance five, whose compounds are phrasal ("arc-en-ciel").
+   */
+  morphology?: {
+    links: string[];
+    prefixes: string[];
+    suffixes: string[];
+    /** Real parts shorter than `MORPH_MIN_PART`, which the splitter would otherwise refuse. */
+    shortParts: Set<string>;
+  };
 }
 
 const LANGS: Record<string, LangConfig> = {
@@ -208,6 +220,15 @@ const LANGS: Record<string, LangConfig> = {
     lemmaFile: "lemma-de.txt",
     dictGate: DICT_GATE,
     spellDict: "de_DE_frami",
+    morphology: {
+      links: ["", "s", "es", "n", "en", "er", "e", "ns"],
+      prefixes: ["ver", "be", "ent", "er", "zer", "ab", "an", "auf", "aus", "ein",
+        "vor", "um", "über", "unter", "durch", "mit", "nach", "zu", "un", "miss"],
+      suffixes: ["igkeit", "lichkeit", "heit", "keit", "ung", "schaft", "lich", "isch",
+        "bar", "los", "haft", "tum", "nis", "ling", "chen", "lein", "erei", "ismus", "ität"],
+      shortParts: new Set(["amt", "art", "bad", "bau", "end", "tag", "weg", "zug",
+        "ton", "tor", "uhr", "ort"]),
+    },
     singleLetterOk: new Set(),
     fragments: new Set(),
     spotChecks: ["ich", "sein", "wasser", "regierung", "philosophie", "entropie"],
@@ -531,6 +552,74 @@ function spellRejects(words: string[], dictBase: string): Set<string> {
   return new Set(words.filter((w) => capped.has(w.toLowerCase()) && lower.has(w.toLowerCase())));
 }
 
+// --- Morphology, the second way past `dictGate`.
+//
+// The gate asks the lemma list to vouch for a word, and German loses most by it: the
+// language spells compounding inside a single word, and compounding is productive, so
+// "Bananenbrotrezept" is ordinary German that no list will ever hold. English writes the
+// same thing as three words and needs three entries; German needs one per combination,
+// forever. A list cannot enumerate an open set, so the rule is re-derived instead.
+//
+// This is the one thing in the build that is not language-agnostic, and it earns that by
+// being the difference between 33k and 53k German words. The Romance five supply no
+// `morphology` and are untouched: their compounds are phrasal, so there is nothing here
+// for them to re-derive.
+// @spec FILTER-10
+const MORPH_MIN_PART = 4;
+const MORPH_MAX_PARTS = 3;
+
+/**
+ * Whether the language's own word-formation accounts for a word the lemma list lacks.
+ *
+ * The head of a compound and the stem of a derivation must be a **lemma**, not merely a
+ * known form. Without that, inflections walk in as though they were base words:
+ * "rettungsbooten" splits on "booten" and "bundeskanzlers" on "kanzlers".
+ *
+ * The split is a yes/no vouch and is never shown, so a wrong analysis of a real word costs
+ * nothing — "gaststube" splits as gasts+tube rather than Gast+Stube and is admitted either
+ * way. What it must not do is license a name, which German compounding otherwise does
+ * freely: "carleton" is carl+ton and "paulchen" is paul+chen. So a part that the gazetteer
+ * knows and the lemma list does not poisons the whole split.
+ */
+function makeVouchMorphology(cfg: LangConfig, isHeadword: Set<string>, known: (w: string) => boolean) {
+  const m = cfg.morphology;
+  if (!m) return () => false;
+  const names = loadNames();
+  const okPart = (p: string) => p.length >= MORPH_MIN_PART || m.shortParts.has(p);
+  const okHead = (p: string) => okPart(p) && isHeadword.has(p);
+  const okMod = (p: string) => okPart(p) && known(p);
+
+  const split = (w: string, depth = 0): string[] | null => {
+    if (depth >= MORPH_MAX_PARTS - 1) return null;
+    for (let i = w.length - 1; i >= MORPH_MIN_PART; i--) {
+      const head = w.slice(i);
+      if (!okHead(head)) continue;
+      for (const link of m.links) {
+        if (link && !w.slice(0, i).endsWith(link)) continue;
+        const mod = link ? w.slice(0, i - link.length) : w.slice(0, i);
+        if (mod.length < MORPH_MIN_PART) continue;
+        if (okMod(mod)) return [mod, head];
+        const deeper = split(mod, depth + 1);
+        if (deeper) return [...deeper, head];
+      }
+    }
+    return null;
+  };
+  const derived = (w: string) => m.suffixes.some((s) => {
+    if (!w.endsWith(s) || w.length - s.length < MORPH_MIN_PART) return false;
+    const stem = w.slice(0, -s.length);
+    return [stem, stem + "e", stem + "en", stem + "er", stem.replace(/e$/, "")].some((t) => isHeadword.has(t));
+  });
+  const prefixed = (w: string) => m.prefixes.some((p) =>
+    w.startsWith(p) && w.length - p.length >= MORPH_MIN_PART && isHeadword.has(w.slice(p.length)));
+
+  return (w: string) => {
+    const parts = split(w);
+    if (parts) return !parts.some((p) => names.has(p) && !isHeadword.has(p));
+    return derived(w) || prefixed(w);
+  };
+}
+
 /**
  * Inflected form -> the indexed word it belongs to, for every form the corpus writes that
  * the merge folded away. Without it "branched" and "jede" answer nothing, though the build
@@ -698,8 +787,14 @@ function buildLang(cfg: LangConfig) {
   const misspelt = cfg.spellDict
     ? spellRejects(namedKeys.slice(0, gate), cfg.spellDict)
     : new Set<string>();
-  const keptKeys = namedKeys.filter((w, i) => (i < gate ? !misspelt.has(w) : known(w)));
-  const gated = namedKeys.filter((w, i) => i >= gate && !known(w)).length;
+  // @spec FILTER-10
+  // Past the gate the lemma list is not the only judge: a word the language's own
+  // word-formation accounts for is vocabulary whether or not anyone listed it.
+  const vouch = makeVouchMorphology(cfg, isHeadword, known);
+  const kept = (w: string) => known(w) || vouch(w);
+  const keptKeys = namedKeys.filter((w, i) => (i < gate ? !misspelt.has(w) : kept(w)));
+  const gated = namedKeys.filter((w, i) => i >= gate && !kept(w)).length;
+  const vouched = namedKeys.filter((w, i) => i >= gate && !known(w) && vouch(w)).length;
 
   const ranked = cased ? keptKeys.map((w) => cased.casing.get(w) ?? w) : keptKeys;
 
@@ -746,9 +841,13 @@ function buildLang(cfg: LangConfig) {
       `${declitDropped.toLocaleString()} dropped as unattributable`);
   }
   if (cfg.dictGate) {
-    const sample = namedKeys.filter((w, i) => i >= cfg.dictGate! && !known(w)).slice(0, 6);
+    const sample = namedKeys.filter((w, i) => i >= cfg.dictGate! && !kept(w)).slice(0, 6);
     console.log(`  dict gate: ${gated.toLocaleString()} dropped past rank`,
       `${cfg.dictGate.toLocaleString()}`, "e.g.", sample.join(" "));
+  }
+  if (cfg.morphology) {
+    const sample = namedKeys.filter((w, i) => i >= gate && !known(w) && vouch(w)).slice(0, 6);
+    console.log(`  morphology: ${vouched.toLocaleString()} kept past the gate`, "e.g.", sample.join(" "));
   }
   if (repairs.size) {
     const sample = [...repairs].filter(([h]) => rankOf.has(repairs.get(h)!)).slice(0, 6);

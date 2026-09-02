@@ -82,9 +82,10 @@ describe("band definitions", () => {
   });
 });
 
-// C2 ends at rank 50,000, and `dictGate` keeps every list well short of that, so the
-// open-ended `rare` band past it exists only as a backstop and is emitted for no
-// language today. See CEFR_BANDS and `dictGate` in scripts/build-bands.ts.
+// C2 ends at rank 50,000 and `rare` past it is open-ended, which is what lets `getWord`
+// assert that a band exists at every rank. German reaches it, on the strength of the
+// morphology vouch (FILTER-10); the other five stop inside C2. See CEFR_BANDS in
+// scripts/build-bands.ts.
 describe("CEFR tail", () => {
   // @spec BAND-1
   it("bounds C2 instead of letting it swallow the list", () => {
@@ -93,12 +94,23 @@ describe("CEFR tail", () => {
   });
 
   // @spec BAND-4, FILTER-4
-  it("ends every language at C2, with no tail band rendered", () => {
+  it("offers the tail band exactly where a list runs past it, and never empty", () => {
     for (const lang of ["en", "es", "fr", "de", "pt", "it"] as const) {
-      const keys = getBandSummary(lang, "cefr").map((b) => b.key);
-      expect(keys.at(-1)).toBe("C2");
-      expect(keys).not.toContain("rare");
-      expect(getBand(lang, "cefr", "rare")).toBeNull();
+      const bands = getBandSummary(lang, "cefr");
+      const total = bands.reduce((n, b) => n + b.count, 0);
+      expect(bands.map((b) => b.key).includes("rare"), lang).toBe(total > 50000);
+      expect(bands.every((b) => b.count > 0), lang).toBe(true);
+    }
+  });
+
+  // @spec FILTER-4
+  // Whichever band a list ends in, its last word has to be in it — that is the property
+  // `getWord`'s non-null band assertion rests on.
+  it("gives the deepest word of every list a band", () => {
+    for (const lang of ["en", "es", "fr", "de", "pt", "it"] as const) {
+      const last = getBandSummary(lang, "cefr").at(-1)!.key;
+      const deepest = getBand(lang, "cefr", last)!.words.at(-1)!;
+      expect(getWord(lang, deepest)!.cefr.key, lang).toBe(last);
     }
   });
 
