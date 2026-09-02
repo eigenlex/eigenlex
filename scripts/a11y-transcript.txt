@@ -25,7 +25,7 @@ READING THE TRANSLATION, rather than tabbing to it
 
 TAB THROUGH THE PAGE
 ------------------------------------------------------------------------
-   1. A1 · Beginner · rank 399, img, — Wasser
+   1. A1 · Beginner · rank 393, img, — Wasser
    2. Swap the source and target languages, button
    3. Target language, combobox, collapsed
    4. A1 · Beginner · rank 391, img, — water
@@ -33,7 +33,7 @@ TAB THROUGH THE PAGE
    6. Google Translate, link
    7. CEFR, radio, checked, — Common European Framework of Reference for Languages (CEFR) level
    8. A1 · Beginner, 1,000 words, tab, selected
-   9. Wasser, option, selected, 399 of 1000
+   9. Wasser, option, selected, 393 of 1000
   10. OpenSubtitles frequencies, link
   11. lemmatization list, link
   12. CEFR-J, link
@@ -43,16 +43,16 @@ TAB THROUGH THE PAGE
 
 THE WORD CLOUD — a listbox of the band's words
 ------------------------------------------------------------------------
-  on entry     Wasser, option, selected, 399 of 1000
-  ArrowRight   ernst, option, 400 of 1000
-  ArrowDown    gekommen, option, 413 of 1000
+  on entry     Wasser, option, selected, 393 of 1000
+  ArrowRight   ernst, option, 394 of 1000
+  ArrowDown    Alter, option, 408 of 1000
 
 THE BAND TABS — one stop, arrows inside it
 ------------------------------------------------------------------------
   on entry     A1 · Beginner, 1,000 words, tab, selected
   ArrowRight   A2 · Elementary, 2,000 words, tab, selected
                  panel: A2 · Elementary · most frequent first
-  End          C2 · Proficiency, 15,192 words, tab, selected
-                 panel: C2 · Proficiency · most frequent first
+  End          Rare · beyond C2, 3,517 words, tab, selected
+                 panel: Rare · beyond C2 · most frequent first
   Home         A1 · Beginner, 1,000 words, tab, selected
                  panel: A1 · Beginner · most frequent first
