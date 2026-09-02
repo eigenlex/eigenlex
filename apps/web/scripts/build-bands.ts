@@ -16,7 +16,8 @@
 // Sources: en = SUBTLEX-US (Brysbaert & New 2009); es/fr/de/pt = OpenSubtitles
 // frequency lists (hermitdave/FrequencyWords, 2018). Lemmatization lists from
 // github.com/michmech/lemmatization-lists.
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -139,6 +140,11 @@ interface LangConfig {
    * smallest by far — gating it would cut 11k mostly-real words.
    */
   dictGate?: number;
+  /**
+   * Hunspell dictionary basename in `data/` (a `.dic` plus an `.aff`), consulted below
+   * `dictGate` — see `spellRejects`. Absent = the head of the list is not checked.
+   */
+  spellDict?: string;
 }
 
 const LANGS: Record<string, LangConfig> = {
@@ -201,6 +207,7 @@ const LANGS: Record<string, LangConfig> = {
     freq: { file: "freq-de.txt", format: "list", wordCol: 0, freqCol: 1, minCount: MIN_COUNT },
     lemmaFile: "lemma-de.txt",
     dictGate: DICT_GATE,
+    spellDict: "de_DE_frami",
     singleLetterOk: new Set(),
     fragments: new Set(),
     spotChecks: ["ich", "sein", "wasser", "regierung", "philosophie", "entropie"],
@@ -452,22 +459,110 @@ function buildCasing(cfg: LangConfig): {
   return { casing, variants, corpus };
 }
 
+// --- Truncated lemma stems.
+//
+// michmech headwords some determiners and adjectives on a bare stem — "jed" for
+// jede/jedem/jeden/jeder, "ander" for andere — which is not a word in the language. The
+// own-entry rule then hands every inflection to it, so the stem lands high on the list
+// while the word itself goes missing: "jed" at rank 107 with no "jeder" anywhere. The
+// entry moves to whichever of its forms the corpus actually writes, which needs the
+// dictionary to say the headword is not a word — see the note in `stemRepairs`.
+// @spec FILTER-8
+const STEM_MIN_FORM = 20;
+
+/** Stem headword -> the form actually written, for headwords that are not words at all. */
+function stemRepairs(
+  formsOf: Map<string, string[]>,
+  corpus: Map<string, CorpusStat>,
+  dictBase: string,
+): Map<string, string> {
+  const seen = (w: string) => corpus.get(w)?.tot ?? 0;
+  const candidates = new Map<string, string>();
+  for (const [head, forms] of formsOf) {
+    // Every form extending the headword is what marks it a stem rather than a word with
+    // inflections: "Dach" does not extend "dachen", so a miscombined entry is left alone.
+    if (forms.length < 2) continue;
+    if (!forms.every((f) => f.startsWith(head) && f.length > head.length)) continue;
+    const best = forms.reduce((a, b) => (seen(b) > seen(a) ? b : a));
+    if (seen(best) < STEM_MIN_FORM) continue;
+    candidates.set(head, best);
+  }
+  // The corpus cannot referee which of those headwords is a word, because a German
+  // adjective is nearly always written declined: bare "afrikanisch" occurs twice in a
+  // million sentences, where "jed" occurs three times. Only a dictionary separates them,
+  // so a headword is repaired only when the dictionary says it is not a word.
+  const notWords = spellRejects([...candidates.keys()], dictBase);
+  return new Map([...candidates].filter(([head]) => notWords.has(head)));
+}
+
+/**
+ * The words below `dictGate` a spell checker of the language rejects.
+ *
+ * Past the gate this would be the wrong tool: a checker is thin on the colloquial verbs,
+ * diminutives and superlatives the rare tail is made of, and rejects them wholesale. The
+ * head of the list has the opposite problem — its junk is personal names the gazetteer
+ * spared and untranslated English, which is exactly what the checker knows is not the
+ * language. So the two gates split the list between them at the same rank.
+ *
+ * Either casing passing is enough. The dictionary capitalizes nouns, and a checker takes
+ * any word capitalized the way a sentence would capitalize it, so a word is only refused
+ * when neither spelling is a word.
+ * @spec FILTER-9
+ */
+function spellRejects(words: string[], dictBase: string): Set<string> {
+  const dict = data(dictBase);
+  for (const ext of [".dic", ".aff"]) {
+    if (existsSync(dict + ext)) continue;
+    throw new Error(`${dictBase}${ext} is missing from data/ (see the build inputs table)`);
+  }
+  const ask = (spell: (w: string) => string) => {
+    const r = spawnSync("hunspell", ["-d", dict, "-l"], {
+      input: words.map(spell).join("\n") + "\n",
+      encoding: "utf8",
+      maxBuffer: 1 << 28,
+    });
+    // ENOENT here is the binary missing, which is a broken toolchain rather than a
+    // language with nothing to check — say so instead of silently keeping every word.
+    if (r.error) throw new Error(`hunspell could not run: ${r.error.message}`);
+    return new Set(r.stdout.split(/\r?\n/).filter(Boolean).map((w) => w.toLowerCase()));
+  };
+  const capped = ask((w) => w.charAt(0).toUpperCase() + w.slice(1));
+  const lower = ask((w) => w.toLowerCase());
+  return new Set(words.filter((w) => capped.has(w.toLowerCase()) && lower.has(w.toLowerCase())));
+}
+
 function buildLang(cfg: LangConfig) {
   const clean = makeClean(cfg);
 
   // Lemma map: inflected form -> base lemma (michmech lists are `lemma<TAB>form`).
   const form2lemma = new Map<string, string>();
   const isHeadword = new Set<string>();
+  const formsOf = new Map<string, string[]>();
   for (const line of readFileSync(data(cfg.lemmaFile), "utf8").split(/\r?\n/)) {
     const [lemma, form] = line.replace(/^﻿/, "").split("\t");
     const l = clean(lemma), f = clean(form);
     if (!l || !f) continue;
     isHeadword.add(l);
     if (!form2lemma.has(f)) form2lemma.set(f, l);
+    const forms = formsOf.get(l);
+    if (forms) forms.push(f);
+    else formsOf.set(l, [f]);
   }
-  // @spec FILTER-3
-  // A word heading its own entry keeps it — else first-wins silently swallows it.
-  const lemmaOf = (w: string) => (isHeadword.has(w) ? w : form2lemma.get(w) ?? w);
+
+  // Read before the merge rather than after it: the stem repair below needs the corpus
+  // to say which spellings are words, and the merge needs the repair.
+  const cased = cfg.casingFile ? buildCasing(cfg) : null;
+  const repairs = cased && cfg.spellDict
+    ? stemRepairs(formsOf, cased.corpus, cfg.spellDict)
+    : new Map<string, string>();
+
+  // @spec FILTER-3, FILTER-8
+  // A word heading its own entry keeps it — else first-wins silently swallows it. Where
+  // the headword is a bare stem, the entry moves to the form the corpus writes.
+  const lemmaOf = (w: string) => {
+    const l = isHeadword.has(w) ? w : form2lemma.get(w) ?? w;
+    return repairs.get(l) ?? l;
+  };
 
   // The verb a clitic form belongs to, or null when we can't name it — in which case
   // the form is dropped rather than kept, since "perguntares-me" is not a word either.
@@ -529,8 +624,6 @@ function buildLang(cfg: LangConfig) {
     .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
     .map(([w]) => w);
 
-  const cased = cfg.casingFile ? buildCasing(cfg) : null;
-
   // Drop personal names (see NAMES_FILE above); needs the casing corpus, so this is a
   // no-op for languages without one.
   const names = cased ? loadNames() : null;
@@ -545,10 +638,15 @@ function buildLang(cfg: LangConfig) {
 
   // Past DICT_GATE the corpus stops being vocabulary, so the lemma list has to vouch
   // for a word to stay (see `dictGate`). Applied on the post-name-filter ranking, so
-  // the gate rank means the rank a learner actually sees.
+  // the gate rank means the rank a learner actually sees. Below the gate a spell checker
+  // of the language is the better judge, and answers the other half of the same list
+  // (see `spellRejects`).
   const gate = cfg.dictGate ?? Infinity;
-  const keptKeys = namedKeys.filter((w, i) => i < gate || known(w));
-  const gated = namedKeys.length - keptKeys.length;
+  const misspelt = cfg.spellDict
+    ? spellRejects(namedKeys.slice(0, gate), cfg.spellDict)
+    : new Set<string>();
+  const keptKeys = namedKeys.filter((w, i) => (i < gate ? !misspelt.has(w) : known(w)));
+  const gated = namedKeys.filter((w, i) => i >= gate && !known(w)).length;
 
   const ranked = cased ? keptKeys.map((w) => cased.casing.get(w) ?? w) : keptKeys;
 
@@ -594,6 +692,16 @@ function buildLang(cfg: LangConfig) {
     const sample = namedKeys.filter((w, i) => i >= cfg.dictGate! && !known(w)).slice(0, 6);
     console.log(`  dict gate: ${gated.toLocaleString()} dropped past rank`,
       `${cfg.dictGate.toLocaleString()}`, "e.g.", sample.join(" "));
+  }
+  if (repairs.size) {
+    const sample = [...repairs].filter(([h]) => rankOf.has(repairs.get(h)!)).slice(0, 6);
+    console.log(`  stem repairs: ${repairs.size.toLocaleString()}`, "e.g.",
+      sample.map(([h, f]) => `${h}→${f}`).join(" "));
+  }
+  if (cfg.spellDict) {
+    const sample = namedKeys.filter((w, i) => i < gate && misspelt.has(w)).slice(0, 8);
+    console.log(`  spell gate: ${misspelt.size.toLocaleString()} dropped below rank`,
+      `${gate.toLocaleString()}`, "e.g.", sample.join(" "));
   }
 }
 

@@ -22,3 +22,5 @@ apps/web/data/freq-*.txt
 apps/web/data/lemma-*.txt
 apps/web/data/casing-*.txt
 apps/web/data/names.txt
+apps/web/data/*_frami.dic
+apps/web/data/*_frami.aff

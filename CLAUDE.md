@@ -131,9 +131,15 @@ lemma-merged word ranking plus the band definitions.
 | `lemma-<code>.txt` | all | michmech/lemmatization-lists | Also the dictionary the filters below consult |
 | `casing-<code>.txt` | all | Leipzig Corpora *sentences* file | e.g. `deu_news_2022_1M` from `downloads.wortschatz-leipzig.de`. Named by `casingFile` |
 | `names.txt` | shared | michmech-style plain list | Personal-name gazetteer |
+| `de_DE_frami.{dic,aff}` | de | `LibreOffice/dictionaries`, `de/` — igerman98 | Hunspell spell checker. Named by `spellDict` |
 
 Take `_full.txt` because the cut belongs in code, where it is version-controlled, not in
 whichever file someone happened to download.
+
+The German dictionary is the one input with a **binary** behind it: `spellDict` shells out
+to `hunspell`, so that language will not build without it on `PATH`. Nothing else does,
+and nothing outside `build:bands` does — CI and Vercel read the committed artifact and
+never run the build. It is also the one input under the GPL, which the others are not.
 
 | Command | Does |
 | --- | --- |
@@ -151,6 +157,8 @@ it to `SOURCE_LANG_META`, and add the registry import in `bands.ts`.
 | Clitics | `clitics`, `mesoEndings`, `cliticExceptions` | Strip pronouns hyphenated onto verbs and merge the frequency back into the verb | 24% of the pt list and 12% of fr. pt `lembrar` 333 → 177, fr `excuser` 761 → 297 |
 | Own-entry | — | A surface word that heads its own lemma entry keeps it, instead of merging into whichever lemma claims it | The lists are lemma-sorted, so plain first-wins hands a shared form to the alphabetically-first claimant. That deletes common words (it `governo` into `governare`, fr `tu` into `il`; 100–160 of the top 1,000 per language) and floats the absorber into the beginner bands |
 | Dictionary gate | `dictGate` | Past rank 25,000, keep a word only if the lemma list vouches for it | Drops about 80 junk words per real one. Lands the five subtitle languages at 33–40k words each, near where English's SUBTLEX ends on its own |
+| Spell gate | `spellDict` | *Below* rank 25,000, drop a word the language's own spell checker rejects | −4,561 in German. The other half of the same list — see below |
+| Truncated stems | `spellDict`, `STEM_MIN_FORM` | Move an entry off a lemma headword that is not a word of the language | 14 in German. `jed` → `jeder`, `mehrer` → `mehrere` |
 | Personal names | `determiners`, `NAME_RANK_FLOOR` | Drop a word meeting all four tests below | See the per-language counts below |
 | Display casing | `casingFile` | Measure each word's mid-sentence capitalization and store that casing | Sentence-initial position is ignored, since it capitalizes everything |
 | Case-homographs | — | Keep both casings of one entry under `variants` | `"essen" -> ["Essen","essen"]`, most frequent first. `getWord` returns them as `forms` |
@@ -192,6 +200,58 @@ no entry for `ryûji` or `rrr`. The dictionary can, which is what `dictGate` use
 | Where they cluster | Productive morphology the lists do not headword: `-mente`/`-ment` adverbs, `-ità`/`-ité` nouns, superlatives — `logicamente`, `unanimità`, `rigoureusement`, `Geborgenheit` |
 | Spot-check | Italian's list has no `entropia`, so the build's spot-check for it reports `—` |
 | 12k–25k untouched | The gate starts at 25k, and 12k–25k is still about half names and English: `Nami`, `Calcutta`, `because`, `corn`, `truck` all sit near rank 13,000 |
+
+### The head of the list, and the spell gate
+
+The dictionary gate answers the tail. The head has the opposite problem and needs the
+opposite tool, so `spellDict` runs a Hunspell dictionary over everything *below*
+`dictGate` and drops what it refuses. `FILTER-9` is the rule.
+
+Measured against German at rank 25,000, the two sources' blind spots are mirror images:
+
+| | Below the gate | Past the gate |
+| --- | --- | --- |
+| What the junk is | Untranslated English and names the gazetteer spared | OCR debris, character names, misspellings |
+| Spell checker there | **~89% right** | ~84% *wrong* |
+| So the judge is | The spell checker | The lemma list |
+
+A checker is thin on exactly what the rare tail is made of — colloquial and
+separable-prefix verbs, diminutives, superlatives, intensifier compounds. It rejected
+`Nobelpreisträger`, `Jungfernfahrt`, `blitzsauber`, `Spätzchen` and `grabschen`, and a
+40-word sample of its rejections past 25,000 held no junk at all. Run there it would be a
+vandal. Run on the head it removes `elizabeth` (frequency 5,084), `up`, `janet`, `night`,
+`squad` and `scouts` — and every one of its 4,561 drops is below rank 25,000 by
+construction, which is the range anyone browses.
+
+Either casing passing is enough, so a word is refused only when neither spelling is a
+word. Without that, German's own capitalization decides vocabulary questions.
+
+The cost is the ~11% it takes with them: real words the dictionary lacks (`Viech`,
+`Klunker`, `rabauke`) and pre-1996 spellings (`daß`, `Haß`, `Imbiß`), which igerman98
+is post-reform and does not carry.
+
+### Truncated lemma stems
+
+michmech headwords some German determiners and adjectives on a bare stem — `jed` for
+jede/jedem/jeden/jeder, `ander`, `beid`, `mehrer`. The own-entry rule (`FILTER-3`) then
+hands every inflection to it, so the stem lands high while the word itself goes missing:
+`jed` sat at rank 107 with no `jeder` in the list at all, and `mehrere` and `jegliche`
+were absent outright. `FILTER-8` is the rule; the entry moves to whichever form the
+corpus writes.
+
+**The corpus cannot referee this on its own**, which is the trap. A German adjective is
+nearly always written declined, so bare `afrikanisch` occurs twice in a million sentences
+where `jed` occurs three times — and a rule reading only corpus counts "repairs"
+`afrikanisch` to `afrikanischen`, replacing a real word with an inflected one. The
+dictionary is what separates them, so a headword moves only when Hunspell says it is not
+a word. That is why this needs `spellDict` rather than the casing corpus alone.
+
+Two limits worth knowing. The repair picks the corpus-dominant form, which is the
+citation form for `jed` → `jeder` but not for `ander` → `anderen`; both are real words, so
+the wart is cosmetic. And a headword whose forms do not all extend it is left alone,
+because it is a different defect: michmech maps *both* `Dach` and the past tense of
+`denken` onto `dachen`, and there is no way to split that from the list. The spell gate
+above drops `dachen` instead.
 
 ### Personal names
 

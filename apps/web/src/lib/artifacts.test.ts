@@ -76,3 +76,36 @@ describe("display casing", () => {
     expect(cased("it", "gennaio")).toBe("gennaio");
   });
 });
+
+// michmech headwords German determiners and adjectives on a bare stem, and the own-entry
+// rule then hands every inflection to it — which put "jed" at rank 107 with no "jeder"
+// in the list at all.
+// @spec FILTER-8
+describe("truncated lemma stems", () => {
+  it("holds the word that is written, not the stem that heads its lemma entry", () => {
+    for (const [stem, word] of [
+      ["jed", "jeder"], ["beid", "beiden"], ["mehrer", "mehrere"],
+      ["jeglich", "jegliche"], ["etlich", "etliche"], ["wochenend", "Wochenende"],
+    ]) {
+      expect(held("de", stem!), stem).toBe(false);
+      expect(held("de", word!), word).toBe(true);
+    }
+  });
+});
+
+// The head of the list and its tail need different judges. Past the gate a spell checker
+// rejects the colloquial tail wholesale, but below it the corpus's junk is untranslated
+// English and the personal names the gazetteer's four-way test spared.
+// @spec FILTER-9
+describe("spell gate", () => {
+  it("holds no untranslated English, and no name the gazetteer spared", () => {
+    for (const w of ["the", "you", "dad", "mom", "night", "up", "squad", "scouts",
+      "elizabeth", "janet", "beverly", "mccarthy"]) expect(held("de", w), w).toBe(false);
+  });
+
+  it("keeps the ordinary German that sits at the same ranks", () => {
+    for (const w of ["Wasser", "Regierung", "Dach", "denken", "Brot", "Liebe"]) {
+      expect(held("de", w), w).toBe(true);
+    }
+  });
+});
