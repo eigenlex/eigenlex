@@ -304,13 +304,18 @@ async function transcribe(send, on) {
   // Tab moves focus and activates nothing, so this leaves the page as it found it.
   rule("TAB THROUGH THE PAGE");
   await val(`(document.activeElement?.blur(), true)`);
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0, stop = 0; i < 20; i++) {
     await key("Tab", "Tab", 9);
+    // `next dev` serves its own dev-tools overlay as a focusable custom element that
+    // production never has, so without this a local run differs from the deployed page by
+    // one stop and the check is useless as a pre-push read. Skipped rather than stopped
+    // on: the walk has to carry on past it, and the numbering has to not count it.
+    if (await val(`!!document.activeElement?.closest("nextjs-portal")`)) continue;
     const line = await speak();
     // Past the last control, focus leaves for the browser's own chrome and comes back on
     // the body. Anything after that is the walk going round a second time.
     if (line === null) break;
-    say(`  ${String(i + 1).padStart(2)}. ${line}`);
+    say(`  ${String(++stop).padStart(2)}. ${line}`);
   }
 
   rule("THE WORD CLOUD — a listbox of the band's words");

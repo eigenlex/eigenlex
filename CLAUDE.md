@@ -533,6 +533,7 @@ tooltip is open.
 | `AbbrLink` | `title` on the `<abbr>`, and no Fondue tooltip. A Fondue one needs its own focusable trigger, which made each credit two tab stops with the same name, and it would paint a second tooltip over the native one |
 | `WordSearchBox` | Named by its section heading (`labelledBy`), not by a second copy of the same string |
 | Search help | `aria-hidden`, so it is read once as the field's description. A hidden element still contributes its text when `aria-describedby` names it directly |
+| Redirect line | `role="status"`, and the element is **always** in the DOM, empty or not. A live region inserted in the same commit as its text is announced by some readers and not others. Polite, not an alert: the word was found, and the card beside it is about to be read anyway |
 | Prose | A language is named in English (`englishName`) inside an English sentence. `SOURCE_LANG_META.name` is the endonym, which is the picker's job |
 
 ### The lint rule, and what it cannot see
@@ -598,6 +599,7 @@ one component, and none of them was on anyone's list.
 | Post-deploy and weekly, not on a PR | It reads a deployed page, and a preview sits behind Deployment Protection, which answers a 302 to a Vercel login |
 | Names and descriptions come from Chrome; **roles and states do not** | A name is computed, and half the markup is Fondue's, so there is no reading it off the source. A role is authored — and Chrome renames them between versions (`img` became `image`), which would make this a transcript of whichever Chrome the runner shipped that week |
 | The browser's locale is pinned to `en-US` | The page formats ranks and counts with `toLocaleString()`. Unpinned, the same page reads `rank 18,422` on one machine and `18 422` on another |
+| Next's dev-tools overlay is skipped in the tab walk | `next dev` serves it as a focusable custom element (`nextjs-portal`) that production never has. Without skipping it a local run differs from the deployed page by one stop, which is the whole local workflow gone. Skipped rather than stopped on, and it does not consume a stop number |
 | The desktop shape is asserted before transcribing | Below 700px the band tabs are a dropdown. A window that came up the wrong size would otherwise arrive as a pile of unexplained differences rather than as the environment being wrong |
 
 Its honest limit is that it catches **change, not badness**. The first read is what finds a

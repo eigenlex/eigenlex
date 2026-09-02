@@ -480,4 +480,26 @@ describe("Workspace", () => {
     await screen.findByRole("region", { name: /meaning of care/i });
     expect(screen.queryByText(/base form of/i)).toBeNull();
   });
+
+  // A live region mounted in the same commit as its text is announced by some screen
+  // readers and not others, so the empty region has to precede the redirect.
+  // @spec FORM-6
+  it("announces the redirect from a region that was already on the page", async () => {
+    const user = userEvent.setup();
+    render(<Workspace />);
+    await screen.findByRole("region", { name: /meaning of water/i });
+
+    // Present and empty before anything redirects, and polite rather than assertive:
+    // the word was found, so there is nothing to interrupt for.
+    const live = screen.getByRole("status");
+    expect(live).toBeEmptyDOMElement();
+    expect(live).not.toHaveAttribute("aria-live", "assertive");
+
+    const input = screen.getByRole("combobox", { name: /look up a word/i });
+    await user.clear(input);
+    await user.type(input, "branched{Enter}");
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/base form of/i));
+    // The same node, not a replacement — that is what makes it announce.
+    expect(screen.getByRole("status")).toBe(live);
+  });
 });

@@ -139,6 +139,7 @@ The build merges every inflection onto its lemma, so a form is not an entry of i
 | FORM-3 | A word found as typed is never reported as a redirect |
 | FORM-4 | `/api/word` resolves a form only after an exact lookup misses, and names the form it was asked for |
 | FORM-5 | A redirected answer says which word it is showing and which form was asked for |
+| FORM-6 | That sentence is announced when it appears, politely, from a region that was already there |
 
 ## HEAD — response headers
 
