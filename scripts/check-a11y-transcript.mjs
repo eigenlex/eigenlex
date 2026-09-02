@@ -34,6 +34,10 @@ const TARGET = args.find((a) => !a.startsWith("--")) ?? process.env.EIGENLEX_URL
 // mid-sentence capitalization, `view=cefr` because that is the default and the band tabs
 // are the widget with the most to get wrong.
 const SCENARIO = "/?source=de&word=Wasser&target=en&view=cefr";
+// A form the merge folded away, so the page answers for its base word and has to say so.
+// "jede" reaches "jeder" through the chase past a lemma the build dropped (FILTER-8),
+// which is the part of the redirect most likely to break without anything else noticing.
+const FORM_SCENARIO = "/?source=de&word=jede&target=en&view=cefr";
 
 // The translation is Google's, and Google can reword it any afternoon. Stubbed, so the
 // transcript is our markup rather than today's dictionary — which is the subject anyway.
@@ -326,6 +330,21 @@ async function transcribe(send, on) {
     await key(k, c, v);
     say(`  ${k.padEnd(12)} ${await speak()}`);
   }
+
+  // A redirect adds exactly one sentence to the page, in a live region, and swaps the word
+  // out from under the field — so those three readings are the whole scenario. Its own
+  // navigation rather than reset()'s, because the deeplink is the scenario.
+  rule("LOOKING UP AN INFLECTED FORM — the word answered for is not the one asked for");
+  await send("Page.navigate", { url: TARGET + FORM_SCENARIO });
+  await until(
+    `(document.querySelector("[role=status]")?.textContent ?? "").length > 0`,
+    "the redirect notice",
+    `document.querySelector("[role=status]")?.textContent ?? null`,
+  );
+  say(`  asked for    jede`);
+  say(`  announced    ${await val(`document.querySelector("[role=status]").textContent`)}`);
+  say(`  the field    ${JSON.stringify(await val(`document.querySelector("form[role=search] input").value`))}`);
+  say(`  the card     ${await val(`document.querySelector("[aria-label^='Meaning of']")?.getAttribute("aria-label") ?? null`)}`);
 
   // Last, because moving off A1 leaves a different band open behind it.
   rule("THE BAND TABS — one stop, arrows inside it");

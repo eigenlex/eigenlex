@@ -564,7 +564,11 @@ of those; the transcript below holds the rest.
 
 `scripts/a11y-transcript.txt` is the deployed page written down as what a screen reader
 would say: the outline, the tab order, the two composite widgets under their arrow keys,
-and how the translation reads against how it copies.
+how the translation reads against how it copies, and what a lookup that redirects says it
+did. That last one is a second scenario (`FORM_SCENARIO`, `?word=jede`) rather than a
+section of the first, because a redirect is a different page state — `?word=Wasser` is a
+direct hit and never renders the line at all. It also reaches its base word through the
+chase past a dropped lemma, so the part likeliest to break quietly is the part transcribed.
 
 | Command | Does |
 | --- | --- |

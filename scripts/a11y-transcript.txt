@@ -47,6 +47,13 @@ THE WORD CLOUD — a listbox of the band's words
   ArrowRight   ernst, option, 394 of 1000
   ArrowDown    Alter, option, 408 of 1000
 
+LOOKING UP AN INFLECTED FORM — the word answered for is not the one asked for
+------------------------------------------------------------------------
+  asked for    jede
+  announced    Showing jeder, the base form of “jede”.
+  the field    "jeder"
+  the card     Meaning of jeder
+
 THE BAND TABS — one stop, arrows inside it
 ------------------------------------------------------------------------
   on entry     A1 · Beginner, 1,000 words, tab, selected
