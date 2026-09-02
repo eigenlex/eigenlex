@@ -69,6 +69,7 @@ ours. `source`/`target` map onto them at that one call.
 | `next.config.mjs` | Response headers, the CSP, `distDir` |
 | `scripts/build-bands.ts` | Artifact build, the `LANGS` table |
 | `data/word-bands.<code>.json` | Committed artifact, one per language |
+| `data/forms.<code>.json` | Committed artifact: inflected form -> the indexed word it belongs to |
 
 Paths are relative to `apps/web/`.
 
@@ -314,6 +315,41 @@ agree almost everywhere, and where they disagree it is usually a word within 20%
 threshold: en "green" at rank 909 against es 1,170 straddles the A1/A2 line at 1,000. The
 rank in the tooltip is what tells that apart from a real difference, like it "parete" at
 2,702.
+
+## Looking a word up by an inflected form
+
+The merge folds every inflection onto its lemma, so a form is not an entry: `branched` and
+`jede` answered nothing, though the build knew all along that they are `branch` and
+`jeder`. `forms.<code>.json` is the way back, and `FORM-1` to `FORM-5` are the rules.
+
+| Detail | Why |
+| --- | --- |
+| Consulted only after an exact lookup misses | It is the rare path, and it must never shadow a real entry |
+| Imported dynamically, not statically | The six maps are 12.3MB against the artifacts' 2.4MB, and a static import parses all six at module load on every route. They land in their own chunks |
+| Read through a `Map`, not the parsed object | This is the one lookup keyed straight on caller input, and a plain object answers `__proto__` and `constructor` with inherited members. `hostile-input.test.ts` caught exactly that |
+| Keyed on what the corpus writes | The lemma lists carry productive morphology nobody types (`abinha`, `aes`), which doubles the map for nothing |
+| The card says it redirected | The field is rewritten to the word that was found, so the typed word would otherwise just vanish |
+
+**It resolves with the merge's own `lemmaOf`** — own-entry, first-wins, stem repairs — so a
+form lands on the entry its own frequency was summed into. A rank-based tiebreak for
+ambiguous forms was measured and is **worse**, which is worth knowing because it sounds
+obviously better: the merge sums every conjugation onto a verb, so verbs outrank the nouns
+they collide with, and preferring the higher rank then trusts an inflation the merge itself
+caused. It sends `traiciones` to `traicionar`, `opéras` to `opérer`, `rafles` to `rafler`
+and `scapole` to `scapolo` — about two words lost for every one fixed.
+
+The **chase** is the one thing on top of `lemmaOf`. Where the gates dropped the lemma
+itself, the form follows to whichever of that entry's forms survived, because pointing at
+michmech's headword would name a word no longer in the list. About 1,000–2,500 forms per
+language depend on it, and it is what makes `jede` answer `jeder` rather than the stem
+`FILTER-8` removed. `FORM-2` asserts the whole map against the index, not a sample.
+
+**Known wart, inherited from the lemma lists.** Where michmech lumps distinct words under
+one lemma, the redirect reports that lumping, and it is more visible than it was: es `para`
+answers `parar`, de `sie` and `du` answer `ich`, fr `je` and `vous` answer `il`. These are
+not new — the merge has always summed those counts together, so the words were already
+absent as entries — but a miss became a confident wrong answer. `FORM-5`'s line is what
+keeps it legible as a redirect rather than as the answer.
 
 ## Translating a word
 

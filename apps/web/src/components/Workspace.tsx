@@ -465,6 +465,16 @@ export default function Workspace({ country }: { country?: string | null }) {
               {error}
             </p>
           )}
+          {/* @spec FORM-5
+              The field is rewritten to the word that was found, so without this the
+              typed word would simply vanish. It also keeps a wrong redirect legible as
+              a redirect: the lemma lists lump some pronouns, so es "para" answers
+              "parar", and that is worth showing rather than presenting as the answer. */}
+          {!error && info?.from && (
+            <p className="tw-mt-3 tw-body-medium tw-text-weak">
+              Showing <b>{info.word}</b>, the base form of “{info.from}”.
+            </p>
+          )}
         </div>
 
         <div className="tw-self-center tw-justify-self-center">

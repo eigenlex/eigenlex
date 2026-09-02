@@ -126,6 +126,19 @@ re-runs the build.
 | FILTER-8 | A lemma headword that is not a word of the language holds no entry; its frequency sits under the form that is written |
 | FILTER-9 | Below the dictionary gate, German holds no word its own spell checker rejects |
 
+## FORM — looking a word up by an inflected form
+
+The build merges every inflection onto its lemma, so a form is not an entry of its own.
+`data/forms.<code>.json` is the way back.
+
+| ID | Rule |
+| --- | --- |
+| FORM-1 | An inflected form the corpus writes resolves to the indexed word it belongs to |
+| FORM-2 | Every redirect names a word that is in the list, including where the lemma itself was dropped |
+| FORM-3 | A word found as typed is never reported as a redirect |
+| FORM-4 | `/api/word` resolves a form only after an exact lookup misses, and names the form it was asked for |
+| FORM-5 | A redirected answer says which word it is showing and which form was asked for |
+
 ## HEAD — response headers
 
 | ID | Rule |

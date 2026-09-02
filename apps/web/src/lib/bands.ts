@@ -101,6 +101,39 @@ export function getWord(source: SourceLang, word: string): WordBands | null {
   };
 }
 
+// The form -> base word maps, one per language. Imported dynamically rather than with the
+// artifacts above: together they are several times their size, and they are read only when
+// an exact lookup has already missed. A static import would parse all six at module load,
+// on every route, to answer a question most requests never ask. The specifiers are literal
+// so the bundler still traces each file into the deployment.
+const FORMS: Record<SourceLang, () => Promise<{ default: Record<string, string> }>> = {
+  en: () => import("../../data/forms.en.json"),
+  es: () => import("../../data/forms.es.json"),
+  fr: () => import("../../data/forms.fr.json"),
+  de: () => import("../../data/forms.de.json"),
+  pt: () => import("../../data/forms.pt.json"),
+  it: () => import("../../data/forms.it.json"),
+};
+const formsCache = new Map<SourceLang, Map<string, string>>();
+
+/**
+ * The indexed word an inflected form belongs to, or null. The build merges every
+ * inflection onto its lemma, so "branched" and "jede" are not entries of their own though
+ * the build knew all along that they are "branch" and "jeder".
+ * @spec FORM-4
+ */
+export async function resolveForm(source: SourceLang, word: string): Promise<string | null> {
+  let map = formsCache.get(source);
+  if (!map) {
+    // A Map, not the parsed object it arrives as: this is the one lookup keyed directly
+    // on caller input, and a plain object answers "__proto__" and "constructor" with
+    // inherited members that the caller would then take for a word.
+    map = new Map(Object.entries((await FORMS[source]()).default));
+    formsCache.set(source, map);
+  }
+  return map.get(word.toLowerCase()) ?? null;
+}
+
 /**
  * A word's CEFR placement, keyed case-insensitively — what the word card's level badges
  * show. This is the one lookup taken against the *target* language, so the caller checks

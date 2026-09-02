@@ -36,7 +36,9 @@ function mockFetch() {
       const path = new URL(u, "http://localhost").pathname;
       const word = decodeURIComponent(path.split("/api/word/")[1]!);
       if (word === "missing") return new Response("no", { status: 404 });
-      const display = DISPLAY[word] ?? word;
+      // An inflected form answers with its base word, and says which form was asked for.
+      const redirect = word === "branched";
+      const display = redirect ? "branch" : DISPLAY[word] ?? word;
       return new Response(
         JSON.stringify({
           word: display,
@@ -44,6 +46,7 @@ function mockFetch() {
           rank: 1,
           freq: { key: "1", label: "Top 1,000" },
           cefr: { key: "A1", label: "A1 · Beginner" },
+          ...(redirect ? { from: word } : {}),
         }),
         { status: 200 },
       );
@@ -449,5 +452,32 @@ describe("Workspace", () => {
     await user.type(input, "missing{Enter}");
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(/not in this dictionary/i);
+  });
+
+  // The field is rewritten to the word that was found, so without this the typed word
+  // would just vanish — and a wrong redirect would read as the answer.
+  // @spec FORM-5
+  it("says which word it is showing when a form resolved to its base", async () => {
+    const user = userEvent.setup();
+    render(<Workspace />);
+    await screen.findByRole("region", { name: /meaning of water/i });
+
+    const input = screen.getByRole("combobox", { name: /look up a word/i });
+    await user.clear(input);
+    await user.type(input, "branched{Enter}");
+    await screen.findByText(/base form of/i);
+    expect(screen.getByText(/base form of/i)).toHaveTextContent(/branch.*branched/);
+  });
+
+  it("says nothing of the sort for a word found as typed", async () => {
+    const user = userEvent.setup();
+    render(<Workspace />);
+    await screen.findByRole("region", { name: /meaning of water/i });
+
+    const input = screen.getByRole("combobox", { name: /look up a word/i });
+    await user.clear(input);
+    await user.type(input, "care{Enter}");
+    await screen.findByRole("region", { name: /meaning of care/i });
+    expect(screen.queryByText(/base form of/i)).toBeNull();
   });
 });

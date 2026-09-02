@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getWord } from "@/lib/bands";
+import { getWord, resolveForm } from "@/lib/bands";
+import formsEn from "../../data/forms.en.json";
+import formsEs from "../../data/forms.es.json";
+import formsFr from "../../data/forms.fr.json";
+import formsDe from "../../data/forms.de.json";
+import formsPt from "../../data/forms.pt.json";
+import formsIt from "../../data/forms.it.json";
 
 // The committed data/word-bands.<code>.json files are the build's output and the app's
 // only corpus, so these hold whether or not anyone re-runs the build. Nothing else looks
@@ -106,6 +112,50 @@ describe("spell gate", () => {
   it("keeps the ordinary German that sits at the same ranks", () => {
     for (const w of ["Wasser", "Regierung", "Dach", "denken", "Brot", "Liebe"]) {
       expect(held("de", w), w).toBe(true);
+    }
+  });
+});
+
+// The merge folds every inflection onto its lemma, so "branched" is not an entry — though
+// the build knew it was "branch" all along.
+// @spec FORM-1
+describe("inflected forms", () => {
+  it("resolves a form to the word it was merged into", async () => {
+    for (const [lang, form, base] of [
+      ["en", "branched", "branch"], ["en", "went", "go"], ["en", "mice", "mouse"],
+      ["de", "häuser", "haus"], ["de", "ging", "gehen"],
+      ["fr", "maisons", "maison"], ["es", "casas", "casa"], ["pt", "falamos", "falar"],
+    ] as const) {
+      expect(await resolveForm(lang, form), form).toBe(base);
+    }
+  });
+
+  it("chases a lemma the build dropped down to the form that survived", async () => {
+    // michmech heads jede/jeden/jedes on the bare stem "jed", which FILTER-8 removes.
+    // Pointing at the headword would name a word no longer in the list.
+    for (const f of ["jede", "jeden", "jedes", "jedem"]) {
+      expect(await resolveForm("de", f), f).toBe("jeder");
+    }
+  });
+
+  it("does not answer for a word that is already an entry", async () => {
+    for (const [lang, w] of [["en", "branch"], ["de", "wasser"], ["es", "casa"]] as const) {
+      expect(await resolveForm(lang, w), w).toBe(null);
+    }
+  });
+});
+
+// A redirect that names a word the build dropped is worse than no redirect: the card
+// would open on nothing. This is the whole map, not a sample.
+// @spec FORM-2
+describe("redirect targets", () => {
+  it("names a word that is in the list, in every language", () => {
+    for (const [lang, map] of [
+      ["en", formsEn], ["es", formsEs], ["fr", formsFr],
+      ["de", formsDe], ["pt", formsPt], ["it", formsIt],
+    ] as const) {
+      const dangling = Object.entries(map).filter(([, base]) => getWord(lang, base) === null);
+      expect(dangling.slice(0, 5), lang).toEqual([]);
     }
   });
 });

@@ -531,6 +531,55 @@ function spellRejects(words: string[], dictBase: string): Set<string> {
   return new Set(words.filter((w) => capped.has(w.toLowerCase()) && lower.has(w.toLowerCase())));
 }
 
+/**
+ * Inflected form -> the indexed word it belongs to, for every form the corpus writes that
+ * the merge folded away. Without it "branched" and "jede" answer nothing, though the build
+ * knew all along that they are "branch" and "jeder".
+ *
+ * It resolves with the merge's own `lemmaOf` — own-entry, then first-wins, then the stem
+ * repairs — so a form lands on the entry its own frequency was summed into. A rank-based
+ * tiebreak was measured instead and is worse: the merge sums every conjugation onto a
+ * verb, so verbs outrank the nouns they collide with, and preferring the higher rank then
+ * trusts an inflation the merge itself caused. It sends "traiciones" to "traicionar",
+ * "opéras" to "opérer" and "rafles" to "rafler", losing about two words for every one it
+ * fixes.
+ *
+ * The one thing on top is the **chase**: a lemma the gates dropped is followed to
+ * whichever of its own forms survived, because pointing at michmech's headword would name
+ * a word no longer in the list.
+ * @spec FORM-1, FORM-2, FORM-3
+ */
+function formsMap(
+  formsOf: Map<string, string[]>,
+  rankOf: Map<string, number>,
+  lemmaOf: (w: string) => string,
+  attested: Set<string>,
+): Record<string, string> {
+  // A dropped lemma's surviving representative: the form of its entry ranked highest.
+  const chaseOf = new Map<string, string>();
+  for (const [head, forms] of formsOf) {
+    if (rankOf.has(head)) continue;
+    let best: string | null = null, bestRank = Infinity;
+    for (const f of forms) {
+      const r = rankOf.get(f);
+      if (r !== undefined && r < bestRank) { best = f; bestRank = r; }
+    }
+    if (best) chaseOf.set(head, best);
+  }
+
+  // Keyed on what the corpus writes, not on what the lemma list holds: the lists carry
+  // productive morphology nobody types ("abinha", "aes"), which would double this for
+  // nothing.
+  const out: Record<string, string> = {};
+  for (const form of attested) {
+    if (rankOf.has(form)) continue; // findable already
+    const lemma = lemmaOf(form);
+    const target = rankOf.has(lemma) ? lemma : chaseOf.get(lemma);
+    if (target !== undefined && target !== form) out[form] = target;
+  }
+  return out;
+}
+
 function buildLang(cfg: LangConfig) {
   const clean = makeClean(cfg);
 
@@ -596,6 +645,9 @@ function buildLang(cfg: LangConfig) {
   const split = (line: string) => (cfg.freq.format === "csv" ? line.split(",") : line.split(/\s+/));
 
   const freq = new Map<string, number>();
+  // Surface forms the corpus actually writes. A lemma list carries productive morphology
+  // nobody types ("abinha", "aes"), which would double the redirect map for nothing.
+  const attested = new Set<string>();
   let declitMerged = 0, declitDropped = 0;
   // entries() rather than an index: it hands over a `string`, where lines[i] is
   // `string | undefined` to the compiler and copies nothing the way slice(start) would.
@@ -604,6 +656,7 @@ function buildLang(cfg: LangConfig) {
     const r = split(line);
     const w = clean(r[wCol]); const wf = Number(r[fCol]);
     if (!w || !(wf > 0)) continue;
+    attested.add(w);
     if (cfg.freq.minCount !== undefined && wf < cfg.freq.minCount) continue;
     const stem = declitic(w, cfg);
     let base = w;
@@ -668,8 +721,12 @@ function buildLang(cfg: LangConfig) {
     JSON.stringify({ lang: cfg.code, ranked, variants, freqBands, cefrBands }),
   );
 
-  // --- Report ---
   const rankOf = new Map(keptKeys.map((w, i) => [w, i + 1]));
+  const forms = formsMap(formsOf, rankOf, lemmaOf, attested);
+  const formsPath = data(`forms.${cfg.code}.json`);
+  writeFileSync(formsPath, JSON.stringify(forms));
+
+  // --- Report ---
   console.log(`\n[${cfg.code}] ranked ${ranked.length.toLocaleString()} lemmas -> ${outPath}`);
   console.log("  freq:", freqBands.map((d) => `${d.label}=${bandCount(d).toLocaleString()}`).join("  "));
   console.log("  CEFR:", cefrBands.map((d) => `${d.key}=${bandCount(d).toLocaleString()}`).join("  "));
@@ -703,6 +760,10 @@ function buildLang(cfg: LangConfig) {
     console.log(`  spell gate: ${misspelt.size.toLocaleString()} dropped below rank`,
       `${gate.toLocaleString()}`, "e.g.", sample.join(" "));
   }
+  const chased = Object.entries(forms).filter(([f, t]) => lemmaOf(f) !== t).length;
+  console.log(`  forms: ${Object.keys(forms).length.toLocaleString()} redirects ->`,
+    `${formsPath} (${chased.toLocaleString()} chased past a dropped lemma)`, "e.g.",
+    Object.entries(forms).slice(0, 4).map(([f, t]) => `${f}→${t}`).join(" "));
 }
 
 const only = process.argv[2];

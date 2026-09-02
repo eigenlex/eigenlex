@@ -43,6 +43,21 @@ describe("GET /api/word/[word]", () => {
     expect(res.status).toBe(404);
   });
 
+  // @spec FORM-4
+  it("answers an inflected form with its base word, naming the form asked for", async () => {
+    const res = await wordGET(req("/api/word/x"), { params: promise({ word: "Branched" }) });
+    expect(res.status).toBe(200);
+    const info = await res.json();
+    expect(info.word).toBe("branch");
+    expect(info.from).toBe("branched");
+  });
+
+  // @spec FORM-3
+  it("does not call a word found as typed a redirect", async () => {
+    const res = await wordGET(req("/api/word/x"), { params: promise({ word: REAL }) });
+    expect((await res.json()).from).toBeUndefined();
+  });
+
   // Next decodes the param before the handler sees it, so a decode here would be a second
   // one — and would throw on anything holding a stray percent.
   // @spec ROUTE-7

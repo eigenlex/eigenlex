@@ -28,6 +28,12 @@ export interface WordBands {
   rank: number;
   freq: BandRef;
   cefr: BandRef;
+  /**
+   * The inflected form asked for, when the answer is its base word — "branched" on the
+   * card for "branch". Absent when the word was found as typed, so its presence is what
+   * says a redirect happened and the card should say so rather than swap words silently.
+   */
+  from?: string;
 }
 
 /** One band with its size — the browser's tabs/rail for a view. */
