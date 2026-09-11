@@ -58,6 +58,10 @@ export function windowFor(day: number, total: number, per = PER_DAY): number[] {
 
 const dayNumber = (now: number) => Math.floor(now / 86_400_000);
 
+// A cached answer never leaves the process; a miss pays the round trip to Google, about
+// 150ms. An order of magnitude apart, so duration is what separates them.
+const HIT_MS = 50;
+
 export async function GET(req: Request) {
   // This route spends our Google quota, so an unset secret refuses rather than opening
   // the faucet. Vercel sends the header itself when CRON_SECRET is configured.
@@ -73,6 +77,12 @@ export async function GET(req: Request) {
   // Four at a time: 100 sequential calls would risk the function timeout, and a burst
   // this small once a day is nothing to the endpoint either way.
   let warmed = 0;
+  // Whether an answer was already cached is free: the run asks for these words regardless.
+  // Once a full pass has gone round it also reads as the head's survival rate, because the
+  // cycle returns to the same words — but only then, so the field is named for what it
+  // counts rather than for what that comes to mean.
+  // @spec WARM-4
+  let alreadyCached = 0;
   const cursor = { i: 0 };
   const worker = async () => {
     for (;;) {
@@ -81,16 +91,26 @@ export async function GET(req: Request) {
       const { word, source, target } = today[next]!;
       // Through the route, not straight to `gtx`: the entry a card reads is the one the
       // route's own fetch writes, so warming any other way would fill a key nothing reads.
+      const started = performance.now();
       const res = await translate(
         new Request(`http://warm/api/translate/x?source=${source}&target=${target}&dict=1`),
         { params: Promise.resolve({ word }) },
       );
-      if (res.ok) warmed++;
+      if (res.ok) {
+        warmed++;
+        if (performance.now() - started < HIT_MS) alreadyCached++;
+      }
     }
   };
   await Promise.all(Array.from({ length: 4 }, worker));
 
-  return Response.json({ day: dayNumber(Date.now()), asked: today.length, warmed, total: all.length });
+  return Response.json({
+    day: dayNumber(Date.now()),
+    asked: today.length,
+    warmed,
+    alreadyCached,
+    total: all.length,
+  });
 }
 
 /** The head this route walks, for the tests that check what it would send upstream. */

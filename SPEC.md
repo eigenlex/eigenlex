@@ -75,6 +75,7 @@ are always in the data cache rather than waiting on a first visitor to fetch the
 | WARM-1 | The warm route answers 401 without the configured cron secret, and Google is not called. An unset secret refuses every request rather than opening the route |
 | WARM-2 | A day's slice is 100 words, derived from the date alone, and consecutive days cover the whole head before wrapping |
 | WARM-3 | Every word in the pass is one `/api/translate` would accept, and a case-homograph contributes both of its casings |
+| WARM-4 | The pass reports how many of the words it asked for answered without going upstream |
 
 ## ROUTE — params, decoding and status
 

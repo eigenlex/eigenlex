@@ -474,10 +474,27 @@ be gentler.
 | Daily at 04:00 UTC | Vercel's Hobby plan allows one cron run a day, which is what the daily slice is sized against |
 | A failed lookup is never cached | Next writes to the data cache only on a 200 (`patch-fetch.js`), so a transient Google error 502s and is retried on the next request rather than sticking for the TTL. The one thing that would stick is a 200 whose body we cannot parse |
 
-**The unverified assumption is the destination.** The data cache is the only place a server
-can write without taking on a new dependency, and its eviction and regionality are not
-something this repo can see. If Vercel evicts under pressure, or holds the cache per
-region, a 61-day rotation will not keep every region warm.
+`alreadyCached` (`WARM-4`) counts the words that answered without a round trip. Because the
+cycle brings the pass back to the same words, that is also the share of the head still
+cached a full pass later — the field is named for the first, which is what it measures. It costs nothing: the run was going to ask for
+those words regardless, and whether the answer needed a round trip is free information.
+
+| `alreadyCached` | Reading |
+| --- | --- |
+| Near `asked` | The cache holds across a full pass |
+| Drifting down | Eviction, and the slope is its rate |
+| Near zero | Not persisting at all — a deploy, a purge, or a per-region cache |
+
+Two limits. It only reads as survival once a full pass has run since the first; before then
+it is just how much real traffic happened to reach those words. And it lands in Vercel's
+cron logs rather than on a page, because a browsable history would need somewhere to keep
+counts, which is a dependency this app does not have.
+
+**The destination is still the assumption underneath all of it.** The data cache is the only
+place a server can write without taking one on, and its eviction and regionality are
+Vercel's to decide. `alreadyCached` is where that would show up: if Vercel evicts under pressure,
+or holds the cache per region, the number falls and the rotation is not keeping every region
+warm.
 
 The alternative that depends on none of that is a committed artifact of the same head,
 built the way `word-bands.<code>.json` is. It is not what this does, and the reason is

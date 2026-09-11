@@ -6,8 +6,14 @@ const req = (auth?: string) =>
   new Request("http://test/api/cron/warm", auth ? { headers: { authorization: auth } } : undefined);
 
 // A gtx dt=bd response, enough for the route under it to parse an answer.
-const mockGtx = () =>
-  vi.fn(async () => new Response(JSON.stringify([[["x", "y", null, null, 1]], [["noun", ["x"], [["x", [], null, 0.6]]]]])));
+const GTX = [[["x", "y", null, null, 1]], [["noun", ["x"], [["x", [], null, 0.6]]]]];
+const mockGtx = () => vi.fn(async () => new Response(JSON.stringify(GTX)));
+// One that pays a round trip, as an uncached word does.
+const slowGtx = (ms: number) =>
+  vi.fn(async () => {
+    await new Promise((r) => setTimeout(r, ms));
+    return new Response(JSON.stringify(GTX));
+  });
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -95,5 +101,30 @@ describe("what it would send upstream", () => {
     const de = warmWords().filter((w) => w.source === "de");
     expect(de).toContainEqual({ word: "Essen", source: "de", target: "en" });
     expect(de).toContainEqual({ word: "essen", source: "de", target: "en" });
+  });
+});
+
+// The pass asks for every word it warms, so whether the answer needed a round trip is free
+// information. Once a full pass has run it also reads as the head's survival rate.
+describe("what the pass reports about the cache", () => {
+  const run = async () => {
+    vi.stubEnv("CRON_SECRET", SECRET);
+    return (await GET(req(`Bearer ${SECRET}`))).json();
+  };
+
+  // @spec WARM-4
+  it("counts a word that answered without going upstream", async () => {
+    vi.stubGlobal("fetch", mockGtx());
+    const body = await run();
+    expect(body.warmed).toBe(100);
+    expect(body.alreadyCached).toBe(body.warmed);
+  });
+
+  // @spec WARM-4
+  it("does not count one that paid for a round trip", async () => {
+    vi.stubGlobal("fetch", slowGtx(80));
+    const body = await run();
+    expect(body.warmed).toBe(100);
+    expect(body.alreadyCached).toBe(0);
   });
 });
