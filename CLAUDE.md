@@ -280,12 +280,10 @@ where `jed` occurs three times — and a rule reading only corpus counts "repair
 dictionary is what separates them, so a headword moves only when Hunspell says it is not
 a word. That is why this needs `spellDict` rather than the casing corpus alone.
 
-Two limits worth knowing. The repair picks the corpus-dominant form, which is the
-citation form for `jed` → `jeder` but not for `ander` → `anderen`; both are real words, so
-the wart is cosmetic. And a headword whose forms do not all extend it is left alone,
-because it is a different defect: michmech maps *both* `Dach` and the past tense of
-`denken` onto `dachen`, and there is no way to split that from the list. The spell gate
-above drops `dachen` instead.
+| Limit | Detail |
+| --- | --- |
+| The repair picks the corpus-dominant form | The citation form for `jed` → `jeder`, but not for `ander` → `anderen`. Both are real words, so the wart is cosmetic |
+| A headword whose forms do not all extend it is left alone | A different defect: michmech maps *both* `Dach` and the past tense of `denken` onto `dachen`, and there is no splitting that from the list. The spell gate above drops `dachen` instead |
 
 ### Personal names
 
@@ -336,13 +334,12 @@ and reused for every language. No graph and no external dictionary is involved.
 The thresholds are `BAND-1`, and `BAND-2` is that every language uses them unchanged.
 Past C2 sits `rare` ("Rare · beyond C2"), open-ended at `max: null`.
 
-Tops roughly double, so C2 ends at 50k instead of running open-ended to the end of the
-list. `rare` past it is open-ended, which is what lets `getWord` assert that a band exists
-at every rank — keep `max: null` on whichever band is last. **German reaches it and the
-other five do not**: the morphology vouch buys back ~18k compounds, taking the list past
-50k, while `dictGate` keeps the Romance five inside C2. Both band lists are filtered per
-language to bands that hold words, so an unreached `rare` renders no empty tab, and German
-alone shows a seventh tab.
+| Detail | Why |
+| --- | --- |
+| Tops roughly double, so C2 ends at 50k | Rather than running open-ended to the end of the list |
+| `rare` past it is open-ended | It is what lets `getWord` assert a band exists at every rank — keep `max: null` on whichever band is last |
+| **German reaches it and the other five do not** | The morphology vouch buys back ~18k compounds, taking the list past 50k, while `dictGate` keeps the Romance five inside C2 |
+| Both lists are filtered to bands that hold words | An unreached `rare` renders no empty tab, so German alone shows a seventh |
 
 Comparing one language against another through the bands is the weaker reading. The six
 agree almost everywhere, and where they disagree it is usually a word within 20% of a
@@ -449,57 +446,49 @@ done | sort | uniq -c
 
 ### Keeping the head warm
 
-`WARM-1` to `WARM-3` are the rules. Why the numbers are the numbers they are:
+`WARM-1` to `WARM-4` are the rules.
 
 | Number | Value |
 | --- | --- |
-| Head words | 6,114 — ranks 1-3,000 of each language, counting each casing separately |
+| Head words | 6,114 — ranks 1-3,000 of each language, each casing counted separately |
 | A full pass | 61 days |
 | The entries' own TTL | 180 days |
 
-The two periods are the point, but not in the obvious direction. The pass owns the head's
-freshness whatever the TTL says, so the TTL is really covering two other things: how stale
-a *tail* entry may get, and how long the head survives if the pass stops. At 180 against a
-61-day pass that second number is about 119 days of grace. The outbound rate is roughly one
+The pass owns the head's freshness whatever the TTL says, so the TTL covers two other
+things: how stale a *tail* entry may get, and how long the head survives if the pass stops.
+At 180 against a 61-day pass that grace is about 119 days. The outbound rate is about one
 request every fifteen minutes, which is why this does not spend the egress IP the way a
-bulk backfill would; halving the daily slice would still pass inside the TTL if it should
-be gentler.
+bulk backfill would; halving the daily slice would still pass inside the TTL.
 
 | Load-bearing detail | Why |
 | --- | --- |
-| It calls the translate route, not `gtx` directly | The cache key is the gtx URL the route's own fetch builds, so warming any other way fills a key nothing reads. Calling its own URL over HTTP instead would run the pass into the Vercel firewall rule in front of `/api/translate`, which is keyed by IP at the size of one run |
-| Fail-closed on the secret (`WARM-1`) | This route spends our Google quota on demand, so fail-open would make it a faucet for anyone who guessed the path |
+| It calls the translate route, not `gtx` directly | The cache key is the gtx URL that route's own fetch builds, so warming any other way fills a key nothing reads. Calling its own URL over HTTP would instead run the pass into the Vercel firewall rule in front of `/api/translate`, keyed by IP at the size of one run |
+| Fail-closed on the secret (`WARM-1`) | This route spends our Google quota on demand, so fail-open is a faucet for anyone who guesses the path |
 | The date rather than a stored cursor (`WARM-2`) | A redeploy or a cold start must not restart the rotation, and a date needs nothing to persist it. It also makes a hand-triggered run idempotent with the scheduled one |
 | Four at a time, `maxDuration = 60` | Running the slice sequentially would risk the function timeout |
-| Daily at 04:00 UTC | Vercel's Hobby plan allows one cron run a day, which is what the daily slice is sized against |
-| A failed lookup is never cached | Next writes to the data cache only on a 200 (`patch-fetch.js`), so a transient Google error 502s and is retried on the next request rather than sticking for the TTL. The one thing that would stick is a 200 whose body we cannot parse |
+| Daily at 04:00 UTC | Vercel's Hobby plan allows one cron run a day, which is what the slice is sized against |
+| A failed lookup is never cached | Next writes to the data cache only on a 200 (`patch-fetch.js`), so a transient Google error 502s and is retried rather than sticking for the TTL. Only a 200 we cannot parse would stick |
 
-`alreadyCached` (`WARM-4`) counts the words that answered without a round trip. Because the
-cycle brings the pass back to the same words, that is also the share of the head still
-cached a full pass later — the field is named for the first, which is what it measures. It costs nothing: the run was going to ask for
-those words regardless, and whether the answer needed a round trip is free information.
+`alreadyCached` (`WARM-4`) counts the words that answered without a round trip — free, since
+the run asks for them regardless. The cycle returns to the same words, so after a full pass
+it is also the share of the head still cached.
 
 | `alreadyCached` | Reading |
 | --- | --- |
 | Near `asked` | The cache holds across a full pass |
 | Drifting down | Eviction, and the slope is its rate |
-| Near zero | Not persisting at all — a deploy, a purge, or a per-region cache |
+| Near zero | Not persisting — a deploy, a purge, or a per-region cache |
+| Before the first pass completes | Nothing yet. It is only how much real traffic reached those words |
 
-Two limits. It only reads as survival once a full pass has run since the first; before then
-it is just how much real traffic happened to reach those words. And it lands in Vercel's
-cron logs rather than on a page, because a browsable history would need somewhere to keep
+It lands in Vercel's cron logs, not on a page: a browsable history needs somewhere to keep
 counts, which is a dependency this app does not have.
 
-**The destination is still the assumption underneath all of it.** The data cache is the only
-place a server can write without taking one on, and its eviction and regionality are
-Vercel's to decide. `alreadyCached` is where that would show up: if Vercel evicts under pressure,
-or holds the cache per region, the number falls and the rotation is not keeping every region
-warm.
-
-The alternative that depends on none of that is a committed artifact of the same head,
-built the way `word-bands.<code>.json` is. It is not what this does, and the reason is
-worth knowing: a server cannot commit to git, so that path is a build step someone runs
-and reviews, not a schedule. It also answers a different question — an artifact never
+**The destination is the assumption underneath all of it.** The data cache is the only place
+a server can write without taking one on, and its eviction and regionality are Vercel's.
+`alreadyCached` is where that would show up. The alternative depending on none of it is a
+committed artifact of the same head, built the way `word-bands.<code>.json` is — not what
+this does, because a server cannot commit to git, so that path is a build step someone runs
+and reviews rather than a schedule. It also answers a different question: an artifact never
 expires, where the point here is that entries stay fresh on their own.
 
 ### English is Google's hub
@@ -699,41 +688,34 @@ The sitemap lists one URL. Every word is query state on the same page.
 
 ## API route params
 
-Next percent-decodes a route param before the handler sees it, so a `decodeURIComponent`
-in a handler is a second pass. It is not only redundant: on a param still holding a literal
-`%` after Next's decode it throws a `URIError` nothing catches, and the route answers an
-empty 500 where it should answer a 404.
+Next percent-decodes a route param before the handler sees it, so a `decodeURIComponent` in
+a handler is a second pass. `ROUTE-7` is the rule: take the param as given, lowercase it
+where the lookup wants that, and nothing else.
 
-Take the param as given. Lowercase it where the lookup wants that, and nothing else.
+| Where it runs | Decodes | So |
+| --- | --- | --- |
+| `next start` | Next's, once | |
+| Vercel | The edge's, then Next's | A word needs one more `%25` layer than it does locally |
 
-Deployed, the param is decoded one more time than it is locally: Vercel's edge decodes the
-path before Next does. The same request answers differently in the two places, so the
-number of decodes is a property of where the code runs, not of the code. `ROUTE-1` to
-`ROUTE-6` in `SPEC.md` are the six rows, both columns, and `ROUTE-7` is the rule above.
+The count is a property of where the code runs, not of the code, which is why `ROUTE-1` to
+`ROUTE-6` state both columns.
 
-The rule is one extra decode: Vercel needs one more `%25` layer than a local server to land
-on a word. The exception is the malformed end of it. Where that extra decode would leave a
-bare `%`, the edge answers 400 or 404 rather than handing Next the 500.
+| Trap | Detail |
+| --- | --- |
+| A second decode in a handler | On a param still holding a literal `%` it throws a `URIError` nothing catches, and the route answers an empty 500 where it should answer 404 |
+| That 500 is Next's, not ours | Every dynamic param does it — `/api/bands/%`, `/api/band/%/%`, `/api/translate/%` — while `/api/suggest?q=%` answers 200 and the static `/%` answers 404 |
+| It never ships | Where the extra decode would leave a bare `%`, the edge answers 400 or 404 first |
+| No test sees any of it | `hostile-input.test.ts` and `routes.test.ts` call handlers directly with params already decoded, which is the right thing to test — `routes.test.ts`'s `%` param 500s under a second decode and 404s without one. Both guard the handler; neither guards what sits above it |
 
-That 500 is Next's own, not ours. Every dynamic param does it — `/api/bands/%`,
-`/api/band/%/%`, `/api/translate/%` — while `/api/suggest?q=%` answers 200 and the static
-`/%` answers 404. It never ships, because the edge rejects a bare `%` first.
+So settle a decode question against the deployed URL, never against `next start`.
+`pnpm decode:check` is what does that: it probes the Vercel column and exits 1 on any row
+that moved, naming it.
 
-No test sees any of this. `hostile-input.test.ts` and `routes.test.ts` call handlers
-directly with params already decoded, which is the right thing to test: `routes.test.ts`'s
-`%` param 500s under a second decode in the handler and 404s without one. Both guard the
-handler, neither guards what sits above it, so settle a decode question against the
-deployed URL and not against `next start`.
-
-`pnpm decode:check` is what does that. It probes the Vercel column and exits 1 on any row
-that moved, naming it. It **reads the rows out of `SPEC.md`** rather than restating them,
-so the table is the source and cannot drift from what is asserted — the cost is that
-reformatting it breaks the check, which it reports as `parsed 0 rows` instead of quietly
-passing. `.github/workflows/deployed-decodes.yml` runs it
-after every production deploy and again weekly — weekly because the edge is Vercel's, so
-the column can move with no commit of ours to trigger on. It takes a target as an argument:
-`pnpm decode:check http://localhost:3111` flags the `%` and `%2577ater` rows, which is the
-check discriminating between the two columns rather than failing.
+| Detail | Why |
+| --- | --- |
+| It reads the rows out of `SPEC.md` | The table is the source and cannot drift from what is asserted. The cost is that reformatting it breaks the check, which it reports as `parsed 0 rows` rather than quietly passing |
+| Post-deploy and weekly, in `deployed-decodes.yml` | The edge is Vercel's, so the column can move with no commit of ours to trigger on |
+| It takes a target | `pnpm decode:check http://localhost:3111` flags the `%` and `%2577ater` rows — the check discriminating between the two columns, not failing |
 
 ## Response headers
 
