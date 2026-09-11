@@ -16,8 +16,8 @@ import {
 } from "@/lib/translate";
 
 // A word's translation is stable, and the rare tail is looked up too seldom to survive a
-// short TTL — so the data cache holds it for a quarter.
-export const revalidate = 7776000; // 90 days; a literal, since Next cannot evaluate arithmetic here
+// short TTL. The warm pass owns the head's freshness, so this number is really the tail's.
+export const revalidate = 15552000; // 180 days; a literal, since Next cannot evaluate arithmetic here
 
 /**
  * Each translated term's CEFR level in the language it's written in, keyed by the term as

@@ -39,6 +39,7 @@ verifies the claim exists, not that it bites.
 | Prefix | Covers | Proof runs |
 | --- | --- | --- |
 | `GATE` | What `/api/translate` agrees to forward to Google | PR |
+| `WARM` | The scheduled pass that keeps the de<->en head warm | PR |
 | `ROUTE` | Route params: decoding, status codes, no 5xx | PR, and post-deploy for `ROUTE-1`–`ROUTE-6` |
 | `BAND` | Band definitions, word lookup, levels, typeahead | PR |
 | `FILTER` | What the committed artifacts must and must not contain | PR |
@@ -63,6 +64,17 @@ the word card could have made.
 | GATE-5 | A refused request answers 400, and Google is not called |
 | GATE-6 | An upstream failure answers 502 |
 | GATE-7 | Without `dict=1` the word is lowercased; with it the casing is kept |
+
+## WARM — the scheduled pass over the head
+
+A cron walks the A1+A2 head of de<->en, 100 words a day, so the words a learner browses
+are always in the data cache rather than waiting on a first visitor to fetch them.
+
+| ID | Rule |
+| --- | --- |
+| WARM-1 | The warm route answers 401 without the configured cron secret, and Google is not called. An unset secret refuses every request rather than opening the route |
+| WARM-2 | A day's slice is 100 words, derived from the date alone, and consecutive days cover the whole head before wrapping |
+| WARM-3 | Every word in the pass is one `/api/translate` would accept, and a case-homograph contributes both of its casings |
 
 ## ROUTE — params, decoding and status
 

@@ -66,7 +66,9 @@ ours. `source`/`target` map onto them at that one call.
 | `src/lib/scenario.ts` | URL encode / decode, `pageTitle` |
 | `src/lib/site.ts` | `SITE_URL`, `SITE_NAME`, `SITE_DESCRIPTION` — what names the site to a machine |
 | `src/lib/translate.ts` | Google Translate fetching and parsing, and the relay gate |
+| `src/app/api/cron/warm/route.ts` | The scheduled pass that keeps the de<->en head warm |
 | `next.config.mjs` | Response headers, the CSP, `distDir` |
+| `vercel.json` | The build commands, and the cron schedule behind the warm pass |
 | `scripts/build-bands.ts` | Artifact build, the `LANGS` table |
 | `data/word-bands.<code>.json` | Committed artifact, one per language |
 | `data/forms.<code>.json` | Committed artifact: inflected form -> the indexed word it belongs to |
@@ -445,6 +447,44 @@ for i in $(seq 1 130); do
 done | sort | uniq -c
 ```
 
+### Keeping the head warm
+
+`WARM-1` to `WARM-3` are the rules. Why the numbers are the numbers they are:
+
+| Number | Value |
+| --- | --- |
+| Head words | 6,114 — ranks 1-3,000 of each language, counting each casing separately |
+| A full pass | 61 days |
+| The entries' own TTL | 180 days |
+
+The two periods are the point, but not in the obvious direction. The pass owns the head's
+freshness whatever the TTL says, so the TTL is really covering two other things: how stale
+a *tail* entry may get, and how long the head survives if the pass stops. At 180 against a
+61-day pass that second number is about 119 days of grace. The outbound rate is roughly one
+request every fifteen minutes, which is why this does not spend the egress IP the way a
+bulk backfill would; halving the daily slice would still pass inside the TTL if it should
+be gentler.
+
+| Load-bearing detail | Why |
+| --- | --- |
+| It calls the translate route, not `gtx` directly | The cache key is the gtx URL the route's own fetch builds, so warming any other way fills a key nothing reads. Calling its own URL over HTTP instead would run the pass into the Vercel firewall rule in front of `/api/translate`, which is keyed by IP at the size of one run |
+| Fail-closed on the secret (`WARM-1`) | This route spends our Google quota on demand, so fail-open would make it a faucet for anyone who guessed the path |
+| The date rather than a stored cursor (`WARM-2`) | A redeploy or a cold start must not restart the rotation, and a date needs nothing to persist it. It also makes a hand-triggered run idempotent with the scheduled one |
+| Four at a time, `maxDuration = 60` | Running the slice sequentially would risk the function timeout |
+| Daily at 04:00 UTC | Vercel's Hobby plan allows one cron run a day, which is what the daily slice is sized against |
+| A failed lookup is never cached | Next writes to the data cache only on a 200 (`patch-fetch.js`), so a transient Google error 502s and is retried on the next request rather than sticking for the TTL. The one thing that would stick is a 200 whose body we cannot parse |
+
+**The unverified assumption is the destination.** The data cache is the only place a server
+can write without taking on a new dependency, and its eviction and regionality are not
+something this repo can see. If Vercel evicts under pressure, or holds the cache per
+region, a 61-day rotation will not keep every region warm.
+
+The alternative that depends on none of that is a committed artifact of the same head,
+built the way `word-bands.<code>.json` is. It is not what this does, and the reason is
+worth knowing: a server cannot commit to git, so that path is a build step someone runs
+and reviews, not a schedule. It also answers a different question — an artifact never
+expires, where the point here is that entries stay fresh on their own.
+
 ### English is Google's hub
 
 Only pairs touching English have a dictionary at all.
@@ -461,7 +501,7 @@ sense wrong ("noche" → "Abend", "casa" → "heim"). So when neither side is En
 (`needsPivot`) the route pivots through English. `pivotTerm` takes the best-scoring sense
 of the source→en dictionary, then en→target is looked up and `alignGroup` keeps the group
 matching the source word's part of speech. The two fetches run together, so a pivot costs
-one extra round trip: about 150ms cold, then a day in the data cache.
+one extra round trip: about 150ms cold, then nothing until the entry expires.
 
 | Load-bearing detail | Why |
 | --- | --- |
