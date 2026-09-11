@@ -4,6 +4,10 @@ import robots from "./robots";
 import sitemap from "./sitemap";
 import manifest from "./manifest";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+// Statically, not with `await import` inside the test: pulling this in drags the whole
+// page tree and the six band artifacts with it, which took 2.8s of a 5s test budget and
+// tipped over whenever the suite ran it under load. At module scope the cost is collection's.
+import { generateMetadata } from "./page";
 
 describe("what names the site to a machine", () => {
   it("keeps crawlers off the API and points them at the sitemap", () => {
@@ -30,7 +34,6 @@ describe("what names the site to a machine", () => {
 describe("a deeplink's word reaches the preview, not only the tab", () => {
   // @spec URL-7
   it("carries the word into the Open Graph and Twitter titles", async () => {
-    const { generateMetadata } = await import("./page");
     const meta = await generateMetadata({ searchParams: Promise.resolve({ word: "Wasser" }) });
     expect(meta.title).toBe("eigenlex: Wasser");
     expect(meta.openGraph.title).toBe("eigenlex: Wasser");
