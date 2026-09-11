@@ -72,7 +72,11 @@ export async function GET(req: Request) {
   }
 
   const all = list();
-  const today = windowFor(dayNumber(Date.now()), all.length).map((i) => all[i]!);
+  // One clock reading for the whole run, so a pass straddling midnight cannot report a
+  // different day than the one it warmed.
+  const now = Date.now();
+  const idx = windowFor(dayNumber(now), all.length);
+  const today = idx.map((i) => all[i]!);
 
   // Four at a time: 100 sequential calls would risk the function timeout, and a burst
   // this small once a day is nothing to the endpoint either way.
@@ -104,8 +108,19 @@ export async function GET(req: Request) {
   };
   await Promise.all(Array.from({ length: 4 }, worker));
 
+  // The response is returned to Vercel's scheduler, which discards it, so the log line is
+  // the only way these numbers reach anyone.
+  // @spec WARM-5
+  const first = idx[0]!;
+  const last = idx[idx.length - 1]!;
+  const slice = last >= first ? `${first}-${last}` : `${first}-${last} (wraps)`;
+  console.log(
+    `[warm] ${new Date(now).toISOString().slice(0, 10)} slice ${slice}`,
+    `asked=${today.length} warmed=${warmed} alreadyCached=${alreadyCached}`,
+  );
+
   return Response.json({
-    day: dayNumber(Date.now()),
+    day: dayNumber(now),
     asked: today.length,
     warmed,
     alreadyCached,

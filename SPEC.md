@@ -76,6 +76,7 @@ are always in the data cache rather than waiting on a first visitor to fetch the
 | WARM-2 | A day's slice is 100 words, derived from the date alone, and consecutive days cover the whole head before wrapping |
 | WARM-3 | Every word in the pass is one `/api/translate` would accept, and a case-homograph contributes both of its casings |
 | WARM-4 | The pass reports how many of the words it asked for answered without going upstream |
+| WARM-5 | The pass logs its result, since the response is returned to a scheduler that discards it |
 
 ## ROUTE — params, decoding and status
 

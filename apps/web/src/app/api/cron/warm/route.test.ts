@@ -18,6 +18,7 @@ const slowGtx = (ms: number) =>
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
+  vi.restoreAllMocks();
 });
 
 // This route spends our Google quota on a schedule, so an open one is a faucet anybody
@@ -126,5 +127,21 @@ describe("what the pass reports about the cache", () => {
     const body = await run();
     expect(body.warmed).toBe(100);
     expect(body.alreadyCached).toBe(0);
+  });
+});
+
+// Nothing reads the response: Vercel's scheduler throws it away. The log is where the
+// numbers actually reach a person.
+describe("where the numbers go", () => {
+  // @spec WARM-5
+  it("logs its result, since the response is returned to a scheduler that discards it", async () => {
+    vi.stubEnv("CRON_SECRET", SECRET);
+    vi.stubGlobal("fetch", mockGtx());
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    await GET(req(`Bearer ${SECRET}`));
+    const line = log.mock.calls.map((c) => c.join(" ")).find((l) => l.startsWith("[warm]"));
+    expect(line).toMatch(/^\[warm\] \d{4}-\d{2}-\d{2} slice \d+-\d+/);
+    expect(line).toContain("asked=100 warmed=100");
+    expect(line).toMatch(/alreadyCached=\d+$/);
   });
 });

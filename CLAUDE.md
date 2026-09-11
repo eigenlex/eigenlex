@@ -446,7 +446,7 @@ done | sort | uniq -c
 
 ### Keeping the head warm
 
-`WARM-1` to `WARM-4` are the rules.
+`WARM-1` to `WARM-5` are the rules.
 
 | Number | Value |
 | --- | --- |
@@ -480,8 +480,17 @@ it is also the share of the head still cached.
 | Near zero | Not persisting — a deploy, a purge, or a per-region cache |
 | Before the first pass completes | Nothing yet. It is only how much real traffic reached those words |
 
-It lands in Vercel's cron logs, not on a page: a browsable history needs somewhere to keep
-counts, which is a dependency this app does not have.
+The response is returned to Vercel's scheduler, which discards it, so the run logs its own
+summary (`WARM-5`). That line is the only place these numbers reach anyone:
+
+```
+[warm] 2026-11-12 slice 4254-4353 asked=100 warmed=100 alreadyCached=98
+```
+
+Read it in Runtime Logs, which the Cron Jobs tab links to. It is one line a day, so a short
+retention window means reading it near 04:00 UTC or losing that day — there is no later run
+to catch it up. A browsable history instead would need somewhere to keep counts, which is a
+dependency this app does not have.
 
 **The destination is the assumption underneath all of it.** The data cache is the only place
 a server can write without taking one on, and its eviction and regionality are Vercel's.
