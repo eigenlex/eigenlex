@@ -466,7 +466,7 @@ bulk backfill would; halving the daily slice would still pass inside the TTL.
 | Fail-closed on the secret (`WARM-1`) | This route spends our Google quota on demand, so fail-open is a faucet for anyone who guesses the path |
 | The date rather than a stored cursor (`WARM-2`) | A redeploy or a cold start must not restart the rotation, and a date needs nothing to persist it. It also makes a hand-triggered run idempotent with the scheduled one |
 | Four at a time, `maxDuration = 60` | Running the slice sequentially would risk the function timeout |
-| Daily at 04:00 UTC | Vercel's Hobby plan allows one cron run a day, which is what the slice is sized against |
+| Daily, `0 4 * * *` | Hobby allows one cron run a day and nothing finer — a sub-daily expression fails the deploy rather than degrading. Its scheduling precision is per-hour, so the run lands somewhere in 04:00-04:59 UTC. Same UTC day either way, so the slice it picks is unaffected |
 | A failed lookup is never cached | Next writes to the data cache only on a 200 (`patch-fetch.js`), so a transient Google error 502s and is retried rather than sticking for the TTL. Only a 200 we cannot parse would stick |
 
 `alreadyCached` (`WARM-4`) counts the words that answered without a round trip — free, since
@@ -487,10 +487,17 @@ summary (`WARM-5`). That line is the only place these numbers reach anyone:
 [warm] 2026-11-12 slice 4254-4353 asked=100 warmed=100 alreadyCached=98
 ```
 
-Read it in Runtime Logs, which the Cron Jobs tab links to. It is one line a day, so a short
-retention window means reading it near 04:00 UTC or losing that day — there is no later run
-to catch it up. A browsable history instead would need somewhere to keep counts, which is a
-dependency this app does not have.
+Read it under Logs, filtered on `requestType: cron`. **Hobby keeps one hour of runtime
+logs** — Pro a day, 30 days with Observability Plus — and the run lands anywhere in a
+59-minute window, so on Hobby the line is gone before anyone is awake.
+
+So the way to actually read the number is to trigger the pass yourself, earlier in the same
+UTC day, and read the response it returns. The window comes from the date, so that run takes
+the day's slice with a genuine count and the scheduled one moves on to the next. Once per
+UTC day only: a second run finds its own warming and reads near 100, which means nothing.
+
+A browsable history instead would need somewhere to keep counts, which is a dependency this
+app does not have.
 
 **The destination is the assumption underneath all of it.** The data cache is the only place
 a server can write without taking one on, and its eviction and regionality are Vercel's.
