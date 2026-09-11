@@ -466,7 +466,7 @@ bulk backfill would; halving the daily slice would still pass inside the TTL.
 | Fail-closed on the secret (`WARM-1`) | This route spends our Google quota on demand, so fail-open is a faucet for anyone who guesses the path |
 | The date rather than a stored cursor (`WARM-2`) | A redeploy or a cold start must not restart the rotation, and a date needs nothing to persist it. It also makes a hand-triggered run idempotent with the scheduled one |
 | Four at a time, `maxDuration = 60` | Running the slice sequentially would risk the function timeout |
-| Daily, `0 4 * * *` | Hobby allows one cron run a day and nothing finer — a sub-daily expression fails the deploy rather than degrading. Its scheduling precision is per-hour, so the run lands somewhere in 04:00-04:59 UTC. Same UTC day either way, so the slice it picks is unaffected |
+| Daily, `0 18 * * *` | Hobby allows one cron run a day and nothing finer — a sub-daily expression fails the deploy rather than degrading. Its scheduling precision is per-hour, so the run lands somewhere in 18:00-18:59 UTC. The hour is chosen to be a waking one, because Hobby keeps logs for only an hour after the run; the slice comes from the UTC day, so the choice does not change which words are warmed |
 | A failed lookup is never cached | Next writes to the data cache only on a 200 (`patch-fetch.js`), so a transient Google error 502s and is retried rather than sticking for the TTL. Only a 200 we cannot parse would stick |
 
 `alreadyCached` (`WARM-4`) counts the words that answered without a round trip — free, since
@@ -489,10 +489,11 @@ summary (`WARM-5`). That line is the only place these numbers reach anyone:
 
 Read it under Logs, filtered on `requestType: cron`. **Hobby keeps one hour of runtime
 logs** — Pro a day, 30 days with Observability Plus — and the run lands anywhere in a
-59-minute window, so on Hobby the line is gone before anyone is awake.
+59-minute window, which is why the schedule sits at a waking hour rather than overnight.
+Check within about an hour of 18:00 UTC.
 
-So the way to actually read the number is to trigger the pass yourself, earlier in the same
-UTC day, and read the response it returns. The window comes from the date, so that run takes
+The other way to read the number, needing no logs at all, is to trigger the pass yourself
+earlier in the same UTC day and read the response it returns. The window comes from the date, so that run takes
 the day's slice with a genuine count and the scheduled one moves on to the next. Once per
 UTC day only: a second run finds its own warming and reads near 100, which means nothing.
 
