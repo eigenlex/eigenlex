@@ -45,3 +45,16 @@ export const SOURCE_LANG_META: Record<SourceLang, SourceLangMeta> = {
   pt: { name: "Português", defaultWord: "água", corpus: opensubs("pt") },
   it: { name: "Italiano", defaultWord: "acqua", corpus: opensubs("it") },
 };
+
+/**
+ * A language named in English, for the app's English prose. `SOURCE_LANG_META.name` is
+ * the endonym instead, which is what the picker shows.
+ */
+export function englishName(code: string): string {
+  const fallback = isSourceLang(code) ? SOURCE_LANG_META[code].name : code;
+  try {
+    return new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}

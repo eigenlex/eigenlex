@@ -60,7 +60,7 @@ ours. `source`/`target` map onto them at that one call.
 
 | Path | Holds |
 | --- | --- |
-| `src/lib/languages.ts` | `SOURCE_LANGS`, `SourceLang`, `TargetLang`, `SOURCE_LANG_META` |
+| `src/lib/languages.ts` | `SOURCE_LANGS`, `SourceLang`, `TargetLang`, `SOURCE_LANG_META`, `englishName` |
 | `src/lib/bands.ts` | Server registry, `getWord`, all word lookups |
 | `src/lib/geo.ts` | Country table, `sourceLang`, `targetLang` |
 | `src/lib/scenario.ts` | URL encode / decode, `pageTitle` |
@@ -549,12 +549,27 @@ quiet `CefrBadge` carrying the band name and rank in its tooltip.
 | Some terms go unbadged | Phrases ("de agua") and inflected forms the lemma merge folded away ("eating"): about 4% of terms |
 | The looked-up word gets the same badge inside the search field | In Frequency view that is the only place its CEFR level shows at all |
 
+### Clicking an alternative
+
+A badged term is also a button. Clicking it studies the language that term is written in,
+starting from that word, and the pair turns over with it — so the card then translates
+back into the language just left. It is `SwapButton`'s move, aimed at one alternative
+instead of at the leading one.
+
+| Rule | Why |
+| --- | --- |
+| Only a badged term | The level is that language's own list vouching for the term, so a badged one is a word it has. The rest are phrases and folded-away forms, which would land nowhere |
+| So it needs no probe | `SwapButton` carries over a leading term nothing vouched for, which is why that one asks `/api/word` first and falls back to the language's default word |
+| `Workspace` withholds the handler rather than the card refusing | Same gate as the button: only the six can be studied. A card given no way to pick renders the terms as it always did |
+| Underlined on hover only | Six standing underlines read as a row of links rather than as what the word means |
+| The button stays | It works where the translation is a phrase, and it is a fixed place to find the move rather than one that depends on what came back |
+
 ### Markup
 
 | Rule | Why |
 | --- | --- |
 | Separators are bare text | Nothing but the badge sits between one term and the next |
-| A badged term is wrapped in a `<span id>` | Somewhere for its badge to point at. Only a badged one — the wrapper exists to be pointed at, and a span carries no text either way |
+| A badged term is wrapped in a `<span id>`, or in the button where it can be picked | Somewhere for its badge to point at. Only a badged one — the wrapper exists to be pointed at, and a span carries no text either way |
 | The badge is `select-none` | A copied line is then the translation and nothing else. The margin keeps a space out of it; without this the letters stayed, and "water, aqua" copied as "waterA1, aquaB2" |
 | No whitespace between a term and its badge | A wrap can never split the two |
 | `role="img"` carries the detail as the badge's accessible name | Hidden text would say the same thing but ride along into anything copied out of the translation |
@@ -593,6 +608,7 @@ tooltip is open.
 | --- | --- |
 | `CefrBadge` | The band and rank are the name; the word they belong to is the description. `aria-describedby` is always ours, never Radix's — the name already says what its tooltip says. In the search field the description points at the `invisible` mirror of the value, which Chrome reads because a directly-referenced node counts even when hidden |
 | `SwapButton` | Same trade: disabled, the reason why is in the name, not only in the tooltip |
+| A clickable alternative | Named by the word and nothing else, or the line stops reading as the translation. What clicking it does is a description — announced on focus, not while reading — and one element holds that sentence for every term on the card. The cost is two tab stops per badged term, the word and then its level, since the badge keeps its own focus for its rank |
 | `AbbrLink` | `title` on the `<abbr>`, and no Fondue tooltip. A Fondue one needs its own focusable trigger, which made each credit two tab stops with the same name, and it would paint a second tooltip over the native one |
 | `WordSearchBox` | Named by its section heading (`labelledBy`), not by a second copy of the same string |
 | Search help | `aria-hidden`, so it is read once as the field's description. A hidden element still contributes its text when `aria-describedby` names it directly |

@@ -10,6 +10,7 @@ import WordSearchBox from "@/components/WordSearchBox";
 import type { BandView, WordBands } from "@/lib/types";
 import {
   DEFAULT_SOURCE,
+  englishName,
   isSourceLang,
   SOURCE_LANGS,
   SOURCE_LANG_META,
@@ -43,16 +44,6 @@ const TARGET_KEY_ALT = "eigenlex:lang";
 
 const browserLang = () =>
   baseLang(typeof navigator !== "undefined" ? navigator.language : "en");
-
-// The UI's prose is English, so a language is named in English inside it. The endonym in
-// SOURCE_LANG_META is for the picker, which shows each language to its own speakers.
-function englishName(code: SourceLang) {
-  try {
-    return new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? SOURCE_LANG_META[code].name;
-  } catch {
-    return SOURCE_LANG_META[code].name;
-  }
-}
 
 // The workspace is client-only (see WorkspaceLazy), so localStorage is available at
 // first render — read it in the state initializers to avoid a default-value flash.
@@ -361,6 +352,15 @@ export default function Workspace({ country }: { country?: string | null }) {
   const [glossTerm, setGlossTerm] = useState<string | null>(null);
   const canSwap = isSourceLang(target) && target !== source;
 
+  // Study `to`, translating back into the language just left. Both languages move with
+  // the word, so no render shows a word beside the wrong pair.
+  const study = async (to: SourceLang, from: TargetLang, word: string) => {
+    setSource(to);
+    setTarget(from);
+    setQuery(word);
+    await lookup(word, to);
+  };
+
   // Study the target language, translating back into the one just left. The word carries
   // over as its own translation where that is a word in the new language — a translation
   // can be a phrase ("to eat"), and phrases are not in the dictionary.
@@ -379,11 +379,15 @@ export default function Workspace({ country }: { country?: string | null }) {
         /* offline: the default word still gives a valid landing place */
       }
     }
-    // Swapped together with the word, so no render shows a word beside the wrong pair.
-    setSource(to);
-    setTarget(from);
-    setQuery(word);
-    await lookup(word, to);
+    await study(to, from, word);
+  };
+
+  // The same move, aimed: the alternative that was clicked becomes the word being studied.
+  // Unlike the swap above this needs no probe — the card only offers a term the target
+  // language's own list vouched for, which is what gave it a level to show.
+  const pickTerm = (term: string) => {
+    if (!canSwap || !isSourceLang(target)) return;
+    void study(target, source, term);
   };
 
   // Switching view shows the word's band in the new view — drop any pinned tab.
@@ -501,6 +505,8 @@ export default function Workspace({ country }: { country?: string | null }) {
             target={target}
             onTargetChange={setTarget}
             onGloss={setGlossTerm}
+            // Only the six indexed languages can be studied, so only they are offered.
+            onPickTerm={canSwap ? pickTerm : undefined}
           />
         )}
       </div>

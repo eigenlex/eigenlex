@@ -29,7 +29,9 @@ vi.mock("./BandBrowser", () => ({
 // lowercased lookup key.
 const DISPLAY: Record<string, string> = { plädoyer: "Plädoyer" };
 
-function mockFetch() {
+type Level = { key: string; label: string; rank: number };
+
+function mockFetch(levels?: Record<string, Level>) {
   return vi.fn(async (url: string | URL) => {
     const u = String(url);
     if (u.includes("/api/word/")) {
@@ -52,11 +54,13 @@ function mockFetch() {
       );
     }
     // The card's translation; its leading term is what a language swap carries over.
+    // `levels` is what makes an alternative clickable, so only the tests about that pass any.
     if (u.includes("/api/translate/")) {
       return new Response(
         JSON.stringify({
           translation: "water",
           groups: [{ pos: "noun", terms: ["water", "aqua"] }],
+          levels,
         }),
       );
     }
@@ -412,6 +416,36 @@ describe("Workspace", () => {
     await waitFor(() => {
       expect(new URLSearchParams(window.location.search).get("source")).toBe("de");
     });
+  });
+
+  const AQUA: Record<string, Level> = { aqua: { key: "C1", label: "C1 · Advanced", rank: 18422 } };
+
+  // The other way the pair turns over: not the leading term the swap button takes, but
+  // whichever alternative was clicked. A pair no other test looks up, since the card's
+  // gloss cache is module-level by design and the one here is the only one with levels.
+  it("studies the language a clicked alternative is written in", async () => {
+    vi.stubGlobal("fetch", mockFetch(AQUA));
+    window.history.replaceState(null, "", "/?source=fr&word=eau&target=en");
+    const user = userEvent.setup();
+    render(<Workspace />);
+
+    await user.click(await screen.findByRole("button", { name: "aqua" }));
+
+    await waitFor(() => {
+      const p = new URLSearchParams(window.location.search);
+      expect(p.get("source")).toBe("en");
+      expect(p.get("target")).toBe("fr");
+      expect(p.get("word")).toBe("aqua");
+    });
+  });
+
+  // Same gate as the swap button: there is nowhere to land in a language we hold no list for.
+  it("offers no alternative to click where the target cannot be studied", async () => {
+    vi.stubGlobal("fetch", mockFetch(AQUA));
+    window.history.replaceState(null, "", "/?source=fr&word=eau&target=ja");
+    render(<Workspace />);
+    await screen.findByText("C1");
+    expect(screen.queryByRole("button", { name: "aqua" })).not.toBeInTheDocument();
   });
 
   it("restores the source language and word from the URL", async () => {

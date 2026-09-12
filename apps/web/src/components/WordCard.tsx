@@ -5,7 +5,7 @@ import CefrBadge from "@/components/CefrBadge";
 import LangSelect from "@/components/LangSelect";
 import Loading from "@/components/Loading";
 import { PANEL, PANEL_LANG } from "@/components/panel";
-import type { TargetLang } from "@/lib/languages";
+import { englishName, type TargetLang } from "@/lib/languages";
 import type { WordLevel } from "@/lib/types";
 import { baseLang, type SenseGroup } from "@/lib/translate";
 
@@ -161,6 +161,11 @@ const GLOSS_TYPE = {
 // Smaller type, but the translation's line box — else each translation resizes the card.
 const STATUS_TYPE = { display: GLOSS_TYPE.display, lineHeight: GLOSS_TYPE.lineHeight };
 
+// Underlined on hover only: the line is a translation first, and six standing underlines
+// would read as a row of links rather than as the meaning of the word.
+const PICK =
+  "tw-cursor-pointer tw-underline-offset-4 tw-decoration-dotted hover:tw-underline";
+
 /**
  * One reading's alternatives, each trailed by its own CEFR level where the target language
  * is one we index. The separators are plain text, so the line reads as the translation.
@@ -168,15 +173,25 @@ const STATUS_TYPE = { display: GLOSS_TYPE.display, lineHeight: GLOSS_TYPE.lineHe
  * A badged term is wrapped so its badge can point at it — see `CefrBadge`. Only a badged
  * one: the wrapper exists to be pointed at, and a span carries no text of its own either
  * way.
+ *
+ * That wrapper is a button where `onPick` is given. A level is the target language's own
+ * list vouching for the term, so a badged term is a word that language has — which is
+ * exactly the condition for studying it, and why nothing here has to ask first.
  */
 function Terms({
   terms,
   levels,
   target,
+  onPick,
+  pickHelp,
 }: {
   terms: string[];
   levels: Levels;
   target: TargetLang;
+  /** Study this term's language, starting from it. Absent where that language has no list. */
+  onPick?: ((term: string) => void) | undefined;
+  /** Id of the one element saying what picking a term does. */
+  pickHelp?: string | undefined;
 }) {
   const base = useId();
   return (
@@ -187,7 +202,24 @@ function Terms({
         return (
           <Fragment key={`${i}:${term}`}>
             {i > 0 && ", "}
-            {level ? <span id={termId}>{term}</span> : term}
+            {level && onPick ? (
+              <button
+                type="button"
+                id={termId}
+                // Named by the term itself, never by a label saying what the click does:
+                // a name would replace the word and the line would stop reading as the
+                // translation. The purpose is a description, announced on focus alone.
+                aria-describedby={pickHelp}
+                className={PICK}
+                onClick={() => onPick(term)}
+              >
+                {term}
+              </button>
+            ) : level ? (
+              <span id={termId}>{term}</span>
+            ) : (
+              term
+            )}
             {level && <CefrBadge level={level} describedBy={termId} />}
           </Fragment>
         );
@@ -204,6 +236,7 @@ export default function WordCard({
   target,
   onTargetChange,
   onGloss,
+  onPickTerm,
 }: {
   word: string;
   /**
@@ -219,6 +252,11 @@ export default function WordCard({
   onTargetChange: (l: TargetLang) => void;
   /** The translation's leading term, so a language swap can land on it. */
   onGloss?: (term: string) => void;
+  /**
+   * Study the target language, starting from the term that was clicked. Absent where that
+   * language has no word list of ours, which is also where no term carries a level.
+   */
+  onPickTerm?: ((term: string) => void) | undefined;
 }) {
   // No point translating a word into its own language.
   const translate = target !== source;
@@ -228,6 +266,8 @@ export default function WordCard({
   const homograph = casings.length > 1;
   const single = useGloss(word, source, target, translate && !homograph && !pending);
   const multi = useForms(casings, source, target, translate && homograph && !pending);
+  // One id for the sentence every term button points at.
+  const pickHelp = useId();
 
   // Both hooks park on "loading" until enabled, which is the pending frame's state.
   const status = homograph ? multi.status : single.status;
@@ -304,13 +344,25 @@ export default function WordCard({
                         {l.label}
                       </span>
                     )}
-                    <Terms terms={l.terms} levels={levels} target={target} />
+                    <Terms
+                      terms={l.terms}
+                      levels={levels}
+                      target={target}
+                      onPick={onPickTerm}
+                      pickHelp={pickHelp}
+                    />
                   </li>
                 ))}
               </ul>
             )}
             {translate && status === "done" && !showLines && heroTerms.length > 0 && (
-              <Terms terms={heroTerms} levels={levels} target={target} />
+              <Terms
+                terms={heroTerms}
+                levels={levels}
+                target={target}
+                onPick={onPickTerm}
+                pickHelp={pickHelp}
+              />
             )}
             {translate && missing && (
               <span className="tw-body-small text-muted-aaa" style={STATUS_TYPE}>
@@ -319,6 +371,15 @@ export default function WordCard({
             )}
           </div>
         </div>
+        {/* One description shared by every term button — the string is said once, and a
+            name holding it would replace the word and stop the line reading as the
+            translation. Outside the live region: it must not be announced as new text.
+            aria-hidden so browse mode does not meet it again as loose content. */}
+        {onPickTerm && (
+          <p id={pickHelp} className="visually-hidden" aria-hidden="true">
+            Look this word up in {englishName(target)}, swapping the two languages.
+          </p>
+        )}
         {/* 44px target (WCAG 2.5.5). */}
         <a
           href={translateHref(word, source, target)}

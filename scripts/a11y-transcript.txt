@@ -28,18 +28,20 @@ TAB THROUGH THE PAGE
    1. A1 · Beginner · rank 393, img, — Wasser
    2. Swap the source and target languages, button
    3. Target language, combobox, collapsed
-   4. A1 · Beginner · rank 391, img, — water
-   5. C1 · Advanced · rank 18,422, img, — aqua
-   6. Google Translate, link
-   7. CEFR, radio, checked, — Common European Framework of Reference for Languages (CEFR) level
-   8. A1 · Beginner, 1,000 words, tab, selected
-   9. Wasser, option, selected, 393 of 1000
-  10. OpenSubtitles frequencies, link
-  11. lemmatization list, link
-  12. CEFR-J, link
-  13. Leipzig Corpora, link
-  14. Google Translate, link
-  15. samuelgomezcrespo@gmail.com, link
+   4. water, button, — Look this word up in English, swapping the two languages.
+   5. A1 · Beginner · rank 391, img, — water
+   6. aqua, button, — Look this word up in English, swapping the two languages.
+   7. C1 · Advanced · rank 18,422, img, — aqua
+   8. Google Translate, link
+   9. CEFR, radio, checked, — Common European Framework of Reference for Languages (CEFR) level
+  10. A1 · Beginner, 1,000 words, tab, selected
+  11. Wasser, option, selected, 393 of 1000
+  12. OpenSubtitles frequencies, link
+  13. lemmatization list, link
+  14. CEFR-J, link
+  15. Leipzig Corpora, link
+  16. Google Translate, link
+  17. samuelgomezcrespo@gmail.com, link
 
 THE WORD CLOUD — a listbox of the band's words
 ------------------------------------------------------------------------

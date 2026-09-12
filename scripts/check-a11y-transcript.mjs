@@ -308,7 +308,7 @@ async function transcribe(send, on) {
   // Tab moves focus and activates nothing, so this leaves the page as it found it.
   rule("TAB THROUGH THE PAGE");
   await val(`(document.activeElement?.blur(), true)`);
-  for (let i = 0, stop = 0; i < 20; i++) {
+  for (let i = 0, stop = 0; i < 30; i++) {
     await key("Tab", "Tab", 9);
     // `next dev` serves its own dev-tools overlay as a focusable custom element that
     // production never has, so without this a local run differs from the deployed page by

@@ -334,3 +334,83 @@ describe("WordCard levels", () => {
     expect(screen.getByText("B2")).toBeInTheDocument();
   });
 });
+
+// A level is the target language's own list vouching for the term, so a badged term is a
+// word that language has — which is exactly the condition for going and studying it.
+describe("WordCard picking a translation", () => {
+  it("offers each alternative the target language carries as a way into it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockGroups([{ pos: "noun", terms: ["lake", "loch"] }], "lake", { lake: A1, loch: B2 }),
+    );
+    const picked: string[] = [];
+    render(
+      <WordCard
+        word="lago"
+        forms={["lago"]}
+        source="it"
+        target="en"
+        onTargetChange={() => {}}
+        onPickTerm={(t) => picked.push(t)}
+      />,
+    );
+    await userEvent.setup().click(await screen.findByRole("button", { name: "loch" }));
+    expect(picked).toEqual(["loch"]);
+  });
+
+  // A phrase has no rank, so it has no entry to land on either.
+  it("leaves a term the language does not carry as plain text", async () => {
+    vi.stubGlobal(
+      "fetch",
+      mockGroups([{ pos: "noun", terms: ["blade", "usar faca"] }], "blade", { blade: A1 }),
+    );
+    render(
+      <WordCard
+        word="lâmina"
+        forms={["lâmina"]}
+        source="pt"
+        target="en"
+        onTargetChange={() => {}}
+        onPickTerm={() => {}}
+      />,
+    );
+    await screen.findByRole("button", { name: "blade" });
+    expect(screen.queryByRole("button", { name: "usar faca" })).not.toBeInTheDocument();
+    expect(reading()).toBe("blade, usar faca");
+  });
+
+  // The word is the name; what clicking does is a description, announced on focus alone.
+  // A name saying it would replace the word, and the line would stop reading as the
+  // translation it is.
+  it("names the button with the word and describes it with what a pick does", async () => {
+    vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["book"] }], "book", { book: A1 }));
+    render(
+      <WordCard
+        word="libro"
+        forms={["libro"]}
+        source="it"
+        target="en"
+        onTargetChange={() => {}}
+        onPickTerm={() => {}}
+      />,
+    );
+    const button = await screen.findByRole("button", { name: "book" });
+    const described = button.getAttribute("aria-describedby");
+    expect(document.getElementById(described!)).toHaveTextContent(
+      "Look this word up in English, swapping the two languages.",
+    );
+    expect(reading()).toBe("book");
+  });
+
+  it("offers nothing to click where the workspace passes no way to pick", async () => {
+    vi.stubGlobal("fetch", mockGroups([{ pos: "noun", terms: ["river"] }], "river", { river: A1 }));
+    render(
+      <WordCard word="fiume" forms={["fiume"]} source="it" target="en" onTargetChange={() => {}} />,
+    );
+    await screen.findByText("river");
+    expect(screen.queryByRole("button", { name: "river" })).not.toBeInTheDocument();
+    // Still the badge's subject, so tabbing to the level still says which word it is for.
+    const described = screen.getByText("A1").getAttribute("aria-describedby");
+    expect(document.getElementById(described!)).toHaveTextContent("river");
+  });
+});
