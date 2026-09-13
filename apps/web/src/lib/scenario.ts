@@ -4,6 +4,7 @@
 // language, and the band view / pinned band tab.
 
 import { isSourceLang, type SourceLang, type TargetLang } from "@/lib/languages";
+import { SITE_NAME } from "@/lib/site";
 import type { BandView } from "@/lib/types";
 
 const isView = (v: string): v is BandView => v === "freq" || v === "cefr";
@@ -43,7 +44,7 @@ export interface Scenario {
 export function pageTitle(word: string | null | undefined): string {
   // Sliced because the word can come straight off the query string, unlooked-up.
   const w = word?.trim().slice(0, 40);
-  return w ? `eigenlex: ${w}` : "eigenlex";
+  return w ? `${SITE_NAME}: ${w}` : SITE_NAME;
 }
 
 /** The scenario encoded in the current URL, if any (client-only; empty on the server). */

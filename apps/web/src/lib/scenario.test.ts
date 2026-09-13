@@ -61,18 +61,18 @@ describe("writeScenario", () => {
 describe("pageTitle", () => {
   // @spec URL-6
   it("names the word", () => {
-    expect(pageTitle("Wasser")).toBe("eigenlex: Wasser");
+    expect(pageTitle("Wasser")).toBe("word-bands: Wasser");
   });
 
   it("falls back to the bare title when there is no word", () => {
-    expect(pageTitle(undefined)).toBe("eigenlex");
-    expect(pageTitle(null)).toBe("eigenlex");
-    expect(pageTitle(" ")).toBe("eigenlex");
+    expect(pageTitle(undefined)).toBe("word-bands");
+    expect(pageTitle(null)).toBe("word-bands");
+    expect(pageTitle(" ")).toBe("word-bands");
   });
 
   // The word can arrive straight off the query string, so it is not a corpus word yet.
   // @spec URL-6
   it("caps a word the query string made up", () => {
-    expect(pageTitle("x".repeat(500))).toBe(`eigenlex: ${"x".repeat(40)}`);
+    expect(pageTitle("x".repeat(500))).toBe(`word-bands: ${"x".repeat(40)}`);
   });
 });

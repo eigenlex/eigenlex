@@ -95,8 +95,8 @@ than in `WordCard`, and `band` rather than in `BandBrowser`, so both ride in the
 `URL-1` to `URL-7` are the rules: the older spellings, what is written and when, and the
 precedence on mount — the URL wins over the stored pick, which wins over the seed below.
 
-The tab title carries the word too: `eigenlex: <word>`, in the corpus's display casing
-(`eigenlex: Wasser`). `generateMetadata` renders it from `?word=` server-side, so a shared
+The tab title carries the word too: `word-bands: <word>`, in the corpus's display casing
+(`word-bands: Wasser`). `generateMetadata` renders it from `?word=` server-side, so a shared
 link names its word in the tab and in link previews before any client JS runs; `Workspace`
 recases it to the corpus's spelling once the lookup lands. Both call `pageTitle`, which caps
 the word, since a deeplink's has not been looked up.
@@ -715,7 +715,7 @@ Both are internals, matched by structure, because the CSS module's class is a bu
 Next merges metadata **shallowly**: a child naming `openGraph` replaces the parent's whole
 object rather than adding to it. So `page.tsx` restates the Open Graph and Twitter fields
 around the word-specific title. Setting only `title` there leaves a shared deeplink
-previewing as "eigenlex" while its tab says the word.
+previewing as "word-bands" while its tab says the word.
 
 The sitemap lists one URL. Every word is query state on the same page.
 

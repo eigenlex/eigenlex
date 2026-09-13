@@ -35,9 +35,9 @@ describe("a deeplink's word reaches the preview, not only the tab", () => {
   // @spec URL-7
   it("carries the word into the Open Graph and Twitter titles", async () => {
     const meta = await generateMetadata({ searchParams: Promise.resolve({ word: "Wasser" }) });
-    expect(meta.title).toBe("eigenlex: Wasser");
-    expect(meta.openGraph.title).toBe("eigenlex: Wasser");
-    expect(meta.twitter.title).toBe("eigenlex: Wasser");
+    expect(meta.title).toBe("word-bands: Wasser");
+    expect(meta.openGraph.title).toBe("word-bands: Wasser");
+    expect(meta.twitter.title).toBe("word-bands: Wasser");
     expect(meta.openGraph.description).toBe(SITE_DESCRIPTION);
     expect(meta.openGraph.siteName).toBe(SITE_NAME);
   });

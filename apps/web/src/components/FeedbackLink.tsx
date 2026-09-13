@@ -6,10 +6,12 @@ import { useEffect, useState } from "react";
 // server and rendering the joined form would put it straight back into the HTML, so the
 // spelled-out one is what the server sends — still readable, and the only thing a visitor
 // without JS ever sees.
+import { SITE_NAME } from "@/lib/site";
+
 const ENCODED = "c2FtdWVsZ29tZXpjcmVzcG9AZ21haWwuY29t";
 const ADDRESS = atob(ENCODED);
 const SPELLED = ADDRESS.replace("@", " at ").replaceAll(".", " dot ");
-const SUBJECT = "eigenlex feedback";
+const SUBJECT = `${SITE_NAME} feedback`;
 
 const LINK = "tw-underline hover:tw-text-primary";
 

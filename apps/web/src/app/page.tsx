@@ -10,7 +10,7 @@ import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 //
 // `openGraph` and `twitter` are restated rather than inherited: Next merges metadata
 // shallowly, so a child that names either one replaces the layout's whole object. Left
-// to `title` alone the preview would keep saying "eigenlex" while the tab said the word.
+// to `title` alone the preview would keep saying "word-bands" while the tab said the word.
 // @spec URL-7
 export async function generateMetadata({
   searchParams,
@@ -49,7 +49,7 @@ export default async function Home() {
       <main className={`Home ${GUTTER} tw-pb-16 tw-pt-10`} id="main" tabIndex={-1}>
         <header className="tw-mb-6">
           <div className="tw-mb-1 tw-flex tw-items-start tw-justify-between tw-gap-4">
-            <h1 className="tw-heading-xx-large-strong">eigenlex</h1>
+            <h1 className="tw-heading-xx-large-strong">{SITE_NAME}</h1>
             <ThemeToggle />
           </div>
           {/* line-height 1.5 for blocks of text (WCAG 1.4.8); the Fondue type token
