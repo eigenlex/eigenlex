@@ -426,7 +426,7 @@ in the dashboard and nowhere in this repo — nothing here would tell you it exi
 
 | Setting | Value |
 | --- | --- |
-| Where | `https://vercel.com/eigenlex/word-bands/settings/firewall` |
+| Where | `https://vercel.com/sanoodles-dev/word-bands/settings/firewall` |
 | Matches | Path starts with `/api/translate` |
 | Keyed by | IP |
 | Limit | 100 requests per 60s, then deny |
