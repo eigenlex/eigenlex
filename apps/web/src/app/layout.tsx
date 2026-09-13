@@ -8,7 +8,14 @@ import { cookies } from "next/headers";
 import "@frontify/fondue/tokens/base";
 import "@frontify/fondue/components/styles";
 import "./globals.css";
-import Providers, { type Theme, type ThemePreference } from "./providers";
+import Providers, {
+  PREF_COOKIE,
+  PREF_COOKIE_OLD,
+  RESOLVED_COOKIE,
+  RESOLVED_COOKIE_OLD,
+  type Theme,
+  type ThemePreference,
+} from "./providers";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 // `metadataBase` is what lets the relative urls below resolve; without it Next drops
@@ -37,12 +44,13 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // can't be resolved on the server (prefers-color-scheme is client-only), so we paint
   // the last resolved colour we cached; a mount effect corrects it if the OS changed.
   const cookieStore = await cookies();
-  const stored = cookieStore.get("eigenlex:theme")?.value;
+  const stored = cookieStore.get(PREF_COOKIE)?.value ?? cookieStore.get(PREF_COOKIE_OLD)?.value;
   const preference: ThemePreference =
     stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
   const resolved: Theme =
     preference === "system"
-      ? cookieStore.get("eigenlex:theme-resolved")?.value === "light"
+      ? (cookieStore.get(RESOLVED_COOKIE)?.value ??
+          cookieStore.get(RESOLVED_COOKIE_OLD)?.value) === "light"
         ? "light"
         : "dark"
       : preference;

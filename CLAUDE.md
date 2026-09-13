@@ -1,4 +1,4 @@
-# eigenlex — agent notes
+# word-bands — agent notes
 
 pnpm + turbo monorepo with one app. `apps/web` is the Next.js site and the hosted API.
 It is a vocabulary learning tool. Every word gets a frequency band and a CEFR band, so a
@@ -40,15 +40,18 @@ our own API params — and in that order. `lang`, `sl` and `tl` name neither.
 | Drives | The bands, the word cloud, the suggestions | The word card only |
 | Type | `SourceLang`, one of the six indexed | `TargetLang`, any code Google takes |
 | Seeded from | The client's country | The browser language |
-| Stored under | `eigenlex:source` | `eigenlex:target` |
+| Stored under | `word-bands:source` | `word-bands:target` |
 | URL and API param | `source` | `target` |
 
 `isSourceLang` asks whether a language is one of the six, whichever role it is in. The
 target passes it only when we index it too, which is what CEFR levels on a translation
 and the swap button need.
 
-Older spellings are still read, never written: `eigenlex:lang` via `TARGET_KEY_ALT`, and
-the two URL params noted below.
+Older spellings are still read, never written, so a rename migrates a visitor rather than
+resetting them: `SOURCE_KEYS_OLD` and `TARGET_KEYS_OLD` list the `eigenlex:` keys and the
+older `eigenlex:lang`, `readStored` walks them in order, and the theme cookies do the same
+through `PREF_COOKIE_OLD` and `RESOLVED_COOKIE_OLD`. The two URL params below work the same
+way.
 
 `gtxUrl` is the exception that stays: `sl`/`tl` there are Google's own param names, not
 ours. `source`/`target` map onto them at that one call.
@@ -146,8 +149,8 @@ never run the build. It is also the one input under the GPL, which the others ar
 
 | Command | Does |
 | --- | --- |
-| `pnpm --filter @eigenlex/web build:bands` | Rebuild every language |
-| `pnpm --filter @eigenlex/web build:bands <code>` | Rebuild one |
+| `pnpm --filter @word-bands/web build:bands` | Rebuild every language |
+| `pnpm --filter @word-bands/web build:bands <code>` | Rebuild one |
 
 To add a language: drop its inputs in `data/`, add a `LANGS` entry in the build script, add
 it to `SOURCE_LANG_META`, and add the registry import in `bands.ts`.
@@ -617,7 +620,7 @@ tooltip is open.
 
 ### The lint rule, and what it cannot see
 
-`eslint.config.mjs` runs `jsx-a11y` over `src/**/*.tsx`. `pnpm --filter @eigenlex/web lint`,
+`eslint.config.mjs` runs `jsx-a11y` over `src/**/*.tsx`. `pnpm --filter @word-bands/web lint`,
 and it runs in the pre-push hook and in `pr.yml` alongside the typecheck.
 
 | Choice | Why |
@@ -785,7 +788,7 @@ start returning 500s.
 | Command | Safe while `pnpm dev` is up |
 | --- | --- |
 | `pnpm test`, `pnpm typecheck` | Yes |
-| `pnpm --filter @eigenlex/web build:check` | Yes — builds into `.next-build` |
+| `pnpm --filter @word-bands/web build:check` | Yes — builds into `.next-build` |
 | `pnpm build`, `turbo run build`, `next build` | No — stop the dev server first |
 
 `.githooks/pre-push` runs the typecheck and the suite before a push, which is why it runs

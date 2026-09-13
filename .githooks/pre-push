@@ -13,12 +13,12 @@ node scripts/check-spec.mjs
 node scripts/check-dependabot-ignores.mjs
 
 echo "pre-push: lint"
-pnpm --filter @eigenlex/web lint
+pnpm --filter @word-bands/web lint
 
 echo "pre-push: typecheck"
-pnpm --filter @eigenlex/web typecheck
+pnpm --filter @word-bands/web typecheck
 
 echo "pre-push: tests"
-pnpm --filter @eigenlex/web test
+pnpm --filter @word-bands/web test
 
 echo "pre-push: ok"

@@ -1,8 +1,8 @@
 {
-  "name": "eigenlex",
+  "name": "word-bands",
   "version": "0.0.0",
   "private": true,
-  "description": "eigenlex — a vocabulary learning tool: every English word placed on a frequency and CEFR learning band.",
+  "description": "word-bands — a vocabulary learning tool: every English word placed on a frequency and CEFR learning band.",
   "type": "module",
   "packageManager": "pnpm@11.5.2",
   "engines": {

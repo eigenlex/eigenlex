@@ -30,7 +30,7 @@ describe("what names the site to a machine", () => {
 });
 
 // Next merges metadata shallowly: a child naming `openGraph` replaces the parent's whole
-// object. Returning only `title` here leaves a shared deeplink previewing as "eigenlex".
+// object. Returning only `title` here leaves a shared deeplink previewing as "word-bands".
 describe("a deeplink's word reaches the preview, not only the tab", () => {
   // @spec URL-7
   it("carries the word into the Open Graph and Twitter titles", async () => {

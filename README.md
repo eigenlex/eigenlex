@@ -1,4 +1,4 @@
-# eigenlex
+# word-bands
 
 A vocabulary learning tool: **which words to learn first** — in English, Spanish,
 French, German, Portuguese, or Italian. Pick the language you're studying; every word
@@ -82,14 +82,14 @@ build applies its own floor (`minCount` in the `LANGS` table) so the cut is reco
 code rather than in whichever file was downloaded. Then run:
 
 ```sh
-pnpm --filter @eigenlex/web build:bands        # all languages
-pnpm --filter @eigenlex/web build:bands es     # just one
+pnpm --filter @word-bands/web build:bands        # all languages
+pnpm --filter @word-bands/web build:bands es     # just one
 ```
 
 > **Heads up:** `next dev` and `next build` share `apps/web/.next`, so running
 > `pnpm build` while the web dev server is live corrupts it (its API routes start
 > 500ing). To verify a production build without stopping `pnpm dev`, use
-> `pnpm --filter @eigenlex/web build:check` — it builds into `.next-build`.
+> `pnpm --filter @word-bands/web build:check` — it builds into `.next-build`.
 
 ## License
 

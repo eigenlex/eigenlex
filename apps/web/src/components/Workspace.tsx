@@ -37,10 +37,20 @@ const TRANSLATE_URL = "https://translate.google.com/";
 // Persisted picks, so a returning learner lands back where they left off. A shareable
 // URL (see lib/scenario) takes precedence over these when present; where neither says
 // anything, the client's country seeds the source language (see lib/geo).
-const SOURCE_KEY = "eigenlex:source";
-const TARGET_KEY = "eigenlex:target";
-// Also read, never written, so a target stored under it still resolves.
-const TARGET_KEY_ALT = "eigenlex:lang";
+const SOURCE_KEY = "word-bands:source";
+const TARGET_KEY = "word-bands:target";
+// Older spellings, read in order and never written, so a visitor keeps the pair they picked.
+const SOURCE_KEYS_OLD = ["eigenlex:source"];
+const TARGET_KEYS_OLD = ["eigenlex:target", "eigenlex:lang"];
+
+// Reads the current key, then each older one, so a rename migrates rather than resets.
+function readStored(key: string, older: readonly string[]): string | null {
+  for (const k of [key, ...older]) {
+    const v = window.localStorage.getItem(k);
+    if (v) return v;
+  }
+  return null;
+}
 
 const browserLang = () =>
   baseLang(typeof navigator !== "undefined" ? navigator.language : "en");
@@ -49,7 +59,7 @@ const browserLang = () =>
 // first render — read it in the state initializers to avoid a default-value flash.
 function storedSource(): SourceLang | null {
   try {
-    const s = window.localStorage.getItem(SOURCE_KEY);
+    const s = readStored(SOURCE_KEY, SOURCE_KEYS_OLD);
     if (s && isSourceLang(s)) return s;
   } catch {
     /* storage unavailable */
@@ -58,7 +68,7 @@ function storedSource(): SourceLang | null {
 }
 function storedTarget(): TargetLang | null {
   try {
-    const s = window.localStorage.getItem(TARGET_KEY) ?? window.localStorage.getItem(TARGET_KEY_ALT);
+    const s = readStored(TARGET_KEY, TARGET_KEYS_OLD);
     if (s) return baseLang(s);
   } catch {
     /* storage unavailable */

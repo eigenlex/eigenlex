@@ -216,6 +216,13 @@ describe("Workspace", () => {
 
     // @spec URL-5
     it("yields to a language the visitor picked before", async () => {
+      localStorage.setItem("word-bands:source", "it");
+      render(<Workspace country="ES" />);
+      expect(await screen.findByRole("region", { name: /meaning of acqua/i })).toBeInTheDocument();
+    });
+
+    // @spec URL-5
+    it("still reads a pick stored under the older key", async () => {
       localStorage.setItem("eigenlex:source", "it");
       render(<Workspace country="ES" />);
       expect(await screen.findByRole("region", { name: /meaning of acqua/i })).toBeInTheDocument();
