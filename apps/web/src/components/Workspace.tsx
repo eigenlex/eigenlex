@@ -39,18 +39,6 @@ const TRANSLATE_URL = "https://translate.google.com/";
 // anything, the client's country seeds the source language (see lib/geo).
 const SOURCE_KEY = "word-bands:source";
 const TARGET_KEY = "word-bands:target";
-// Older spellings, read in order and never written, so a visitor keeps the pair they picked.
-const SOURCE_KEYS_OLD = ["eigenlex:source"];
-const TARGET_KEYS_OLD = ["eigenlex:target", "eigenlex:lang"];
-
-// Reads the current key, then each older one, so a rename migrates rather than resets.
-function readStored(key: string, older: readonly string[]): string | null {
-  for (const k of [key, ...older]) {
-    const v = window.localStorage.getItem(k);
-    if (v) return v;
-  }
-  return null;
-}
 
 const browserLang = () =>
   baseLang(typeof navigator !== "undefined" ? navigator.language : "en");
@@ -59,7 +47,7 @@ const browserLang = () =>
 // first render — read it in the state initializers to avoid a default-value flash.
 function storedSource(): SourceLang | null {
   try {
-    const s = readStored(SOURCE_KEY, SOURCE_KEYS_OLD);
+    const s = window.localStorage.getItem(SOURCE_KEY);
     if (s && isSourceLang(s)) return s;
   } catch {
     /* storage unavailable */
@@ -68,7 +56,7 @@ function storedSource(): SourceLang | null {
 }
 function storedTarget(): TargetLang | null {
   try {
-    const s = readStored(TARGET_KEY, TARGET_KEYS_OLD);
+    const s = window.localStorage.getItem(TARGET_KEY);
     if (s) return baseLang(s);
   } catch {
     /* storage unavailable */

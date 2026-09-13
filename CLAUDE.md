@@ -47,11 +47,10 @@ our own API params — and in that order. `lang`, `sl` and `tl` name neither.
 target passes it only when we index it too, which is what CEFR levels on a translation
 and the swap button need.
 
-Older spellings are still read, never written, so a rename migrates a visitor rather than
-resetting them: `SOURCE_KEYS_OLD` and `TARGET_KEYS_OLD` list the `eigenlex:` keys and the
-older `eigenlex:lang`, `readStored` walks them in order, and the theme cookies do the same
-through `PREF_COOKIE_OLD` and `RESOLVED_COOKIE_OLD`. The two URL params below work the same
-way.
+Storage keys carry no older spellings: a key is read under exactly the name it is written
+under, so renaming one drops whatever was stored before it. The two URL params below are the
+exception and do accept an older spelling, because a deeplink someone else already shared
+cannot be rewritten.
 
 `gtxUrl` is the exception that stays: `sl`/`tl` there are Google's own param names, not
 ours. `source`/`target` map onto them at that one call.
