@@ -423,7 +423,7 @@ in the dashboard and nowhere in this repo — nothing here would tell you it exi
 
 | Setting | Value |
 | --- | --- |
-| Where | `https://vercel.com/eigenlex/eigenlex-web/settings/firewall` |
+| Where | `https://vercel.com/eigenlex/word-bands/settings/firewall` |
 | Matches | Path starts with `/api/translate` |
 | Keyed by | IP |
 | Limit | 100 requests per 60s, then deny |
@@ -440,7 +440,7 @@ before calling Google. Expect 100 × `400` and then `403`:
 W=$(python3 -c 'print("a"*200)')
 for i in $(seq 1 130); do
   curl -s -o /dev/null -w '%{http_code}\n' \
-    "https://eigenlex-web.vercel.app/api/translate/$W?source=en&target=es"
+    "https://word-bands.vercel.app/api/translate/$W?source=en&target=es"
 done | sort | uniq -c
 ```
 
