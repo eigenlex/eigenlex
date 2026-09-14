@@ -1,17 +1,33 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import DefiningScatter, { tipStyle } from "./DefiningScatter";
 
-// jsdom has no 2d context, so `paint` bails at its `if (!ctx) return`. That is the point:
-// everything outside the canvas — the label, the caption, the loading state — is what a
-// screen reader and a text browser get, and it has to stand up without a drawing surface.
+// `paint` bails on the zero-size wrap that jsdom reports, before it reaches the context
+// stub in test/setup.ts. That is the point: everything outside the canvas — the label, the
+// caption, the fold — is what a screen reader and a text browser get, and it has to stand
+// up without anything ever being drawn.
 const points = {
   levels: "11-3" + "7".repeat(6),
   words: ["o", "que", "john", "água", "olá", "uau", "a", "b", "c", "d"],
 };
 
+/** jsdom has no layout, so the caption's width test has to be told the answer. */
+const screenWidth = (wide: boolean) =>
+  vi.stubGlobal("matchMedia", (media: string) => ({
+    media,
+    matches: wide,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    onchange: null,
+    dispatchEvent: () => false,
+  }));
+
 beforeEach(() => {
+  localStorage.clear();
+  screenWidth(true);
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => new Response(JSON.stringify(points), { status: 200 })),
@@ -32,10 +48,13 @@ describe("DefiningScatter", () => {
     expect(name).toContain("spread across every level");
   });
 
-  it("captions the figure without claiming height is difficulty", async () => {
+  it("keeps the axes and the misreading out of the fold", async () => {
     render(<DefiningScatter source="pt" anchorWord={null} onSelect={() => {}} />);
     const fig = await screen.findByRole("figure");
-    expect(fig.textContent).toContain("Height is not difficulty");
+    // Whatever else folds away, a reader must not be left thinking height is difficulty.
+    const summary = fig.querySelector("summary")!;
+    expect(summary.textContent).toContain("Frequency across, defining level up");
+    expect(summary.textContent).toContain("not a difficulty scale");
     expect(fig.textContent).toContain("D1 at the top");
   });
 
@@ -74,5 +93,48 @@ describe("the hover label's placement", () => {
     const st = tipStyle({ x: 880, y: 4 }, W);
     expect(st.transform).toContain("translateX(-100%)");
     expect(st.transform).not.toContain("translateY");
+  });
+});
+
+// The caption is what teaches the figure, and dead weight once it has. It starts open
+// where there is room, starts folded on a phone, and remembers either way.
+describe("the caption's fold", () => {
+  const openState = async () => (await screen.findByRole("figure")).querySelector("details")!;
+
+  it("starts open on a wide screen", async () => {
+    screenWidth(true);
+    render(<DefiningScatter source="pt" anchorWord={null} onSelect={() => {}} />);
+    expect((await openState()).open).toBe(true);
+  });
+
+  it("starts folded on a phone", async () => {
+    screenWidth(false);
+    render(<DefiningScatter source="pt" anchorWord={null} onSelect={() => {}} />);
+    expect((await openState()).open).toBe(false);
+  });
+
+  it("lets a remembered choice beat the screen width", async () => {
+    screenWidth(false);
+    localStorage.setItem("word-bands:defining-caption", "open");
+    render(<DefiningScatter source="pt" anchorWord={null} onSelect={() => {}} />);
+    expect((await openState()).open).toBe(true);
+  });
+
+  it("writes nothing until the reader touches it", async () => {
+    render(<DefiningScatter source="pt" anchorWord={null} onSelect={() => {}} />);
+    await openState();
+    expect(localStorage.getItem("word-bands:defining-caption")).toBeNull();
+  });
+
+  it("remembers a fold", async () => {
+    const details = await (async () => {
+      render(<DefiningScatter source="pt" anchorWord={null} onSelect={() => {}} />);
+      return openState();
+    })();
+    details.open = false;
+    fireEvent(details, new Event("toggle"));
+    await waitFor(() =>
+      expect(localStorage.getItem("word-bands:defining-caption")).toBe("closed"),
+    );
   });
 });

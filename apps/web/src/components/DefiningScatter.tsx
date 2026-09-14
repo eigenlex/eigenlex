@@ -23,6 +23,21 @@ const PAD = { top: 10, right: 12, bottom: 26, left: 34 };
 /** Point radius, and the hover radius around the cursor, in CSS pixels. */
 const DOT = 1.6;
 const HOVER = 7;
+/** Whether the reader has folded the caption away. Absent until they touch it. */
+const CAPTION_KEY = "word-bands:defining-caption";
+
+function readCaptionPref(): boolean | null {
+  try {
+    const v = localStorage.getItem(CAPTION_KEY);
+    return v === "open" ? true : v === "closed" ? false : null;
+  } catch {
+    return null;
+  }
+}
+
+const wideEnoughForCaption = () =>
+  typeof window !== "undefined" && window.matchMedia("(min-width: 700px)").matches;
+
 /** Rough height of the pointer cursor's glyph, and of the hover label. */
 const CURSOR = 22;
 const TIP_H = 26;
@@ -72,6 +87,13 @@ export default function DefiningScatter({
   onSelect: (word: string) => void;
 }) {
   const { resolvedTheme } = useThemeToggle();
+  // Read once, on the first client render, so the fold never flashes open then shut.
+  // A stored choice wins; failing that, a wide screen has room to start open and a phone
+  // does not — which is the whole reason this folds.
+  const [captionOpen, setCaptionOpen] = useState(() => {
+    const stored = readCaptionPref();
+    return stored ?? wideEnoughForCaption();
+  });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [points, setPoints] = useState<Points | null>(null);
@@ -91,6 +113,19 @@ export default function DefiningScatter({
       live = false;
     };
   }, [source]);
+
+  const firstCaptionRender = useRef(true);
+  useEffect(() => {
+    if (firstCaptionRender.current) {
+      firstCaptionRender.current = false;
+      return;
+    }
+    try {
+      localStorage.setItem(CAPTION_KEY, captionOpen ? "open" : "closed");
+    } catch {
+      // A private window can refuse storage. The fold still works, it just forgets.
+    }
+  }, [captionOpen]);
 
   const xOf = useCallback((rank: number, w: number, total: number) => {
     // Square root, not log: log gives ranks 1-1,000 two thirds of the width. Sqrt gives
@@ -263,10 +298,21 @@ export default function DefiningScatter({
         )}
       </div>
       <figcaption className="tw-mt-1 tw-px-1 tw-body-x-small text-muted-aaa">
-        Frequency across, defining level up — {levelled.toLocaleString()} words. D1 at the top
-        is the core the dictionary defines everything else with; D7 at the bottom is never used
-        in a definition at all. The stripes are the CEFR bands. Height is not difficulty:{" "}
-        <span lang={source}>olá</span> is A1 vocabulary sitting at D7. Pick a point to look it up.
+        <details
+          open={captionOpen}
+          onToggle={(e) => setCaptionOpen(e.currentTarget.open)}
+          className="[&[open]_summary]:tw-mb-1"
+        >
+          {/* The axes and the one thing a reader gets wrong stay out of the fold: a figure
+              that silently reads as easy-to-hard is worse than one nobody expands. */}
+          <summary className="tw-cursor-pointer tw-py-1.5 marker:tw-text-current">
+            Frequency across, defining level up — not a difficulty scale
+          </summary>
+          {levelled.toLocaleString()} words. D1 at the top is the core the dictionary defines
+          everything else with; D7 at the bottom is never used in a definition at all. The
+          stripes are the CEFR bands. <span lang={source}>olá</span> is A1 vocabulary sitting at
+          D7, which is what &ldquo;not a difficulty scale&rdquo; means. Pick a point to look it up.
+        </details>
       </figcaption>
     </figure>
   );
