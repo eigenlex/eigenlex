@@ -90,6 +90,7 @@ export default function BandBrowser({
   onBandChange,
   onSelect,
   viewControl,
+  figure,
 }: {
   view: BandView;
   /** Source language whose bands to browse. */
@@ -103,6 +104,8 @@ export default function BandBrowser({
   onSelect: (word: string) => void;
   /** The frequency/CEFR switch, hosted in this panel's header alongside the bands. */
   viewControl?: ReactNode;
+  /** A view's figure, drawn above its word list. Only the defining view has one. */
+  figure?: ReactNode;
 }) {
   const [summary, setSummary] = useState<BandSummary[] | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(bandKey);
@@ -190,7 +193,8 @@ export default function BandBrowser({
 
   // Spotlight the anchor only in the band it actually belongs to.
   const anchorInBand = band && band.key === anchorBandKey ? anchorWord : null;
-  const bandsLabel = view === "cefr" ? "CEFR levels" : "Frequency bands";
+  const bandsLabel =
+    view === "cefr" ? "CEFR levels" : view === "defining" ? "Defining levels" : "Frequency bands";
 
   return (
     <div className="BandBrowser tw-rounded-x-large tw-border tw-border-line-subtle tw-bg-surface">
@@ -283,11 +287,9 @@ export default function BandBrowser({
         aria-labelledby={selectedKey ? tabId(selectedKey) : undefined}
         className="tw-min-w-0 tw-px-3 tw-py-4 min-[700px]:tw-px-5"
       >
+        {figure && <div className="tw-mb-4">{figure}</div>}
         {band ? (
           <>
-            <p className="tw-mb-3 tw-body-small text-muted-aaa">
-              {band.label} · most frequent first
-            </p>
             <StepButtons words={band.words} current={anchorInBand} onSelect={onSelect} />
             <WordChips
               words={band.words}
@@ -295,7 +297,7 @@ export default function BandBrowser({
               chipClass={CHIP}
               anchorClass={CHIP_ANCHOR}
               onPick={onSelect}
-              label={`Words in ${band.label}`}
+              label={`Words in ${band.label}, most frequent first`}
               lang={source}
             />
           </>

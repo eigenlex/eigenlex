@@ -35,15 +35,21 @@ export async function generateMetadata({
 
 // Same gutter for the footer as for the content it sits under. The footer is outside
 // <main> so it lands in its own contentinfo landmark rather than inside the content.
-const GUTTER = "tw-mx-auto tw-max-w-[1400px] tw-px-3 min-[700px]:tw-px-6 min-[900px]:tw-px-10";
+//
+// 1,760px because every laptop is wider than the 1,400 this used to be — 1,470 on a 13"
+// Air, 1,512 on a 14", 1,536 on a 1920 Windows panel at 125%, 1,728 on a 16" — and the cap
+// was protecting nothing. Line length is held where it belongs, on the prose itself: the
+// strapline at 60ch and the credits at 80ch. What the cap actually squeezed was the two
+// things that want width, the chip cloud and the defining figure.
+const GUTTER = "tw-mx-auto tw-max-w-[1760px] tw-px-3 min-[700px]:tw-px-6 min-[900px]:tw-px-10";
 
 export default async function Home() {
   // Vercel resolves the client IP to a country, which seeds the source language for a
   // first-time visitor. Absent everywhere else, which falls back to English. The root
   // layout already reads cookies, so this route is dynamic either way.
   const country = (await headers()).get("x-vercel-ip-country");
-  // The word card and chip grid need more room than 1100px gave them — and on a
-  // phone the gutter is room taken off them, so it stays narrow until there is some.
+  // On a phone the gutter is room taken off the content, so it stays narrow until there
+  // is some to spare. The cap itself is reasoned about above.
   return (
     <>
       <main className={`Home ${GUTTER} tw-pb-16 tw-pt-10`} id="main" tabIndex={-1}>

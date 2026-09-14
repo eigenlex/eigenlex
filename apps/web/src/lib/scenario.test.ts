@@ -5,6 +5,27 @@ import { pageTitle, readScenario, writeScenario } from "./scenario";
 afterEach(() => window.history.replaceState(null, "", "/"));
 
 describe("readScenario", () => {
+  // A deeplink can name a view the language does not have. Keeping the language and
+  // dropping the view beats honouring a view whose tabs would all 404.
+  // @spec URL-8
+  it("drops view=defining when the source language has no levels", () => {
+    window.history.replaceState(null, "", "/?source=en&view=defining");
+    expect(readScenario()).toEqual({ source: "en" });
+  });
+
+  // @spec URL-8
+  it("keeps view=defining for a language that has them", () => {
+    window.history.replaceState(null, "", "/?source=pt&view=defining");
+    expect(readScenario()).toEqual({ source: "pt", view: "defining" });
+  });
+
+  // No `source` means the seeded default, which has no levels.
+  // @spec URL-8
+  it("drops view=defining when the link names no language", () => {
+    window.history.replaceState(null, "", "/?view=defining");
+    expect(readScenario()).toEqual({});
+  });
+
   // @spec URL-1
   it("parses a full scenario from the query string", () => {
     window.history.replaceState(null, "", "/?source=de&word=essen&target=en&view=cefr&band=A2");

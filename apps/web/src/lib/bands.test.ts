@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { getBand, getBandSummary, getLevel, getSuggestions, getWord } from "@/lib/bands";
+import {
+  getBand,
+  getBandSummary,
+  getDefiningPoints,
+  getLevel,
+  getSuggestions,
+  getWord,
+  viewsFor,
+} from "@/lib/bands";
+import { hasDefining, SOURCE_LANGS } from "@/lib/languages";
 
 // German carries display casing (nouns/names capitalized) while lookups stay
 // case-insensitive; other languages are unaffected. See scripts/build-bands.ts.
@@ -188,5 +197,68 @@ describe("typeahead", () => {
   // @spec BAND-10
   it("leads with the exact match, ahead of commoner words sharing the prefix", () => {
     expect(getSuggestions("en", "ban", 3)).toEqual(["ban", "bank", "band"]);
+  });
+});
+
+// A defining level says how heavily the dictionary leans on a word when defining others,
+// which is not a rank window and not a learning order. It exists for Portuguese alone.
+describe("the defining view", () => {
+  // @spec BAND-11
+  it("is offered by exactly the languages that carry levels", () => {
+    for (const lang of SOURCE_LANGS) {
+      expect(viewsFor(lang).includes("defining"), lang).toBe(hasDefining(lang));
+    }
+  });
+
+  // @spec BAND-11
+  it("offers nothing for a language without levels", () => {
+    expect(getBandSummary("en", "defining")).toEqual([]);
+    expect(getBand("en", "defining", "D1")).toBeNull();
+    expect(getWord("en", "water")?.defining).toBeUndefined();
+  });
+
+  // The other two views are total because every rank falls in a window. This one is total
+  // only because `none` is offered as a band — a third of the list has no level.
+  // @spec BAND-12
+  it("puts every word in a band, the unlevelled ones in `none`", () => {
+    const bands = getBandSummary("pt", "defining");
+    const sum = (v: Parameters<typeof getBandSummary>[1]) =>
+      getBandSummary("pt", v).reduce((n, b) => n + b.count, 0);
+    expect(sum("defining")).toBe(sum("freq"));
+    expect(bands.find((b) => b.key === "none")?.count).toBe(13003);
+    expect(bands.map((b) => b.key)).toEqual(["D1", "D2", "D3", "D4", "D5", "D6", "D7", "none"]);
+  });
+
+  // D1 is the core the dictionary explains everything else with, so it is tiny and its
+  // words are the commonest ones. `john` is in the list and has no level at all.
+  it("answers a word with its level", () => {
+    expect(getWord("pt", "água")?.defining?.key).toBe("D3");
+    expect(getWord("pt", "ser")?.defining?.key).toBe("D1");
+    expect(getWord("pt", "john")?.defining?.key).toBe("none");
+  });
+
+  // The scale measures what the dictionary leans on, not what a learner meets first, and
+  // this is the pair that proves the two come apart: "olá" is A1 vocabulary at D7, because
+  // no definition is ever written in terms of "hello".
+  it("does not order words by difficulty", () => {
+    expect(getWord("pt", "olá")?.cefr.key).toBe("A1");
+    expect(getWord("pt", "olá")?.defining?.key).toBe("D7");
+  });
+
+  // The figure plots a point per levelled word, positioned by its index in `words`. One
+  // char missing from `levels` would shift every point after it onto the wrong word.
+  // @spec BAND-13
+  it("serves the figure one level per ranked word, and only where levels exist", () => {
+    const p = getDefiningPoints("pt")!;
+    expect(p.levels).toHaveLength(p.words.length);
+    expect(p.words).toHaveLength(35827);
+    expect([...p.levels].filter((c) => c !== "-")).toHaveLength(22824);
+    expect(getDefiningPoints("en")).toBeNull();
+  });
+
+  it("lists a band in frequency order", () => {
+    const d1 = getBand("pt", "defining", "D1")!;
+    expect(d1.words).toHaveLength(51);
+    expect(d1.words.slice(0, 4)).toEqual(["o", "que", "a", "não"]);
   });
 });
