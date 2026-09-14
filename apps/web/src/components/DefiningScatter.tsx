@@ -351,9 +351,11 @@ export default function DefiningScatter({
             Frequency across, defining level up — not a difficulty scale
           </summary>
           {levelled.toLocaleString()} words. D1 at the top is the core the dictionary defines
-          everything else with; D7 at the bottom is never used in a definition at all. The
-          stripes are the CEFR bands. <span lang={source}>olá</span> is A1 vocabulary sitting at
-          D7, which is what &ldquo;not a difficulty scale&rdquo; means. Pick a point to look it up.
+          everything else with; D7 at the bottom is never used in a definition at all. That makes
+          D1 a defining vocabulary in the Longman sense — one the dictionary&rsquo;s usage reveals,
+          rather than one an editor fixes in advance. The stripes are the CEFR bands.{" "}
+          <span lang={source}>olá</span> is A1 vocabulary sitting at D7, which is what &ldquo;not a
+          difficulty scale&rdquo; means. Pick a point to look it up.
         </details>
       </figcaption>
     </figure>
