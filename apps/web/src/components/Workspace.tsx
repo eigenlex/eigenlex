@@ -167,8 +167,8 @@ function ViewToggle({
         {defining && (
           <Tooltip.Root>
             <Tooltip.Trigger asChild>
-              <SegmentedControl.Item value="defining" {...({ "aria-label": "Defining" } as object)}>
-                Defining
+              <SegmentedControl.Item value="defining" {...({ "aria-label": "Defining level" } as object)}>
+                Defining level
               </SegmentedControl.Item>
             </Tooltip.Trigger>
             <Tooltip.Content>How heavily the dictionary leans on the word to define others</Tooltip.Content>
