@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { SegmentedControl, Tooltip } from "@frontify/fondue/components";
 import BandBrowser from "@/components/BandBrowser";
 import CefrBadge from "@/components/CefrBadge";
+import DefiningScatter from "@/components/DefiningScatter";
 import LangSelect from "@/components/LangSelect";
 import WordCard from "@/components/WordCard";
 import WordSearchBox from "@/components/WordSearchBox";
@@ -11,6 +12,7 @@ import type { BandView, WordBands } from "@/lib/types";
 import {
   DEFAULT_SOURCE,
   englishName,
+  hasDefining,
   isSourceLang,
   SOURCE_LANGS,
   SOURCE_LANG_META,
@@ -128,7 +130,16 @@ function SwapButton({ enabled, onSwap }: { enabled: boolean; onSwap: () => void 
   );
 }
 
-function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView) => void }) {
+function ViewToggle({
+  view,
+  onChange,
+  defining,
+}: {
+  view: BandView;
+  onChange: (v: BandView) => void;
+  /** Whether the active language offers the defining view at all. */
+  defining: boolean;
+}) {
   return (
     <div>
       <SegmentedControl.Root aria-label="Band view" value={view} onValueChange={(v) => onChange(v as BandView)}>
@@ -151,8 +162,21 @@ function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView
               Frequency
             </SegmentedControl.Item>
           </Tooltip.Trigger>
-          <Tooltip.Content>Rank by how often the word appears in the corpus</Tooltip.Content>
+          <Tooltip.Content>Rank by how often the word appears in film and TV subtitles</Tooltip.Content>
         </Tooltip.Root>
+        {defining && (
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
+              <SegmentedControl.Item value="defining" {...({ "aria-label": "Defining level" } as object)}>
+                Defining level
+              </SegmentedControl.Item>
+            </Tooltip.Trigger>
+            <Tooltip.Content>
+              How heavily the dictionary leans on the word to define others — its own defining
+              vocabulary
+            </Tooltip.Content>
+          </Tooltip.Root>
+        )}
       </SegmentedControl.Root>
     </div>
   );
@@ -320,7 +344,7 @@ export default function Workspace({ country }: { country?: string | null }) {
   // from the word's own — an unchanged band is already implied by the word + view.
   useEffect(() => {
     if (!info) return;
-    const anchor = info[view].key;
+    const anchor = info[view]?.key ?? null;
     writeScenario({
       source,
       word: info.word,
@@ -517,7 +541,7 @@ export default function Workspace({ country }: { country?: string | null }) {
           view={view}
           source={source}
           anchorWord={info?.word ?? null}
-          anchorBandKey={info ? info[view].key : null}
+          anchorBandKey={info?.[view]?.key ?? null}
           bandKey={band}
           onBandChange={setBand}
           // Into the field first, as every other way of picking a word does — the
@@ -526,7 +550,21 @@ export default function Workspace({ country }: { country?: string | null }) {
             setQuery(w);
             void lookup(w, source);
           }}
-          viewControl={<ViewToggle view={view} onChange={chooseView} />}
+          viewControl={<ViewToggle view={view} onChange={chooseView} defining={hasDefining(source)} />}
+          // The figure only the defining view has: what the tabs below cannot show, which
+          // is that frequency and defining level come apart.
+          figure={
+            view === "defining" ? (
+              <DefiningScatter
+                source={source}
+                anchorWord={info?.word ?? null}
+                onSelect={(w) => {
+                  setQuery(w);
+                  void lookup(w, source);
+                }}
+              />
+            ) : undefined
+          }
         />
 
         {/* Data-source credits / CEFR disclaimer, under the data they describe.
