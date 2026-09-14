@@ -23,6 +23,9 @@ const PAD = { top: 10, right: 12, bottom: 26, left: 34 };
 /** Point radius, and the hover radius around the cursor, in CSS pixels. */
 const DOT = 1.6;
 const HOVER = 7;
+/** Rough height of the pointer cursor's glyph, and of the hover label. */
+const CURSOR = 22;
+const TIP_H = 26;
 
 interface Points {
   /** One char per ranked word: "1"-"7", or "-" for a word with no level. */
@@ -39,6 +42,23 @@ function jitter(word: string): number {
   let h = 0;
   for (let i = 0; i < word.length; i++) h = (Math.imul(h, 31) + word.charCodeAt(i)) | 0;
   return ((h >>> 0) % 1000) / 1000 - 0.5;
+}
+
+/**
+ * Where the hover label sits relative to the cursor. Above it, not below: a cursor's
+ * hotspot is its top-left corner and the glyph hangs down and to the right of that, so
+ * anything placed below-right is drawn under the cursor itself. The pointer cursor this
+ * canvas switches to is the bigger of the two, about 22px tall, which is what CURSOR
+ * clears. Flips below only in the top strip, where there is no room above.
+ */
+export function tipStyle(hover: { x: number; y: number }, wrapWidth: number): React.CSSProperties {
+  const flipX = hover.x > wrapWidth * 0.66;
+  const flipY = hover.y < CURSOR + TIP_H;
+  return {
+    left: hover.x + (flipX ? -8 : 8),
+    top: hover.y + (flipY ? CURSOR : -8),
+    transform: `${flipX ? "translateX(-100%)" : ""} ${flipY ? "" : "translateY(-100%)"}`.trim(),
+  };
 }
 
 export default function DefiningScatter({
@@ -230,12 +250,7 @@ export default function DefiningScatter({
           <span
             aria-hidden
             className="tw-pointer-events-none tw-absolute tw-z-10 tw-rounded tw-border tw-border-line-subtle tw-bg-surface tw-px-2 tw-py-1 tw-body-x-small tw-text-primary tw-shadow"
-            style={{
-              left: hover.x + 10,
-              top: hover.y + 10,
-              // Past two thirds across, the label would run off the right edge.
-              transform: hover.x > (wrapRef.current?.clientWidth ?? 0) * 0.66 ? "translateX(-100%)" : undefined,
-            }}
+            style={tipStyle(hover, wrapRef.current?.clientWidth ?? 0)}
             lang={source}
           >
             {hover.word}

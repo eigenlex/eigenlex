@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import DefiningScatter from "./DefiningScatter";
+import DefiningScatter, { tipStyle } from "./DefiningScatter";
 
 // jsdom has no 2d context, so `paint` bails at its `if (!ctx) return`. That is the point:
 // everything outside the canvas — the label, the caption, the loading state — is what a
@@ -43,5 +43,36 @@ describe("DefiningScatter", () => {
     render(<DefiningScatter source="pt" anchorWord={null} onSelect={() => {}} />);
     await screen.findByRole("img");
     expect(fetch).toHaveBeenCalledWith("/api/defining?source=pt");
+  });
+});
+
+// The label sat below-right of the cursor and the cursor covered it — a cursor's hotspot
+// is its top-left corner, so the glyph occupies exactly the space below and right of the
+// point it reports. Above by default, and only below where there is no room above.
+describe("the hover label's placement", () => {
+  const W = 900;
+
+  it("sits above the cursor, clear of the glyph", () => {
+    const st = tipStyle({ x: 100, y: 200 }, W);
+    expect(st.transform).toContain("translateY(-100%)");
+    expect(Number(st.top)).toBeLessThan(200);
+  });
+
+  it("flips below only in the top strip", () => {
+    const st = tipStyle({ x: 100, y: 4 }, W);
+    expect(st.transform ?? "").not.toContain("translateY");
+    // Below the cursor's glyph, not overlapping it.
+    expect(Number(st.top)).toBeGreaterThanOrEqual(4 + 22);
+  });
+
+  it("flips left near the right edge so it cannot run off", () => {
+    expect(tipStyle({ x: 880, y: 200 }, W).transform).toContain("translateX(-100%)");
+    expect(tipStyle({ x: 100, y: 200 }, W).transform ?? "").not.toContain("translateX");
+  });
+
+  it("can flip on both axes at once", () => {
+    const st = tipStyle({ x: 880, y: 4 }, W);
+    expect(st.transform).toContain("translateX(-100%)");
+    expect(st.transform).not.toContain("translateY");
   });
 });
