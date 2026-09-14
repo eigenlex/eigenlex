@@ -232,7 +232,12 @@ export default function DefiningScatter({
     <figure className="tw-m-0">
       <div
         ref={wrapRef}
-        className="tw-relative tw-h-[min(52svh,360px)] tw-w-full tw-text-secondary min-[700px]:tw-h-[420px]"
+        // Taller as it gets wider, or the plot flattens: seven bands across 1,700px at a
+        // fixed 420 is a 4:1 letterbox, and the jitter inside each band stops reading.
+        className={
+          "tw-relative tw-h-[min(52svh,360px)] tw-w-full tw-text-secondary " +
+          "min-[700px]:tw-h-[420px] min-[1200px]:tw-h-[480px] min-[1600px]:tw-h-[540px]"
+        }
       >
         <canvas
           ref={canvasRef}
