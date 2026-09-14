@@ -207,6 +207,50 @@ no entry for `ryûji` or `rrr`. The dictionary can, which is what `dictGate` use
 | Spot-check | Italian's list has no `entropia`, so the build's spot-check for it reports `—` |
 | 12k–25k untouched | The gate starts at 25k, and 12k–25k is still about half names and English: `Nami`, `Calcutta`, `because`, `corn`, `truck` all sit near rank 13,000 |
 
+### Measuring what the gate misses
+
+The row above is qualitative. A second dictionary makes it countable: cross the lemma list
+with a Wiktionary extract and count what neither vouches for. Measured once for Portuguese,
+against the `defining-vocabulary` spike's `pt_levels.json`.
+
+| Portuguese, 35,827 words | Count |
+| --- | --- |
+| Not in the lemma list | 9,658 |
+| No Wiktionary entry | 11,719 |
+| **Neither** | **7,565** |
+
+Either source alone is useless as a filter. The lemma list flags `que de com se do por` —
+function words it never headwords. Wiktionary flags the feminines and possessives michmech
+treats as lemmas of their own: `boa`, `má`, `última`, `certa`, `meu`. Only the conjunction
+isolates junk.
+
+Where the 7,565 sit, and what runs there:
+
+| Rank | Count | The test in force |
+| --- | --- | --- |
+| 1–1,000 | 20 | None. `NAME_RANK_FLOOR` exempts the head |
+| 1,001–24,999 | 7,545 | The name gazetteer alone. No dictionary test: `dictGate` starts at 25,000 and only German has a `spellDict` |
+| 25,000+ | 0 | `dictGate`. Nothing past it is unvouched |
+
+So the gate holds perfectly and the whole hole is below it. It is also not the 12k–25k of
+the row above — it starts at 1,001.
+
+| The 7,565 | Count | Head of the list |
+| --- | --- | --- |
+| Already in `names.txt` | 2,704 | `John Jack Sam Michael Charlie Frank Mike Joe Peter George Max James Alex Bob` |
+| Not in `names.txt` | 4,861 | `Mr The fbi näo Iorque Hey km Chicago voce New directamente of City srta and` |
+
+The first group is the name filter's own miss — the gazetteer holds the word and the casing
+or determiner test spared it. The second is what a surname list was never going to hold:
+untranslated English (`The`, `of`, `and`, `New`, `City`), accentless and pre-reform spellings
+(`näo`, `voce`, `directamente`), abbreviations (`km`, `srta`, `fbi`, `St`), exonyms
+(`Iorque`, `Chicago`).
+
+| Known cost | Detail |
+| --- | --- |
+| A candidate list, not a drop list | `bem-vindos`, `bem-vinda`, `directamente` and `Iorque` are ordinary Portuguese sitting in the second group |
+| Portuguese only | Repeating it needs that language's Wiktionary extract — 339MB per language, which is what the spike downloads |
+
 ### Morphology, the second way past the gate
 
 The gate asks the lemma list to vouch for a word, and German loses most by it. German
