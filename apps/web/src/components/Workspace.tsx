@@ -11,6 +11,7 @@ import type { BandView, WordBands } from "@/lib/types";
 import {
   DEFAULT_SOURCE,
   englishName,
+  hasDefining,
   isSourceLang,
   SOURCE_LANGS,
   SOURCE_LANG_META,
@@ -128,7 +129,16 @@ function SwapButton({ enabled, onSwap }: { enabled: boolean; onSwap: () => void 
   );
 }
 
-function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView) => void }) {
+function ViewToggle({
+  view,
+  onChange,
+  defining,
+}: {
+  view: BandView;
+  onChange: (v: BandView) => void;
+  /** Whether the active language offers the defining view at all. */
+  defining: boolean;
+}) {
   return (
     <div>
       <SegmentedControl.Root aria-label="Band view" value={view} onValueChange={(v) => onChange(v as BandView)}>
@@ -153,6 +163,16 @@ function ViewToggle({ view, onChange }: { view: BandView; onChange: (v: BandView
           </Tooltip.Trigger>
           <Tooltip.Content>Rank by how often the word appears in the corpus</Tooltip.Content>
         </Tooltip.Root>
+        {defining && (
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>
+              <SegmentedControl.Item value="defining" {...({ "aria-label": "Defining" } as object)}>
+                Defining
+              </SegmentedControl.Item>
+            </Tooltip.Trigger>
+            <Tooltip.Content>How heavily the dictionary leans on the word to define others</Tooltip.Content>
+          </Tooltip.Root>
+        )}
       </SegmentedControl.Root>
     </div>
   );
@@ -320,7 +340,7 @@ export default function Workspace({ country }: { country?: string | null }) {
   // from the word's own — an unchanged band is already implied by the word + view.
   useEffect(() => {
     if (!info) return;
-    const anchor = info[view].key;
+    const anchor = info[view]?.key ?? null;
     writeScenario({
       source,
       word: info.word,
@@ -517,7 +537,7 @@ export default function Workspace({ country }: { country?: string | null }) {
           view={view}
           source={source}
           anchorWord={info?.word ?? null}
-          anchorBandKey={info ? info[view].key : null}
+          anchorBandKey={info?.[view]?.key ?? null}
           bandKey={band}
           onBandChange={setBand}
           // Into the field first, as every other way of picking a word does — the
@@ -526,7 +546,7 @@ export default function Workspace({ country }: { country?: string | null }) {
             setQuery(w);
             void lookup(w, source);
           }}
-          viewControl={<ViewToggle view={view} onChange={chooseView} />}
+          viewControl={<ViewToggle view={view} onChange={chooseView} defining={hasDefining(source)} />}
         />
 
         {/* Data-source credits / CEFR disclaimer, under the data they describe.

@@ -109,10 +109,15 @@ than quietly asserting nothing.
 Bands are frequency-rank thresholds calibrated against CEFR-J. They are English-derived
 and reused for every language.
 
+The `defining` view is the exception: a defining level is a property of the word, measured
+from how often a dictionary reaches for it when defining others, so its bands are sets
+rather than rank windows. It needs a dictionary graph per language and only Portuguese has
+one, which is why it is the one view a language can lack.
+
 | ID | Rule |
 | --- | --- |
 | BAND-1 | The CEFR bands top out at rank 1,000 / 3,000 / 6,000 / 12,000 / 25,000 / 50,000 for A1 / A2 / B1 / B2 / C1 / C2 |
-| BAND-2 | Every language uses the same band definitions, in both views |
+| BAND-2 | Every language uses the same band definitions in the `freq` and `cefr` views |
 | BAND-3 | Every rank in a language's list falls inside a band |
 | BAND-4 | A band holding no words is not offered |
 | BAND-5 | A word lookup keys on lowercase and answers in the corpus's display casing |
@@ -121,6 +126,8 @@ and reused for every language.
 | BAND-8 | A phrase, or a word the language has no headword for, has no level |
 | BAND-9 | Only the six indexed languages carry levels |
 | BAND-10 | Typeahead matches a lowercase prefix, answers in frequency order, honours its limit, and leads with an exact match |
+| BAND-11 | Only a language carrying defining levels offers the `defining` view; for the rest it answers 404 |
+| BAND-12 | In the `defining` view every word falls in a band, the ones with no level in `none` |
 
 ## FILTER — what the artifacts hold
 
@@ -176,3 +183,4 @@ The build merges every inflection onto its lemma, so a form is not an entry of i
 | URL-5 | On mount the URL wins over a stored pick, which wins over the seeded pair |
 | URL-6 | The tab title is `word-bands: <word>`, capped at 40 characters, and `word-bands` with no word |
 | URL-7 | A deeplink's word reaches the Open Graph and Twitter titles server-side, not only the tab |
+| URL-8 | `view=defining` is dropped when the link's source language has no defining levels |

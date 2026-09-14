@@ -11,5 +11,10 @@ export async function GET(
   if (!isView(view)) return new Response("unknown view", { status: 404 });
   const source = new URL(req.url).searchParams.get("source") ?? DEFAULT_SOURCE;
   if (!isSourceLang(source)) return new Response("unknown language", { status: 404 });
-  return Response.json(getBandSummary(source, view));
+  // An empty summary means this language does not offer the view — `defining` needs a
+  // dictionary graph and only Portuguese has one. A 404 rather than an empty list, since
+  // to a caller the view is as absent as a misspelt one.
+  // @spec ROUTE-9
+  const bands = getBandSummary(source, view);
+  return bands.length ? Response.json(bands) : new Response("unknown view", { status: 404 });
 }
