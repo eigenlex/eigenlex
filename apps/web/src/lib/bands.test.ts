@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { getBand, getBandSummary, getLevel, getSuggestions, getWord, viewsFor } from "@/lib/bands";
+import {
+  getBand,
+  getBandSummary,
+  getDefiningPoints,
+  getLevel,
+  getSuggestions,
+  getWord,
+  viewsFor,
+} from "@/lib/bands";
 import { hasDefining, SOURCE_LANGS } from "@/lib/languages";
 
 // German carries display casing (nouns/names capitalized) while lookups stay
@@ -235,6 +243,17 @@ describe("the defining view", () => {
   it("does not order words by difficulty", () => {
     expect(getWord("pt", "olá")?.cefr.key).toBe("A1");
     expect(getWord("pt", "olá")?.defining?.key).toBe("D7");
+  });
+
+  // The figure plots a point per levelled word, positioned by its index in `words`. One
+  // char missing from `levels` would shift every point after it onto the wrong word.
+  // @spec BAND-13
+  it("serves the figure one level per ranked word, and only where levels exist", () => {
+    const p = getDefiningPoints("pt")!;
+    expect(p.levels).toHaveLength(p.words.length);
+    expect(p.words).toHaveLength(35827);
+    expect([...p.levels].filter((c) => c !== "-")).toHaveLength(22824);
+    expect(getDefiningPoints("en")).toBeNull();
   });
 
   it("lists a band in frequency order", () => {

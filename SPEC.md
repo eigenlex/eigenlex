@@ -128,6 +128,7 @@ one, which is why it is the one view a language can lack.
 | BAND-10 | Typeahead matches a lowercase prefix, answers in frequency order, honours its limit, and leads with an exact match |
 | BAND-11 | Only a language carrying defining levels offers the `defining` view; for the rest it answers 404 |
 | BAND-12 | In the `defining` view every word falls in a band, the ones with no level in `none` |
+| BAND-13 | The defining figure's data carries one level per ranked word, and is served only for a language that has levels |
 
 ## FILTER — what the artifacts hold
 

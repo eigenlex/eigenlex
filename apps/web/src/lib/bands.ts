@@ -219,6 +219,19 @@ export function getLevel(target: SourceLang, word: string): WordLevel | null {
 }
 
 /**
+ * Everything the defining figure plots: the level of every ranked word, and the words
+ * themselves so a point can name itself. Null where the language has no levels.
+ *
+ * This is the one place the whole ranking goes to the client — about 165KB gzipped — so it
+ * is served on its own route and fetched only when the defining view is opened.
+ * @spec BAND-13
+ */
+export function getDefiningPoints(source: SourceLang): { levels: string; words: string[] } | null {
+  const d = REGISTRY[source];
+  return d.defining ? { levels: d.defining.levels, words: d.ranked } : null;
+}
+
+/**
  * Every band of a view with its word count — the browser's tabs. Empty for a view the
  * language does not offer, which is what the routes 404 on.
  * @spec BAND-4, BAND-12

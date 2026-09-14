@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { SegmentedControl, Tooltip } from "@frontify/fondue/components";
 import BandBrowser from "@/components/BandBrowser";
 import CefrBadge from "@/components/CefrBadge";
+import DefiningScatter from "@/components/DefiningScatter";
 import LangSelect from "@/components/LangSelect";
 import WordCard from "@/components/WordCard";
 import WordSearchBox from "@/components/WordSearchBox";
@@ -547,6 +548,20 @@ export default function Workspace({ country }: { country?: string | null }) {
             void lookup(w, source);
           }}
           viewControl={<ViewToggle view={view} onChange={chooseView} defining={hasDefining(source)} />}
+          // The figure only the defining view has: what the tabs below cannot show, which
+          // is that frequency and defining level come apart.
+          figure={
+            view === "defining" ? (
+              <DefiningScatter
+                source={source}
+                anchorWord={info?.word ?? null}
+                onSelect={(w) => {
+                  setQuery(w);
+                  void lookup(w, source);
+                }}
+              />
+            ) : undefined
+          }
         />
 
         {/* Data-source credits / CEFR disclaimer, under the data they describe.
