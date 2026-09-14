@@ -3,11 +3,13 @@
 // recipient to land on: the source language, the looked-up word, the target
 // language, and the band view / pinned band tab.
 
-import { isSourceLang, type SourceLang, type TargetLang } from "@/lib/languages";
+import { hasDefining, isSourceLang, type SourceLang, type TargetLang } from "@/lib/languages";
 import { SITE_NAME } from "@/lib/site";
 import type { BandView } from "@/lib/types";
 
-const isView = (v: string): v is BandView => v === "freq" || v === "cefr";
+// A client-safe copy of `bands.isView`, which cannot be imported here: that module is
+// server-only and this one runs in the browser.
+const isView = (v: string): v is BandView => v === "freq" || v === "cefr" || v === "defining";
 
 // The spellings each language is accepted under, canonical first. Only the canonical one
 // is ever written, so a link carrying another is rewritten the moment it is opened.
@@ -30,7 +32,7 @@ export interface Scenario {
   word: string;
   /** Target language (the reader's own). */
   target: TargetLang;
-  /** Frequency vs CEFR band view. */
+  /** Which way the vocabulary is split: frequency, CEFR, or defining level. */
   view: BandView;
   /** An explicitly-picked band tab, when it differs from the word's own band. */
   band: string | null;
@@ -60,7 +62,13 @@ export function readScenario(): Partial<Scenario> {
   const target = param(p, TARGET_PARAMS);
   if (target) out.target = target;
   const view = p.get("view");
-  if (view && isView(view)) out.view = view;
+  // `defining` exists only for a source language that has levels, so a link pairing it
+  // with one that has none keeps the language and falls back on the view. Read against
+  // the link's own `source`: an absent one means the default, which has no levels.
+  // @spec URL-8
+  if (view && isView(view) && (view !== "defining" || (!!out.source && hasDefining(out.source)))) {
+    out.view = view;
+  }
   const band = p.get("band");
   if (band) out.band = band;
   return out;

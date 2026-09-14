@@ -1,7 +1,11 @@
 // Shared API shapes — importable from both server (lib/bands) and client.
 
-/** Which way to split the vocabulary into bands. */
-export type BandView = "freq" | "cefr";
+/**
+ * Which way to split the vocabulary into bands. `freq` and `cefr` are rank windows and
+ * every language has them; `defining` is a property of the word rather than of its rank,
+ * and only a language with a dictionary graph behind it offers it (`viewsFor`).
+ */
+export type BandView = "freq" | "cefr" | "defining";
 
 /** A band a word belongs to, as shown on the word card and browser tabs. */
 export interface BandRef {
@@ -28,6 +32,8 @@ export interface WordBands {
   rank: number;
   freq: BandRef;
   cefr: BandRef;
+  /** Absent for a language with no defining levels, which is every one but Portuguese. */
+  defining?: BandRef;
   /**
    * The inflected form asked for, when the answer is its base word — "branched" on the
    * card for "branch". Absent when the word was found as typed, so its presence is what
