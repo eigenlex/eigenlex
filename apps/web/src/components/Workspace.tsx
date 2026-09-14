@@ -162,7 +162,7 @@ function ViewToggle({
               Frequency
             </SegmentedControl.Item>
           </Tooltip.Trigger>
-          <Tooltip.Content>Rank by how often the word appears in the corpus</Tooltip.Content>
+          <Tooltip.Content>Rank by how often the word appears in film and TV subtitles</Tooltip.Content>
         </Tooltip.Root>
         {defining && (
           <Tooltip.Root>
@@ -171,7 +171,10 @@ function ViewToggle({
                 Defining level
               </SegmentedControl.Item>
             </Tooltip.Trigger>
-            <Tooltip.Content>How heavily the dictionary leans on the word to define others</Tooltip.Content>
+            <Tooltip.Content>
+              How heavily the dictionary leans on the word to define others — its own defining
+              vocabulary
+            </Tooltip.Content>
           </Tooltip.Root>
         )}
       </SegmentedControl.Root>
